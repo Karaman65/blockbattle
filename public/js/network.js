@@ -25,8 +25,7 @@ class NetworkManager {
       // Sunucu başka bir yerdeyse buraya tam URL yazılmalıdır.
       let serverUrl = '';
       if (window.location.origin.includes('capacitor') || (window.location.hostname === 'localhost' && !window.location.port)) {
-         // Telefondan girildiğini varsayıyoruz ama sunucu URL'si bilinmiyor.
-         // Local IP veya public domain kullanılmalı. Boş bırakırsak çalışmayabilir ama en azından çökmeyecek.
+         serverUrl = 'https://blockbattle.onrender.com';
       }
       this.socket = serverUrl ? io(serverUrl) : io();
     } catch(err) {
