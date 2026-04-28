@@ -36,6 +36,12 @@ class AuthManager {
           username: username,
           email: email,
           highScore: 0,
+          coins: 500, // Başlangıç hediyesi!
+          inventory: {
+            bomb: 2,
+            rotate: 5,
+            skip: 2
+          },
           totalGames: 0,
           totalWins: 0,
           totalOnlineGames: 0,
@@ -107,10 +113,82 @@ class AuthManager {
     }
   }
 
+  getCoins() {
+    return (this.userData && this.userData.coins) || 0;
+  }
+
+  getInventory() {
+    return (this.userData && this.userData.inventory) || { bomb: 0, rotate: 0, skip: 0 };
+  }
+
+  async addCoins(amount) {
+    if (!this.user) return;
+    try {
+      await db.collection('users').doc(this.user.uid).update({
+        coins: firebase.firestore.FieldValue.increment(amount)
+      });
+      if (this.userData) this.userData.coins = (this.userData.coins || 0) + amount;
+      return true;
+    } catch (e) { console.error(e); return false; }
+  }
+
+  async buyPowerUp(type, price) {
+    if (!this.user || this.getCoins() < price) return false;
+    try {
+      const field = `inventory.${type}`;
+      await db.collection('users').doc(this.user.uid).update({
+        coins: firebase.firestore.FieldValue.increment(-price),
+        [field]: firebase.firestore.FieldValue.increment(1)
+      });
+      
+      if (this.userData) {
+        this.userData.coins -= price;
+        this.userData.inventory[type] = (this.userData.inventory[type] || 0) + 1;
+      }
+      return true;
+    } catch (e) { console.error(e); return false; }
+  }
+
+  async decrementInventory(type) {
+    if (!this.user) return;
+    try {
+      const field = `inventory.${type}`;
+      await db.collection('users').doc(this.user.uid).update({
+        [field]: firebase.firestore.FieldValue.increment(-1)
+      });
+      if (this.userData) this.userData.inventory[type]--;
+    } catch (e) { console.error(e); }
+  }
+
   getUsername() {
     if (this.userData && this.userData.username) return this.userData.username;
     if (this.user && this.user.displayName) return this.user.displayName;
     return 'Oyuncu';
+  }
+
+  isPremium() {
+    return this.userData && this.userData.isPremium === true;
+  }
+
+  async setPremium() {
+    if (!this.user) return;
+    try {
+      // Update users collection
+      await db.collection('users').doc(this.user.uid).update({
+        isPremium: true
+      });
+      
+      // Update leaderboard collection
+      await db.collection('leaderboard').doc(this.user.uid).set({
+        isPremium: true
+      }, { merge: true });
+
+      if (this.userData) this.userData.isPremium = true;
+      return true;
+    } catch (err) {
+      console.error('Premium güncelleme hatası:', err);
+      return false;
+    }
   }
 
   isLoggedIn() {

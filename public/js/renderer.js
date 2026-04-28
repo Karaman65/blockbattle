@@ -77,6 +77,46 @@ class Renderer {
       ctx.lineTo(offsetX + totalSize, offsetY + i * cellSize);
       ctx.stroke();
     }
+
+    // Bomb Mode Overlay
+    if (this.game.bombMode) {
+      this.drawBombPreview(ctx, cellSize, offsetX, offsetY);
+    }
+  }
+
+  drawBombPreview(ctx, cellSize, offsetX, offsetY) {
+    const pos = this.game.input._getPos(this.game.input.lastEvent || {});
+    const rect = document.getElementById('game-canvas').getBoundingClientRect();
+    const x = pos.x - rect.left;
+    const y = pos.y - rect.top;
+
+    const col = Math.floor((x - offsetX) / cellSize);
+    const row = Math.floor((y - offsetY) / cellSize);
+
+    if (row >= 0 && row < 9 && col >= 0 && col < 9) {
+      ctx.fillStyle = 'rgba(255, 71, 87, 0.3)';
+      ctx.strokeStyle = 'rgba(255, 71, 87, 0.8)';
+      ctx.lineWidth = 3;
+      
+      const rStart = Math.max(0, row - 1);
+      const rEnd = Math.min(8, row + 1);
+      const cStart = Math.max(0, col - 1);
+      const cEnd = Math.min(8, col + 1);
+
+      const bx = offsetX + cStart * cellSize;
+      const by = offsetY + rStart * cellSize;
+      const bw = (cEnd - cStart + 1) * cellSize;
+      const bh = (rEnd - rStart + 1) * cellSize;
+
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeRect(bx, by, bw, bh);
+
+      // Draw crosshair icon
+      ctx.font = '24px Outfit';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💣', offsetX + col * cellSize + cellSize/2, offsetY + row * cellSize + cellSize/2);
+    }
   }
 
   drawBlock(ctx, x, y, w, h, color) {

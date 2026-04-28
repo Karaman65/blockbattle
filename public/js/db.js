@@ -22,11 +22,20 @@ class DatabaseManager {
       await db.collection('leaderboard').doc(uid).set({
         username: username,
         highScore: score,
+        isPremium: data.isPremium === true, // Sync premium status
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
     }
 
     await userRef.update(updates);
+  }
+
+  async syncPremiumToLeaderboard(uid, isPremium) {
+    try {
+      await db.collection('leaderboard').doc(uid).set({
+        isPremium: isPremium
+      }, { merge: true });
+    } catch (e) { console.error(e); }
   }
 
   async recordOnlineMatch(matchData) {

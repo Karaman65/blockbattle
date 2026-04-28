@@ -14,24 +14,22 @@ class NetworkManager {
   connect() {
     if (this.socket) return;
     
-    if (typeof io === 'undefined') {
-      console.error('Socket.IO yüklenemedi. Lütfen internet bağlantınızı kontrol edin.');
-      alert('Online mod için internet bağlantısı gereklidir.');
-      return;
+    if (typeof io === 'undefined' || typeof io !== 'function') {
+      console.error('Socket.IO yüklenemedi. io tip:', typeof io);
+      throw new Error('Socket.IO kütüphanesi hazır değil.');
     }
 
     try {
-      // Capacitor ortamında varsayılan olarak localhost'a bağlanmaya çalışır, 
-      // Sunucu başka bir yerdeyse buraya tam URL yazılmalıdır.
-      let serverUrl = '';
-      if (window.location.origin.includes('capacitor') || (window.location.hostname === 'localhost' && !window.location.port)) {
-         serverUrl = 'https://blockbattle.onrender.com';
+      // Capacitor veya normal web ortamı için her zaman Render sunucusunu kullan.
+      // Sadece yerel geliştirme sırasında (localhost:3000) yereli kullan.
+      let serverUrl = 'https://blockbattle.onrender.com';
+      if (window.location.hostname === 'localhost' && window.location.port === '3000') {
+         serverUrl = 'http://localhost:3000';
       }
-      this.socket = serverUrl ? io(serverUrl) : io();
+      this.socket = io(serverUrl, { transports: ['websocket'] });
     } catch(err) {
       console.error('Socket bağlantı hatası:', err);
-      alert('Sunucuya bağlanılamadı.');
-      return;
+      throw new Error('Sunucuya bağlanılamadı: ' + err.message);
     }
 
     this.socket.on('connect', () => {
@@ -42,6 +40,11 @@ class NetworkManager {
     this.socket.on('disconnect', () => {
       this.connected = false;
       console.log('Disconnected');
+    });
+
+    this.socket.on('connect_error', (err) => {
+      console.error('Socket connect_error:', err);
+      // alert('Bağlantı hatası: ' + err.message); // Yorum satırına alıyoruz sürekli uyarı vermesin
     });
 
     this.socket.on('room-created', (data) => {
@@ -85,15 +88,21 @@ class NetworkManager {
   }
 
   createRoom(mode) {
+    if (!this.socket) {
+      alert('Soket bağlantısı kurulamadı. Lütfen tekrar bağlanmayı deneyin.');
+      return;
+    }
     this.gameMode = mode;
     this.socket.emit('create-room', { mode });
   }
 
   joinRoom(roomId) {
+    if (!this.socket) { alert('Soket bağlantı hatası.'); return; }
     this.socket.emit('join-room', { roomId: roomId.toUpperCase() });
   }
 
   quickMatch(mode) {
+    if (!this.socket) { alert('Soket bağlantı hatası.'); return; }
     this.gameMode = mode;
     this.socket.emit('quick-match', { mode });
     this.game.showScreen('waiting-screen');

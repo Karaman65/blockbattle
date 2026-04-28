@@ -106,3 +106,15 @@ function getShapeCells(shape) {
   }
   return cells;
 }
+
+function rotateShape(shape) {
+  const rows = shape.length;
+  const cols = shape[0].length;
+  const newShape = Array.from({ length: cols }, () => Array(rows).fill(0));
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      newShape[c][rows - 1 - r] = shape[r][c];
+    }
+  }
+  return newShape;
+}

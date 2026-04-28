@@ -1,5 +1,13 @@
 {
   "appId": "com.blockbattle.app",
   "appName": "Block Battle",
-  "webDir": "public"
+  "webDir": "public",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2500,
+      "backgroundColor": "#12122b",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP"
+    }
+  }
 }

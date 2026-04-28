@@ -6,14 +6,14 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg-primary: #07071a;
-  --bg-secondary: #0d0d2b;
-  --bg-card: rgba(16, 16, 48, 0.85);
-  --bg-card-border: rgba(108, 92, 231, 0.2);
-  --surface: #141432;
+  --bg-primary: #12122b;
+  --bg-secondary: #1a1a3a;
+  --bg-card: rgba(26, 26, 58, 0.85);
+  --bg-card-border: rgba(108, 92, 231, 0.4);
+  --surface: #202046;
   --accent: #6c5ce7;
   --accent-light: #a29bfe;
-  --accent-glow: rgba(108, 92, 231, 0.35);
+  --accent-glow: rgba(108, 92, 231, 0.5);
   --neon-green: #00ff88;
   --neon-pink: #ff00ff;
   --neon-cyan: #00e5ff;
@@ -42,7 +42,7 @@ html, body {
 }
 
 body {
-  background: linear-gradient(160deg, var(--bg-primary) 0%, #0a0a2e 40%, #12123a 100%);
+  background: linear-gradient(160deg, var(--bg-primary) 0%, #1a1a45 40%, #25255a 100%);
 }
 
 /* ── Screen System ── */
@@ -192,6 +192,18 @@ body {
   background: var(--surface);
   color: var(--text-primary);
   border: 1px solid var(--bg-card-border);
+}
+
+.btn-premium {
+  background: linear-gradient(135deg, #f1c40f, #f39c12, #e67e22);
+  color: #000;
+  font-weight: 900;
+  box-shadow: 0 4px 20px rgba(241, 196, 15, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.btn-premium:hover { 
+  box-shadow: 0 6px 32px rgba(241, 196, 15, 0.6); 
+  transform: translateY(-2px) scale(1.02);
 }
 
 .btn-ghost {
@@ -691,3 +703,6 @@ body {
   #piece-tray { min-height: 60px; padding: 6px 10px; }
   .piece-cell { width: 14px; height: 14px; }
 }
+$css
+$css
+$css

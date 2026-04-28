@@ -16,6 +16,7 @@ class InputHandler {
 
   init() {
     const tray = document.getElementById('piece-tray');
+    const canvas = document.getElementById('game-canvas');
 
     // Mouse events on piece slots
     tray.addEventListener('mousedown', (e) => this._onStart(e));
@@ -27,6 +28,27 @@ class InputHandler {
     window.addEventListener('touchmove', (e) => this._onMove(e), { passive: false });
     window.addEventListener('touchend', (e) => this._onEnd(e));
     window.addEventListener('touchcancel', (e) => this._onEnd(e));
+
+    // Canvas events (for Power-ups)
+    canvas.addEventListener('mousedown', (e) => this._onCanvasClick(e));
+    canvas.addEventListener('touchstart', (e) => this._onCanvasClick(e));
+  }
+
+  _onCanvasClick(e) {
+    if (!this.game.bombMode || this.game.state !== 'playing') return;
+    
+    e.preventDefault();
+    const pos = this._getPos(e);
+    const rect = document.getElementById('game-canvas').getBoundingClientRect();
+    const x = pos.x - rect.left;
+    const y = pos.y - rect.top;
+
+    const col = Math.floor((x - this.game.gridOffset.x) / this.game.cellSize);
+    const row = Math.floor((y - this.game.gridOffset.y) / this.game.cellSize);
+
+    if (row >= 0 && row < this.game.GRID_SIZE && col >= 0 && col < this.game.GRID_SIZE) {
+      this.game.useBombAt(row, col);
+    }
   }
 
   _getPos(e) {
@@ -40,6 +62,7 @@ class InputHandler {
   }
 
   _onStart(e) {
+    this.lastEvent = e;
     if (this.game.state !== 'playing') return;
     if (this.game.animatingClear) return;
 
@@ -67,12 +90,18 @@ class InputHandler {
   }
 
   _onMove(e) {
+    this.lastEvent = e;
     if (!this.dragging) return;
     e.preventDefault();
 
     const pos = this._getPos(e);
     this.currentX = pos.x;
     this.currentY = pos.y;
+
+    // Sürüklenen blok ve hayaleti parmağın 100px yukarısında (tam ortada) hizala
+    const yOffset = 100;
+    const centerX = pos.x;
+    const centerY = pos.y - yOffset;
 
     // Move drag element
     if (this.dragEl) {
@@ -82,38 +111,22 @@ class InputHandler {
       const w = shape[0].length * (dragCellSize + 2);
       const h = shape.length * (dragCellSize + 2);
 
-      const yOffset = 120;
-
-      this.dragEl.style.left = (pos.x - w / 2) + 'px';
-      this.dragEl.style.top = (pos.y - h - yOffset) + 'px';
+      this.dragEl.style.left = (centerX - w / 2) + 'px';
+      this.dragEl.style.top = (centerY - h / 2) + 'px';
     }
 
-    // Calculate ghost position based on the visual center of the dragged piece
-    let dropY = pos.y;
-    if (this.dragEl) {
-      const piece = this.game.pieces[this.dragPieceIndex];
-      const shape = piece.shape;
-      const h = shape.length * (this.game.cellSize + 2);
-      // Hayaletin (ghost) alt kenarı, sürüklenen bloğun üst kenarından 30px daha yukarıda olsun:
-      // Sürüklenen bloğun en üst noktası = pos.y - h - 120
-      dropY = pos.y - h - 120 - 30 - (h / 2);
-    }
-    this.game.updateGhost(pos.x, dropY, this.dragPieceIndex);
+    this.game.updateGhost(centerX, centerY, this.dragPieceIndex);
   }
 
   _onEnd(e) {
     if (!this.dragging) return;
 
     const pos = this._getPos(e);
-    let dropY = pos.y;
-    if (this.dragEl) {
-      const piece = this.game.pieces[this.dragPieceIndex];
-      const shape = piece.shape;
-      const h = shape.length * (this.game.cellSize + 2);
-      dropY = pos.y - h - 120 - 30 - (h / 2);
-    }
+    const yOffset = 100;
+    const centerX = pos.x;
+    const centerY = pos.y - yOffset;
 
-    const success = this.game.tryPlace(pos.x, dropY, this.dragPieceIndex);
+    const success = this.game.tryPlace(centerX, centerY, this.dragPieceIndex);
 
     // Remove dragging state
     const slot = document.querySelector(`.piece-slot[data-index="${this.dragPieceIndex}"]`);
@@ -161,9 +174,12 @@ class InputHandler {
 
     const w = shape[0].length * (cellSize + 2);
     const h = shape.length * (cellSize + 2);
-    const yOffset = 120;
-    el.style.left = (startPos.x - w / 2) + 'px';
-    el.style.top = (startPos.y - h - yOffset) + 'px';
+    const yOffset = 100;
+    const centerX = startPos.x;
+    const centerY = startPos.y - yOffset;
+    
+    el.style.left = (centerX - w / 2) + 'px';
+    el.style.top = (centerY - h / 2) + 'px';
 
     document.body.appendChild(el);
     this.dragEl = el;

@@ -7,12 +7,12 @@
   <title>Block Battle — Online Block Puzzle</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
-  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#6c5ce7">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="/icon-512.png">
+  <link rel="apple-touch-icon" href="icon-512.png">
 </head>
 <body>
 
@@ -105,6 +105,10 @@
         <span class="user-avatar">👤</span>
         <span class="user-name" id="menu-username">Oyuncu</span>
       </div>
+      <div class="coin-badge" id="menu-coin-badge">
+        <span class="coin-icon">💰</span>
+        <span id="menu-coins">0</span>
+      </div>
       <div class="menu-buttons">
         <button id="btn-solo" class="btn btn-primary btn-large">
           <span class="btn-icon">🎮</span> Solo Oyna
@@ -112,8 +116,14 @@
         <button id="btn-online" class="btn btn-accent btn-large">
           <span class="btn-icon">⚔️</span> Online Oyna
         </button>
+        <button id="btn-premium-menu" class="btn btn-premium btn-large">
+          <span class="btn-icon">✨</span> Premium'a Geç
+        </button>
         <button id="btn-leaderboard" class="btn btn-secondary btn-large">
           <span class="btn-icon">🏆</span> Liderlik Tablosu
+        </button>
+        <button id="btn-store" class="btn btn-secondary btn-large">
+          <span class="btn-icon">🛒</span> Mağaza
         </button>
         <button id="btn-profile" class="btn btn-secondary btn-large">
           <span class="btn-icon">👤</span> Profil
@@ -123,6 +133,60 @@
         <button id="btn-sound-toggle" class="btn btn-icon-only" title="Ses Aç/Kapat">🔊</button>
         <button id="btn-logout" class="btn btn-icon-only" title="Çıkış Yap">🚪</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══ STORE SCREEN ═══ -->
+  <div id="store-screen" class="screen">
+    <div class="panel glass-panel store-panel">
+      <div class="store-header">
+        <button id="store-back" class="btn-icon-only">←</button>
+        <h2 class="store-title">Mağaza</h2>
+        <div class="coin-badge">
+          <span class="coin-icon">💰</span>
+          <span id="store-coins">0</span>
+        </div>
+      </div>
+
+      <div class="store-items">
+        <!-- Bomb -->
+        <div class="store-item">
+          <div class="item-icon">💣</div>
+          <div class="item-info">
+            <span class="item-name">Bomba</span>
+            <span class="item-desc">3x3 Alanı Temizler</span>
+          </div>
+          <button class="btn btn-buy" data-type="bomb" data-price="150">
+            150 💰
+          </button>
+        </div>
+
+        <!-- Rotate -->
+        <div class="store-item">
+          <div class="item-icon">🔄</div>
+          <div class="item-info">
+            <span class="item-name">Döndür</span>
+            <span class="item-desc">Parçaları Döndürür</span>
+          </div>
+          <button class="btn btn-buy" data-type="rotate" data-price="50">
+            50 💰
+          </button>
+        </div>
+
+        <!-- Skip -->
+        <div class="store-item">
+          <div class="item-icon">⏭️</div>
+          <div class="item-info">
+            <span class="item-name">Pas Geç</span>
+            <span class="item-desc">Yeni Parçalar Getirir</span>
+          </div>
+          <button class="btn btn-buy" data-type="skip" data-price="100">
+            100 💰
+          </button>
+        </div>
+      </div>
+      
+      <p class="store-footer">Satır silerek altın kazanabilirsin!</p>
     </div>
   </div>
 
@@ -221,6 +285,44 @@
     </div>
   </div>
 
+  <!-- ═══ PREMIUM SCREEN ═══ -->
+  <div id="premium-screen" class="screen">
+    <div class="panel glass-panel premium-panel">
+      <div class="premium-badge-big">👑</div>
+      <h2 class="premium-title">Premium Üye Ol</h2>
+      <p class="premium-subtitle">Oyun deneyimini bir üst seviyeye taşı!</p>
+      
+      <div class="premium-perks">
+        <div class="perk">
+          <span class="perk-icon">🚫</span>
+          <div class="perk-info">
+            <span class="perk-name">Reklamları Kaldır</span>
+            <span class="perk-desc">Kesintisiz oyun keyfi yaşa.</span>
+          </div>
+        </div>
+        <div class="perk">
+          <span class="perk-icon">✨</span>
+          <div class="perk-info">
+            <span class="perk-name">Özel İsim Rengi</span>
+            <span class="perk-desc">Liderlik tablosunda parla.</span>
+          </div>
+        </div>
+        <div class="perk">
+          <span class="perk-icon">💎</span>
+          <div class="perk-info">
+            <span class="perk-name">VIP Destek</span>
+            <span class="perk-desc">Yeni özelliklere öncelikli erişim.</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-buy-premium" class="btn btn-premium btn-full">
+        💎 Hemen Satın Al
+      </button>
+      <button id="premium-back" class="btn btn-ghost">← Belki Sonra</button>
+    </div>
+  </div>
+
   <!-- ═══ GAME SCREEN ═══ -->
   <div id="game-screen" class="screen">
     <div id="game-header">
@@ -257,6 +359,21 @@
           <canvas id="opponent-canvas"></canvas>
         </div>
       </div>
+    </div>
+
+    <div id="power-ups">
+      <button id="btn-bomb" class="power-up-btn" title="Bomba: 3x3 Alanı Patlat">
+        <span class="pu-icon">💣</span>
+        <span class="pu-count" id="count-bomb">1</span>
+      </button>
+      <button id="btn-rotate" class="power-up-btn" title="Döndür: Parçaları Döndür">
+        <span class="pu-icon">🔄</span>
+        <span class="pu-count" id="count-rotate">2</span>
+      </button>
+      <button id="btn-skip" class="power-up-btn" title="Pas Geç: Yeni Parçalar Al">
+        <span class="pu-icon">⏭️</span>
+        <span class="pu-count" id="count-skip">1</span>
+      </button>
     </div>
 
     <div id="piece-tray"></div>
@@ -301,18 +418,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <!-- Socket.IO -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="js/socket.io.min.js"></script>
 
   <!-- Game Scripts -->
-  <script src="/js/firebase-config.js"></script>
-  <script src="/js/blocks.js"></script>
-  <script src="/js/audio.js"></script>
-  <script src="/js/renderer.js"></script>
-  <script src="/js/input.js"></script>
-  <script src="/js/network.js"></script>
-  <script src="/js/auth.js"></script>
-  <script src="/js/db.js"></script>
-  <script src="/js/game.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/blocks.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/ad.js"></script>
+  <script src="js/game.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
