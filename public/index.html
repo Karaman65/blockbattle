@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <meta name="description" content="Block Battle - Online çok oyunculu blok bulmaca oyunu. Arkadaşlarınla yarış!">
+  <title>Block Battle — Online Block Puzzle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6c5ce7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icon-512.png">
+</head>
+<body>
+
+  <!-- ═══ AUTH: LOGIN SCREEN ═══ -->
+  <div id="login-screen" class="screen active">
+    <div class="menu-bg-effects">
+      <div class="floating-block fb1"></div>
+      <div class="floating-block fb2"></div>
+      <div class="floating-block fb3"></div>
+      <div class="floating-block fb4"></div>
+      <div class="floating-block fb5"></div>
+    </div>
+    <div class="panel glass-panel auth-panel">
+      <h1 class="logo logo-small">
+        <span class="logo-block">BLOCK</span><span class="logo-battle">BATTLE</span>
+      </h1>
+      <h2 class="panel-title">Giriş Yap</h2>
+      <div id="login-error" class="auth-error hidden"></div>
+      <form id="login-form" class="auth-form">
+        <div class="input-group">
+          <label for="login-email">Email veya Kullanıcı Adı</label>
+          <input type="text" id="login-email" class="input-field auth-input" placeholder="Email veya kullanıcı adı" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label for="login-password">Şifre</label>
+          <input type="password" id="login-password" class="input-field auth-input" placeholder="••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" id="btn-login" class="btn btn-primary btn-large btn-full">🔑 Giriş Yap</button>
+      </form>
+      <div class="auth-switch">
+        Hesabın yok mu? <a href="#" id="goto-register" class="auth-link">Kayıt Ol</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ AUTH: REGISTER SCREEN ═══ -->
+  <div id="register-screen" class="screen">
+    <div class="menu-bg-effects">
+      <div class="floating-block fb1"></div>
+      <div class="floating-block fb2"></div>
+      <div class="floating-block fb3"></div>
+    </div>
+    <div class="panel glass-panel auth-panel">
+      <h1 class="logo logo-small">
+        <span class="logo-block">BLOCK</span><span class="logo-battle">BATTLE</span>
+      </h1>
+      <h2 class="panel-title">Kayıt Ol</h2>
+      <div id="register-error" class="auth-error hidden"></div>
+      <form id="register-form" class="auth-form">
+        <div class="input-group">
+          <label for="reg-username">Kullanıcı Adı</label>
+          <input type="text" id="reg-username" class="input-field auth-input" placeholder="CoolPlayer" required minlength="3" maxlength="16" autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label for="reg-email">Email</label>
+          <input type="email" id="reg-email" class="input-field auth-input" placeholder="ornek@email.com" required autocomplete="email">
+        </div>
+        <div class="input-group">
+          <label for="reg-password">Şifre</label>
+          <input type="password" id="reg-password" class="input-field auth-input" placeholder="En az 6 karakter" required minlength="6" autocomplete="new-password">
+        </div>
+        <button type="submit" id="btn-register" class="btn btn-accent btn-large btn-full">🚀 Kayıt Ol</button>
+      </form>
+      <div class="auth-switch">
+        Hesabın var mı? <a href="#" id="goto-login" class="auth-link">Giriş Yap</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LOADING SCREEN ═══ -->
+  <div id="loading-screen" class="screen">
+    <div class="spinner-container"><div class="spinner"></div></div>
+    <p class="loading-text">Yükleniyor...</p>
+  </div>
+
+  <!-- ═══ MAIN MENU ═══ -->
+  <div id="menu-screen" class="screen">
+    <div class="menu-bg-effects">
+      <div class="floating-block fb1"></div>
+      <div class="floating-block fb2"></div>
+      <div class="floating-block fb3"></div>
+      <div class="floating-block fb4"></div>
+      <div class="floating-block fb5"></div>
+    </div>
+    <div class="menu-content">
+      <h1 class="logo" id="main-logo">
+        <span class="logo-block">BLOCK</span><span class="logo-battle">BATTLE</span>
+      </h1>
+      <div class="user-badge" id="user-badge">
+        <span class="user-avatar">👤</span>
+        <span class="user-name" id="menu-username">Oyuncu</span>
+      </div>
+      <div class="menu-buttons">
+        <button id="btn-solo" class="btn btn-primary btn-large">
+          <span class="btn-icon">🎮</span> Solo Oyna
+        </button>
+        <button id="btn-online" class="btn btn-accent btn-large">
+          <span class="btn-icon">⚔️</span> Online Oyna
+        </button>
+        <button id="btn-leaderboard" class="btn btn-secondary btn-large">
+          <span class="btn-icon">🏆</span> Liderlik Tablosu
+        </button>
+        <button id="btn-profile" class="btn btn-secondary btn-large">
+          <span class="btn-icon">👤</span> Profil
+        </button>
+      </div>
+      <div class="menu-footer-btns">
+        <button id="btn-sound-toggle" class="btn btn-icon-only" title="Ses Aç/Kapat">🔊</button>
+        <button id="btn-logout" class="btn btn-icon-only" title="Çıkış Yap">🚪</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LEADERBOARD SCREEN ═══ -->
+  <div id="leaderboard-screen" class="screen">
+    <div class="panel glass-panel leaderboard-panel">
+      <h2 class="panel-title">🏆 Liderlik Tablosu</h2>
+      <div id="leaderboard-list" class="leaderboard-list">
+        <div class="leaderboard-loading">
+          <div class="spinner-container"><div class="spinner spinner-sm"></div></div>
+        </div>
+      </div>
+      <button id="leaderboard-back" class="btn btn-ghost">← Geri</button>
+    </div>
+  </div>
+
+  <!-- ═══ PROFILE SCREEN ═══ -->
+  <div id="profile-screen" class="screen">
+    <div class="panel glass-panel profile-panel">
+      <h2 class="panel-title">👤 Profil</h2>
+      <div class="profile-header">
+        <div class="profile-avatar">👤</div>
+        <div class="profile-name" id="profile-username">Oyuncu</div>
+        <div class="profile-email" id="profile-email">email@example.com</div>
+      </div>
+      <div class="profile-stats">
+        <div class="p-stat">
+          <span class="p-stat-value" id="p-high-score">0</span>
+          <span class="p-stat-label">En Yüksek Skor</span>
+        </div>
+        <div class="p-stat">
+          <span class="p-stat-value" id="p-total-games">0</span>
+          <span class="p-stat-label">Toplam Oyun</span>
+        </div>
+        <div class="p-stat">
+          <span class="p-stat-value" id="p-total-wins">0</span>
+          <span class="p-stat-label">Kazanma</span>
+        </div>
+      </div>
+      <h3 class="panel-subtitle">Son Maçlar</h3>
+      <div id="match-history" class="match-history">
+        <p class="text-muted">Henüz maç yok</p>
+      </div>
+      <button id="profile-back" class="btn btn-ghost">← Geri</button>
+    </div>
+  </div>
+
+  <!-- ═══ ONLINE MENU ═══ -->
+  <div id="online-screen" class="screen">
+    <div class="panel glass-panel">
+      <h2 class="panel-title">Online Mod Seç</h2>
+      <div class="mode-select">
+        <button class="mode-btn active" data-mode="score" id="mode-score">
+          <span class="mode-icon">🏆</span>
+          <span class="mode-name">Puan Savaşı</span>
+          <span class="mode-desc">3 dakikada en çok puan</span>
+        </button>
+        <button class="mode-btn" data-mode="time" id="mode-time">
+          <span class="mode-icon">⚡</span>
+          <span class="mode-name">Hız Yarışı</span>
+          <span class="mode-desc">1000 puana ilk ulaşan</span>
+        </button>
+      </div>
+      <div class="match-options">
+        <button id="btn-quick-match" class="btn btn-primary">
+          🎯 Hızlı Eşleşme
+        </button>
+        <button id="btn-create-room" class="btn btn-secondary">
+          🏠 Oda Oluştur
+        </button>
+        <div class="join-section">
+          <input type="text" id="room-code-input" class="input-field" placeholder="Oda Kodu Gir" maxlength="6" autocomplete="off">
+          <button id="btn-join-room" class="btn btn-accent btn-small">Katıl</button>
+        </div>
+      </div>
+      <button id="online-back" class="btn btn-ghost">← Geri</button>
+    </div>
+  </div>
+
+  <!-- ═══ WAITING ROOM ═══ -->
+  <div id="waiting-screen" class="screen">
+    <div class="panel glass-panel waiting-panel">
+      <div class="spinner-container">
+        <div class="spinner"></div>
+      </div>
+      <h2 class="panel-title">Rakip Bekleniyor...</h2>
+      <div id="room-info" class="room-info">
+        <p class="room-code-label">Oda Kodu</p>
+        <div class="room-code-display" id="room-code-display">------</div>
+        <div class="room-share-btns">
+          <button id="btn-copy-code" class="btn btn-small btn-secondary">📋 Kodu Kopyala</button>
+          <button id="btn-copy-link" class="btn btn-small btn-accent">🔗 Link Kopyala</button>
+        </div>
+      </div>
+      <button id="waiting-back" class="btn btn-ghost">← İptal</button>
+    </div>
+  </div>
+
+  <!-- ═══ GAME SCREEN ═══ -->
+  <div id="game-screen" class="screen">
+    <div id="game-header">
+      <div class="header-left">
+        <div class="stat-box" id="score-box">
+          <span class="stat-label">SKOR</span>
+          <span class="stat-value" id="score-value">0</span>
+        </div>
+      </div>
+      <div class="header-center">
+        <div class="stat-box timer-box hidden" id="timer-box">
+          <span class="stat-value timer-value" id="timer-value">3:00</span>
+        </div>
+        <div id="combo-display" class="combo-display hidden">
+          <span id="combo-text">COMBO ×2</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="stat-box hidden" id="opponent-score-box">
+          <span class="stat-label">RAKİP</span>
+          <span class="stat-value" id="opponent-score-value">0</span>
+        </div>
+        <button id="btn-game-menu" class="btn btn-icon-only btn-small">☰</button>
+      </div>
+    </div>
+
+    <div id="game-area">
+      <div id="boards-container">
+        <div id="main-board-wrap">
+          <canvas id="game-canvas"></canvas>
+        </div>
+        <div id="opponent-board-wrap" class="hidden">
+          <div class="opponent-label">Rakip</div>
+          <canvas id="opponent-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div id="piece-tray"></div>
+
+    <div id="score-popup-container"></div>
+  </div>
+
+  <!-- ═══ GAME OVER ═══ -->
+  <div id="gameover-screen" class="screen">
+    <div class="panel glass-panel gameover-panel">
+      <h2 id="gameover-title" class="gameover-title">Oyun Bitti!</h2>
+      <div class="gameover-stats">
+        <div class="go-stat">
+          <span class="go-stat-label">Skor</span>
+          <span class="go-stat-value" id="gameover-score">0</span>
+        </div>
+        <div class="go-stat" id="go-high-score-wrap">
+          <span class="go-stat-label">En Yüksek</span>
+          <span class="go-stat-value" id="gameover-high">0</span>
+        </div>
+      </div>
+      <div id="gameover-result" class="gameover-result hidden"></div>
+      <div class="gameover-buttons">
+        <button id="btn-play-again" class="btn btn-primary btn-large">🔄 Tekrar Oyna</button>
+        <button id="btn-go-menu" class="btn btn-ghost">Ana Menü</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAUSE OVERLAY ═══ -->
+  <div id="pause-overlay" class="screen overlay hidden">
+    <div class="panel glass-panel">
+      <h2 class="panel-title">Duraklatıldı</h2>
+      <button id="btn-resume" class="btn btn-primary">▶ Devam Et</button>
+      <button id="btn-quit" class="btn btn-ghost">🚪 Çık</button>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <!-- Game Scripts -->
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/blocks.js"></script>
+  <script src="/js/audio.js"></script>
+  <script src="/js/renderer.js"></script>
+  <script src="/js/input.js"></script>
+  <script src="/js/network.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/db.js"></script>
+  <script src="/js/game.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

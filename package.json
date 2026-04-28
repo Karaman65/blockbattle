@@ -1,0 +1,17 @@
+{
+  "name": "block-battle",
+  "version": "1.0.0",
+  "description": "Block Battle - Online Multiplayer Block Puzzle Game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/cli": "^8.3.1",
+    "@capacitor/core": "^8.3.1",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4"
+  }
+}
