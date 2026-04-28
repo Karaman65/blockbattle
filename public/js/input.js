@@ -94,7 +94,9 @@ class InputHandler {
       const piece = this.game.pieces[this.dragPieceIndex];
       const shape = piece.shape;
       const h = shape.length * (this.game.cellSize + 2);
-      dropY = pos.y - h / 2 - 120;
+      // Hayaletin (ghost) alt kenarı, sürüklenen bloğun üst kenarından 30px daha yukarıda olsun:
+      // Sürüklenen bloğun en üst noktası = pos.y - h - 120
+      dropY = pos.y - h - 120 - 30 - (h / 2);
     }
     this.game.updateGhost(pos.x, dropY, this.dragPieceIndex);
   }
@@ -108,7 +110,7 @@ class InputHandler {
       const piece = this.game.pieces[this.dragPieceIndex];
       const shape = piece.shape;
       const h = shape.length * (this.game.cellSize + 2);
-      dropY = pos.y - h / 2 - 120;
+      dropY = pos.y - h - 120 - 30 - (h / 2);
     }
 
     const success = this.game.tryPlace(pos.x, dropY, this.dragPieceIndex);
