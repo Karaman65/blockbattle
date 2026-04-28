@@ -82,7 +82,7 @@ class InputHandler {
       const w = shape[0].length * (dragCellSize + 2);
       const h = shape.length * (dragCellSize + 2);
 
-      const yOffset = 80;
+      const yOffset = 120;
 
       this.dragEl.style.left = (pos.x - w / 2) + 'px';
       this.dragEl.style.top = (pos.y - h - yOffset) + 'px';
@@ -94,7 +94,7 @@ class InputHandler {
       const piece = this.game.pieces[this.dragPieceIndex];
       const shape = piece.shape;
       const h = shape.length * (this.game.cellSize + 2);
-      dropY = pos.y - h / 2 - 80;
+      dropY = pos.y - h / 2 - 120;
     }
     this.game.updateGhost(pos.x, dropY, this.dragPieceIndex);
   }
@@ -108,7 +108,7 @@ class InputHandler {
       const piece = this.game.pieces[this.dragPieceIndex];
       const shape = piece.shape;
       const h = shape.length * (this.game.cellSize + 2);
-      dropY = pos.y - h / 2 - 80;
+      dropY = pos.y - h / 2 - 120;
     }
 
     const success = this.game.tryPlace(pos.x, dropY, this.dragPieceIndex);
@@ -159,7 +159,7 @@ class InputHandler {
 
     const w = shape[0].length * (cellSize + 2);
     const h = shape.length * (cellSize + 2);
-    const yOffset = 80;
+    const yOffset = 120;
     el.style.left = (startPos.x - w / 2) + 'px';
     el.style.top = (startPos.y - h - yOffset) + 'px';
 
