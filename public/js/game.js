@@ -79,6 +79,8 @@ class Game {
         document.getElementById('menu-username').textContent = displayName;
         
         this.updateCoinDisplays();
+        const savedTheme = localStorage.getItem('selectedTheme') || 'default';
+        this.setTheme(savedTheme);
         this.showScreen('menu-screen');
       } else {
         this.showScreen('login-screen');
@@ -180,6 +182,27 @@ class Game {
       await this.authManager.logout();
     };
 
+    const btnDaily = document.getElementById('btn-daily-reward');
+    if (btnDaily) {
+      btnDaily.onclick = async () => {
+        const last = localStorage.getItem('lastDaily');
+        const today = new Date().toDateString();
+        if (last === today) {
+          btnDaily.textContent = '❌ Bugün aldın!';
+          setTimeout(() => btnDaily.innerHTML = '<span class="btn-icon">🎁</span> Günlük Hediye', 2000);
+          return;
+        }
+        const success = await this.authManager.addCoins(100);
+        if (success) {
+          localStorage.setItem('lastDaily', today);
+          btnDaily.textContent = '✅ +100 💰 Kazandın!';
+          this.updateCoinDisplays();
+          this.audio.pickup();
+          setTimeout(() => btnDaily.innerHTML = '<span class="btn-icon">🎁</span> Günlük Hediye', 3000);
+        }
+      };
+    }
+
     // Leaderboard
     document.getElementById('btn-leaderboard').onclick = () => this.showLeaderboard();
     document.getElementById('leaderboard-back').onclick = () => this.showScreen('menu-screen');
@@ -195,10 +218,36 @@ class Game {
     const storeBack = document.getElementById('store-back');
     if (storeBack) storeBack.onclick = () => this.showScreen('menu-screen');
     
+    // Store Tabs
+    document.querySelectorAll('.store-tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.store-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.dataset.tab;
+        document.getElementById('store-powerups').classList.add('hidden');
+        document.getElementById('store-themes').classList.add('hidden');
+        document.getElementById(`store-${target}`).classList.remove('hidden');
+      };
+    });
+
     document.querySelectorAll('.btn-buy').forEach(btn => {
       btn.onclick = async () => {
         const type = btn.dataset.type;
         const price = parseInt(btn.dataset.price);
+        
+        if (type === 'theme') {
+          const themeId = btn.dataset.id;
+          if (price > 0) {
+            const success = await this.authManager.buyTheme(themeId, price);
+            if (!success) { btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 500); return; }
+          }
+          this.setTheme(themeId);
+          this.updateCoinDisplays();
+          this.updateStoreThemesUI();
+          this.audio.pickup();
+          return;
+        }
+
         const success = await this.authManager.buyPowerUp(type, price);
         if (success) {
           this.updateCoinDisplays();
@@ -312,6 +361,7 @@ class Game {
     document.getElementById('p-total-wins').textContent = d.totalWins || 0;
     // Load match history
     const hist = document.getElementById('match-history');
+    if (!this.authManager.user) { hist.innerHTML = '<p class="text-muted">Giriş yapılmadı</p>'; return; }
     hist.innerHTML = '<div class="spinner-container"><div class="spinner spinner-sm"></div></div>';
     const matches = await this.dbManager.getMatchHistory(this.authManager.user.uid, 10);
     if (matches.length === 0) { hist.innerHTML = '<p class="text-muted">Henüz online maç yok</p>'; return; }
@@ -604,16 +654,54 @@ class Game {
     if (menuCoins) menuCoins.textContent = coins;
     if (storeCoins) storeCoins.textContent = coins;
     
-    // Disable buy buttons if not enough coins
+    // Disable buy buttons if not enough coins (skip free items)
     document.querySelectorAll('.btn-buy').forEach(btn => {
       const price = parseInt(btn.dataset.price);
-      btn.disabled = coins < price;
+      if (price > 0) btn.disabled = coins < price;
     });
   }
 
   showStore() {
     this.updateCoinDisplays();
+    this.updateStoreThemesUI();
     this.showScreen('store-screen');
+  }
+
+  setTheme(themeId) {
+    if (THEMES[themeId]) {
+      BLOCK_COLORS = THEMES[themeId];
+      if (this.state === 'playing') {
+        this.renderPieceTray();
+      }
+      localStorage.setItem('selectedTheme', themeId);
+    }
+  }
+
+  updateStoreThemesUI() {
+    const selected = localStorage.getItem('selectedTheme') || 'default';
+    const owned = this.authManager.userData?.ownedThemes || ['default'];
+    
+    document.querySelectorAll('#store-themes .btn-buy').forEach(btn => {
+      const themeId = btn.dataset.id;
+      const price = parseInt(btn.dataset.price);
+      
+      if (themeId === selected) {
+        btn.textContent = 'Seçildi';
+        btn.disabled = true;
+        btn.style.background = 'var(--accent)';
+        btn.style.color = 'white';
+      } else if (owned.includes(themeId) || price === 0) {
+        btn.textContent = 'Seç';
+        btn.disabled = false;
+        btn.style.background = 'var(--surface)';
+        btn.style.color = 'var(--neon-green)';
+      } else {
+        btn.textContent = `${price} 💰`;
+        btn.disabled = this.authManager.getCoins() < price;
+        btn.style.background = '';
+        btn.style.color = '';
+      }
+    });
   }
 
   updatePowerUpUI() {

@@ -2,18 +2,37 @@
 //  BLOCK BATTLE — Block Definitions
 // ═══════════════════════════════════════════
 
-const BLOCK_COLORS = [
-  { base: '#ff6b6b', light: '#ff8787', dark: '#e55656', glow: 'rgba(255,107,107,0.4)' },
-  { base: '#feca57', light: '#fed76a', dark: '#e5b44e', glow: 'rgba(254,202,87,0.4)' },
-  { base: '#48dbfb', light: '#67e3fc', dark: '#3cc4e2', glow: 'rgba(72,219,251,0.4)' },
-  { base: '#ff9ff3', light: '#ffb3f6', dark: '#e58eda', glow: 'rgba(255,159,243,0.4)' },
-  { base: '#54a0ff', light: '#6db3ff', dark: '#4a8fe5', glow: 'rgba(84,160,255,0.4)' },
-  { base: '#5f27cd', light: '#7c3ff2', dark: '#5320b5', glow: 'rgba(95,39,205,0.4)' },
-  { base: '#00d2d3', light: '#1ae8e9', dark: '#00b8b9', glow: 'rgba(0,210,211,0.4)' },
-  { base: '#ff6348', light: '#ff7b63', dark: '#e5583f', glow: 'rgba(255,99,72,0.4)' },
-  { base: '#7bed9f', light: '#95f2b3', dark: '#6dd48e', glow: 'rgba(123,237,159,0.4)' },
-  { base: '#eccc68', light: '#f0d77e', dark: '#d4b75d', glow: 'rgba(236,204,104,0.4)' },
-];
+const THEMES = {
+  default: [
+    { base: '#ff6b6b', light: '#ff8787', dark: '#e55656', glow: 'rgba(255,107,107,0.4)' },
+    { base: '#feca57', light: '#fed76a', dark: '#e5b44e', glow: 'rgba(254,202,87,0.4)' },
+    { base: '#48dbfb', light: '#67e3fc', dark: '#3cc4e2', glow: 'rgba(72,219,251,0.4)' },
+    { base: '#ff9ff3', light: '#ffb3f6', dark: '#e58eda', glow: 'rgba(255,159,243,0.4)' },
+    { base: '#54a0ff', light: '#6db3ff', dark: '#4a8fe5', glow: 'rgba(84,160,255,0.4)' },
+    { base: '#5f27cd', light: '#7c3ff2', dark: '#5320b5', glow: 'rgba(95,39,205,0.4)' },
+    { base: '#00d2d3', light: '#1ae8e9', dark: '#00b8b9', glow: 'rgba(0,210,211,0.4)' }
+  ],
+  pastel: [
+    { base: '#fab1a0', light: '#ffc7b8', dark: '#e17055', glow: 'rgba(250,177,160,0.4)' },
+    { base: '#ffeaa7', light: '#fff4cc', dark: '#fdcb6e', glow: 'rgba(255,234,167,0.4)' },
+    { base: '#81ecec', light: '#a7f3f3', dark: '#00cec9', glow: 'rgba(129,236,236,0.4)' },
+    { base: '#74b9ff', light: '#a2d2ff', dark: '#0984e3', glow: 'rgba(116,185,255,0.4)' },
+    { base: '#a29bfe', light: '#c2bcff', dark: '#6c5ce7', glow: 'rgba(162,155,254,0.4)' },
+    { base: '#55efc4', light: '#81f5d5', dark: '#00b894', glow: 'rgba(85,239,196,0.4)' },
+    { base: '#ff7675', light: '#ff9b9a', dark: '#d63031', glow: 'rgba(255,118,117,0.4)' }
+  ],
+  dark: [
+    { base: '#2d3436', light: '#636e72', dark: '#1e272e', glow: 'rgba(45,52,54,0.4)' },
+    { base: '#0984e3', light: '#74b9ff', dark: '#083d77', glow: 'rgba(9,132,227,0.4)' },
+    { base: '#d63031', light: '#ff7675', dark: '#b33939', glow: 'rgba(214,48,49,0.4)' },
+    { base: '#6c5ce7', light: '#a29bfe', dark: '#4834d4', glow: 'rgba(108,92,231,0.4)' },
+    { base: '#00b894', light: '#55efc4', dark: '#006266', glow: 'rgba(0,184,148,0.4)' },
+    { base: '#e17055', light: '#fab1a0', dark: '#b33939', glow: 'rgba(225,112,85,0.4)' },
+    { base: '#fdcb6e', light: '#ffeaa7', dark: '#f39c12', glow: 'rgba(253,203,110,0.4)' }
+  ]
+};
+
+let BLOCK_COLORS = THEMES.default;
 
 const BLOCK_SHAPES = [
   // === Singles & Small ===

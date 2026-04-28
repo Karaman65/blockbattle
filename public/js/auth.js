@@ -122,7 +122,7 @@ class AuthManager {
   }
 
   async addCoins(amount) {
-    if (!this.user) return;
+    if (!this.user) return false;
     try {
       await db.collection('users').doc(this.user.uid).update({
         coins: firebase.firestore.FieldValue.increment(amount)
@@ -149,6 +149,27 @@ class AuthManager {
     } catch (e) { console.error(e); return false; }
   }
 
+  async buyTheme(themeId, price) {
+    if (!this.user) return false;
+    const owned = this.userData?.ownedThemes || ['default'];
+    if (owned.includes(themeId)) return true;
+    if (this.getCoins() < price) return false;
+
+    try {
+      await db.collection('users').doc(this.user.uid).update({
+        coins: firebase.firestore.FieldValue.increment(-price),
+        ownedThemes: firebase.firestore.FieldValue.arrayUnion(themeId)
+      });
+      
+      if (this.userData) {
+        this.userData.coins -= price;
+        if (!this.userData.ownedThemes) this.userData.ownedThemes = ['default'];
+        this.userData.ownedThemes.push(themeId);
+      }
+      return true;
+    } catch (e) { console.error(e); return false; }
+  }
+
   async decrementInventory(type) {
     if (!this.user) return;
     try {
@@ -156,7 +177,7 @@ class AuthManager {
       await db.collection('users').doc(this.user.uid).update({
         [field]: firebase.firestore.FieldValue.increment(-1)
       });
-      if (this.userData) this.userData.inventory[type]--;
+      if (this.userData && this.userData.inventory) this.userData.inventory[type]--;
     } catch (e) { console.error(e); }
   }
 

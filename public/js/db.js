@@ -10,6 +10,7 @@ class DatabaseManager {
   async updateHighScore(uid, score, username) {
     const userRef = db.collection('users').doc(uid);
     const doc = await userRef.get();
+    if (!doc.exists) return;
     const data = doc.data();
 
     const updates = {

@@ -119,6 +119,9 @@
         <button id="btn-premium-menu" class="btn btn-premium btn-large">
           <span class="btn-icon">✨</span> Premium'a Geç
         </button>
+        <button id="btn-daily-reward" class="btn btn-secondary btn-large">
+          <span class="btn-icon">🎁</span> Günlük Hediye
+        </button>
         <button id="btn-leaderboard" class="btn btn-secondary btn-large">
           <span class="btn-icon">🏆</span> Liderlik Tablosu
         </button>
@@ -148,7 +151,12 @@
         </div>
       </div>
 
-      <div class="store-items">
+      <div class="store-tabs">
+        <button class="store-tab active" data-tab="powerups">Güçlendiriciler</button>
+        <button class="store-tab" data-tab="themes">Temalar</button>
+      </div>
+
+      <div id="store-powerups" class="store-items">
         <!-- Bomb -->
         <div class="store-item">
           <div class="item-icon">💣</div>
@@ -156,7 +164,7 @@
             <span class="item-name">Bomba</span>
             <span class="item-desc">3x3 Alanı Temizler</span>
           </div>
-          <button class="btn btn-buy" data-type="bomb" data-price="150">
+          <button class="btn-buy" data-type="bomb" data-price="150">
             150 💰
           </button>
         </div>
@@ -166,9 +174,9 @@
           <div class="item-icon">🔄</div>
           <div class="item-info">
             <span class="item-name">Döndür</span>
-            <span class="item-desc">Parçaları Döndürür</span>
+            <span class="item-desc">Tüm Parçaları Çevirir</span>
           </div>
-          <button class="btn btn-buy" data-type="rotate" data-price="50">
+          <button class="btn-buy" data-type="rotate" data-price="50">
             50 💰
           </button>
         </div>
@@ -180,13 +188,49 @@
             <span class="item-name">Pas Geç</span>
             <span class="item-desc">Yeni Parçalar Getirir</span>
           </div>
-          <button class="btn btn-buy" data-type="skip" data-price="100">
+          <button class="btn-buy" data-type="skip" data-price="100">
             100 💰
           </button>
         </div>
       </div>
+
+      <div id="store-themes" class="store-items hidden">
+        <!-- Theme 1: Neon (Default) -->
+        <div class="store-item">
+          <div class="item-icon">🌈</div>
+          <div class="item-info">
+            <span class="item-name">Neon Klasik</span>
+            <span class="item-desc">Varsayılan canlı renkler</span>
+          </div>
+          <button class="btn-buy" data-type="theme" data-id="default" data-price="0">
+            Seçildi
+          </button>
+        </div>
+        <!-- Theme 2: Pastel -->
+        <div class="store-item">
+          <div class="item-icon">🎨</div>
+          <div class="item-info">
+            <span class="item-name">Yumuşak Pastel</span>
+            <span class="item-desc">Göz yormayan soft renkler</span>
+          </div>
+          <button class="btn-buy" data-type="theme" data-id="pastel" data-price="1000">
+            1000 💰
+          </button>
+        </div>
+        <!-- Theme 3: Dark Mode -->
+        <div class="store-item">
+          <div class="item-icon">🌑</div>
+          <div class="item-info">
+            <span class="item-name">Gece Modu</span>
+            <span class="item-desc">Koyu ve asil tonlar</span>
+          </div>
+          <button class="btn-buy" data-type="theme" data-id="dark" data-price="1500">
+            1500 💰
+          </button>
+        </div>
+      </div>
       
-      <p class="store-footer">Satır silerek altın kazanabilirsin!</p>
+      <p class="store-footer">Satır silerek veya maç kazanarak altın kazanabilirsin!</p>
     </div>
   </div>
 

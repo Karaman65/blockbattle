@@ -85,7 +85,9 @@ class Renderer {
   }
 
   drawBombPreview(ctx, cellSize, offsetX, offsetY) {
-    const pos = this.game.input._getPos(this.game.input.lastEvent || {});
+    if (!this.game.input.lastEvent) return;
+    const pos = this.game.input._getPos(this.game.input.lastEvent);
+    if (pos.x == null || pos.y == null) return;
     const rect = document.getElementById('game-canvas').getBoundingClientRect();
     const x = pos.x - rect.left;
     const y = pos.y - rect.top;
