@@ -1,4 +1,4 @@
-const CACHE_NAME = 'block-battle-v1';
+const CACHE_NAME = 'block-battle-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -11,6 +11,7 @@ const ASSETS = [
   '/js/network.js',
   '/js/auth.js',
   '/js/db.js',
+  '/js/ad.js',
   '/js/game.js',
   '/icon-512.png',
   '/manifest.json'
