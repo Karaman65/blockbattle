@@ -160,6 +160,7 @@ class AuthManager {
       
       if (this.userData) {
         this.userData.coins -= price;
+        if (!this.userData.inventory) this.userData.inventory = {};
         this.userData.inventory[type] = (this.userData.inventory[type] || 0) + 1;
       }
       return true;

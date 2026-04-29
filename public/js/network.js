@@ -27,7 +27,7 @@ class NetworkManager {
       if (isLocal) {
         serverUrl = window.location.origin;
       }
-      this.socket = io(serverUrl, { transports: ['websocket'] });
+      this.socket = io(serverUrl, { transports: ['websocket', 'polling'] });
     } catch(err) {
       console.error('Socket bağlantı hatası:', err);
       throw new Error('Sunucuya bağlanılamadı: ' + err.message);
@@ -108,6 +108,10 @@ class NetworkManager {
 
   quickMatch(mode) {
     if (!this.socket) { alert('Soket bağlantı hatası.'); return; }
+    if (!this.connected) {
+      alert('Sunucuya bağlanılıyor, lütfen 1-2 saniye sonra tekrar dene.');
+      return;
+    }
     this.gameMode = mode;
     this.socket.emit('quick-match', { mode });
     this.game.showScreen('waiting-screen');

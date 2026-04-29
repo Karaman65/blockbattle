@@ -36,7 +36,7 @@ class GameRoom {
     this.players = [];
     this.state = 'waiting'; // waiting, playing, finished
     this.seed = Math.floor(Math.random() * 2147483646) + 1;
-    this.timeLimit = mode === 'score' ? 180 : 0;
+    this.timeLimit = mode === 'score' ? 90 : 0;
     this.targetScore = mode === 'time' ? 1000 : 0;
     this.timer = null;
     this.startTime = null;
@@ -148,7 +148,7 @@ io.on('connection', (socket) => {
 
     // Remove stale entries
     for (let i = queue.length - 1; i >= 0; i--) {
-      if (!queue[i].connected) queue.splice(i, 1);
+      if (!queue[i].connected || queue[i].id === socket.id) queue.splice(i, 1);
     }
 
     if (queue.length > 0) {
@@ -208,21 +208,27 @@ io.on('connection', (socket) => {
   });
 
   socket.on('leave-room', () => {
+    removeFromQueues(socket);
     handleDisconnect(socket);
   });
 
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
 
-    // Remove from queues
-    for (const mode of ['score', 'time']) {
-      const idx = waitingQueues[mode].indexOf(socket);
-      if (idx !== -1) waitingQueues[mode].splice(idx, 1);
-    }
+    removeFromQueues(socket);
 
     handleDisconnect(socket);
   });
 });
+
+function removeFromQueues(socket) {
+  for (const mode of ['score', 'time']) {
+    const queue = waitingQueues[mode];
+    for (let i = queue.length - 1; i >= 0; i--) {
+      if (queue[i].id === socket.id) queue.splice(i, 1);
+    }
+  }
+}
 
 function handleDisconnect(socket) {
   const roomId = socket._roomId;

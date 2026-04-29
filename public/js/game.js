@@ -59,6 +59,7 @@ class Game {
     this.input.init();
     this.setupAuthUI();
     this.setupUI();
+    this.applyUiTheme(localStorage.getItem('uiTheme') || 'dark');
 
     // Initialize Ads
     await this.ad.init();
@@ -83,10 +84,11 @@ class Game {
         }
         document.getElementById('menu-username').textContent = displayName;
         
-        this.updateCoinDisplays();
         const savedTheme = localStorage.getItem('selectedTheme') || 'default';
         this.setTheme(savedTheme);
         this.unlockedLevel = this.getSavedUnlockedLevel();
+        this.updateCoinDisplays();
+        this.updatePlayerHeader();
         this.showScreen('menu-screen'); // Default to main menu after login
       } else {
         this.showScreen('login-screen');
@@ -109,6 +111,7 @@ class Game {
     const el = document.getElementById(id);
     if (el) el.classList.add('active');
     if (id === 'map-screen') this.renderLevelMap();
+    if (id === 'quests-screen') this.renderQuests();
     this.updateBackButton(id);
 
     // Bottom Nav Visibility
@@ -198,7 +201,14 @@ class Game {
     const globalBack = document.getElementById('global-back');
     if (globalBack) globalBack.onclick = () => this.goBack();
 
-    document.getElementById('btn-solo').onclick = () => this.showScreen('map-screen');
+    document.getElementById('btn-solo').onclick = () => this.startEndlessGame();
+    const themeToggle = document.getElementById('btn-theme-toggle');
+    if (themeToggle) {
+      themeToggle.onclick = () => {
+        const current = document.documentElement.dataset.uiTheme || 'dark';
+        this.applyUiTheme(current === 'dark' ? 'light' : 'dark');
+      };
+    }
     const btnOnline = document.getElementById('btn-online');
     if (btnOnline) {
       btnOnline.onclick = null; // Clear previous
@@ -239,33 +249,6 @@ class Game {
       await this.authManager.logout();
     };
 
-    const btnDailyQuest = document.getElementById('btn-daily-reward-quest');
-    if (btnDailyQuest) {
-      btnDailyQuest.onclick = async () => {
-        const last = localStorage.getItem('lastDaily');
-        const today = new Date().toDateString();
-        if (last === today) {
-          btnDailyQuest.textContent = 'ALINDI';
-          btnDailyQuest.disabled = true;
-          return;
-        }
-        const reward = parseInt(btnDailyQuest.dataset.rewardCoins || '250', 10);
-        const success = await this.authManager.addCoins(reward);
-        if (success) {
-          localStorage.setItem('lastDaily', today);
-          btnDailyQuest.textContent = 'ALINDI';
-          btnDailyQuest.disabled = true;
-          this.updateCoinDisplays();
-          this.audio.pickup();
-        }
-      };
-      // Initial check
-      if (localStorage.getItem('lastDaily') === new Date().toDateString()) {
-        btnDailyQuest.textContent = 'ALINDI';
-        btnDailyQuest.disabled = true;
-      }
-    }
-
     const btnUpdateDetails = document.getElementById('btn-update-details');
     if (btnUpdateDetails) {
       btnUpdateDetails.onclick = () => {
@@ -278,22 +261,6 @@ class Game {
 
     // Profile
     document.getElementById('btn-profile').onclick = () => this.showProfile();
-
-    // Quest Claim buttons
-    document.querySelectorAll('#quests-screen [data-reward-coins]').forEach(btn => {
-      if (btn.id !== 'btn-daily-reward-quest') {
-        btn.onclick = async () => {
-          const reward = parseInt(btn.dataset.rewardCoins || '250', 10);
-          const success = await this.authManager.addCoins(reward);
-          if (success) {
-            btn.textContent = 'ALINDI';
-            btn.disabled = true;
-            this.updateCoinDisplays();
-            this.audio.pickup();
-          }
-        };
-      }
-    });
 
     // Premium Plans
     const planMonthly = document.getElementById('plan-monthly');
@@ -457,9 +424,9 @@ class Game {
 
     // Game over
     document.getElementById('btn-play-again').onclick = () => {
-      this.mode === 'online' ? this.showScreen('online-screen') : this.startSoloGame(this.currentLevel ? this.currentLevel.id : 1);
+      this.mode === 'online' ? this.showScreen('online-screen') : (this.currentLevel ? this.startSoloGame(this.currentLevel.id) : this.startEndlessGame());
     };
-    document.getElementById('btn-go-menu').onclick = () => { this.network.leaveRoom(); this.showScreen('map-screen'); };
+    document.getElementById('btn-go-menu').onclick = () => { this.network.leaveRoom(); this.showScreen('menu-screen'); };
   }
 
   async copyText(text, btn, originalText) {
@@ -486,6 +453,266 @@ class Game {
         btn.textContent = 'KOPYALANAMADI';
         setTimeout(() => { btn.textContent = originalText; }, 1500);
       }
+    }
+  }
+
+  getQuestPeriodKey(type) {
+    const now = new Date();
+    const uid = this.authManager && this.authManager.user ? this.authManager.user.uid : 'guest';
+    if (type === 'daily') return `${uid}:daily:${now.toISOString().slice(0, 10)}`;
+    const start = new Date(now.getFullYear(), 0, 1);
+    const week = Math.ceil((((now - start) / 86400000) + start.getDay() + 1) / 7);
+    if (type === 'weekly') return `${uid}:weekly:${now.getFullYear()}-${week}`;
+    return `${uid}:monthly:${now.getFullYear()}-${now.getMonth() + 1}`;
+  }
+
+  getQuestProgressKey(type) {
+    return `questStats:${this.getQuestPeriodKey(type)}`;
+  }
+
+  getPeriodQuestStats(type) {
+    return JSON.parse(localStorage.getItem(this.getQuestProgressKey(type)) || '{"games":0,"wins":0,"highScore":0}');
+  }
+
+  updateQuestProgress(won = false) {
+    ['daily', 'weekly', 'monthly'].forEach(type => {
+      const key = this.getQuestProgressKey(type);
+      const stats = JSON.parse(localStorage.getItem(key) || '{"games":0,"wins":0,"highScore":0}');
+      stats.games = (stats.games || 0) + 1;
+      stats.wins = (stats.wins || 0) + (won ? 1 : 0);
+      stats.highScore = Math.max(stats.highScore || 0, this.score || 0);
+      localStorage.setItem(key, JSON.stringify(stats));
+    });
+  }
+
+  getQuestStats(type = 'daily') {
+    const d = this.authManager.userData || {};
+    const inv = this.authManager.getInventory ? this.authManager.getInventory() : {};
+    const period = this.getPeriodQuestStats(type);
+    return {
+      highScore: Math.max(period.highScore || 0, this.score || 0),
+      totalGames: period.games || 0,
+      totalWins: period.wins || 0,
+      unlockedLevel: this.getSavedUnlockedLevel(),
+      coins: this.authManager.getCoins ? this.authManager.getCoins() : 0,
+      powerUps: (inv.bomb || 0) + (inv.rotate || 0) + (inv.skip || 0),
+    };
+  }
+
+  async recordCompletedGame(won = false) {
+    this.updateQuestProgress(won);
+    if (!this.authManager.isLoggedIn()) return;
+    try {
+      await this.dbManager.updateHighScore(this.authManager.user.uid, this.score, this.authManager.getUsername(), won);
+      await this.authManager.loadUserData();
+      this.highScore = Math.max(this.highScore, (this.authManager.userData && this.authManager.userData.highScore) || 0);
+      this.updateCoinDisplays();
+      this.updatePlayerHeader();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  buildQuests() {
+    const dailyStats = this.getQuestStats('daily');
+    const weeklyStats = this.getQuestStats('weekly');
+    const monthlyStats = this.getQuestStats('monthly');
+    const by = (stats, metric) => Math.max(0, stats[metric] || 0);
+    return {
+      daily: [
+        ['d1', 'Skor 150 yap', 'Bugün tek oyunda 150 skora ulaş.', by(dailyStats, 'highScore'), 150, 80],
+        ['d2', 'Skor 300 yap', 'Bugün tek oyunda 300 skora ulaş.', by(dailyStats, 'highScore'), 300, 120],
+        ['d3', '2 maç oyna', 'Bugün 2 maç tamamla.', by(dailyStats, 'totalGames'), 2, 100],
+        ['d4', '5 maç oyna', 'Bugün 5 maç tamamla.', by(dailyStats, 'totalGames'), 5, 160],
+        ['d5', '1 galibiyet al', 'Bugün 1 galibiyet al.', by(dailyStats, 'totalWins'), 1, 140],
+        ['d6', 'Level 2 aç', 'Level haritasında 2. bölüme ulaş.', by(dailyStats, 'unlockedLevel'), 2, 130],
+        ['d7', '500 coin biriktir', 'Hesabında 500 coin bulunsun.', by(dailyStats, 'coins'), 500, 90],
+        ['d8', '3 güçlendirici taşı', 'Envanterinde toplam 3 güçlendirici olsun.', by(dailyStats, 'powerUps'), 3, 110],
+        ['d9', 'Skor 500 yap', 'Bugün tek oyunda 500 skora ulaş.', by(dailyStats, 'highScore'), 500, 180],
+        ['d10', 'Level 3 aç', 'Level haritasında 3. bölüme ulaş.', by(dailyStats, 'unlockedLevel'), 3, 200],
+      ],
+      weekly: [
+        ['w1', '10 maç oyna', 'Bu hafta 10 maç tamamla.', by(weeklyStats, 'totalGames'), 10, 350],
+        ['w2', '3 galibiyet al', 'Bu hafta 3 galibiyet al.', by(weeklyStats, 'totalWins'), 3, 420],
+        ['w3', 'Skor 1000 yap', 'Bu hafta tek oyunda 1000 skora ulaş.', by(weeklyStats, 'highScore'), 1000, 450],
+        ['w4', 'Level 4 aç', 'Level haritasında 4. bölüme ulaş.', by(weeklyStats, 'unlockedLevel'), 4, 480],
+        ['w5', '1500 coin biriktir', 'Hesabında 1500 coin bulunsun.', by(weeklyStats, 'coins'), 1500, 500],
+        ['w6', '8 güçlendirici taşı', 'Envanterinde toplam 8 güçlendirici olsun.', by(weeklyStats, 'powerUps'), 8, 520],
+        ['w7', '15 maç oyna', 'Bu hafta 15 maç tamamla.', by(weeklyStats, 'totalGames'), 15, 560],
+        ['w8', 'Skor 1500 yap', 'Bu hafta tek oyunda 1500 skora ulaş.', by(weeklyStats, 'highScore'), 1500, 620],
+        ['w9', 'Level 6 aç', 'Level haritasında 6. bölüme ulaş.', by(weeklyStats, 'unlockedLevel'), 6, 700],
+        ['w10', '6 galibiyet al', 'Bu hafta 6 galibiyet al.', by(weeklyStats, 'totalWins'), 6, 760],
+      ],
+      monthly: [
+        ['m1', '30 maç oyna', 'Bu ay 30 maç tamamla.', by(monthlyStats, 'totalGames'), 30, 1000],
+        ['m2', '10 galibiyet al', 'Bu ay 10 galibiyet al.', by(monthlyStats, 'totalWins'), 10, 1200],
+        ['m3', 'Skor 2500 yap', 'Bu ay tek oyunda 2500 skora ulaş.', by(monthlyStats, 'highScore'), 2500, 1400],
+        ['m4', 'Level 8 aç', 'Level haritasında 8. bölüme ulaş.', by(monthlyStats, 'unlockedLevel'), 8, 1500],
+        ['m5', '4000 coin biriktir', 'Hesabında 4000 coin bulunsun.', by(monthlyStats, 'coins'), 4000, 1600],
+        ['m6', '20 güçlendirici taşı', 'Envanterinde toplam 20 güçlendirici olsun.', by(monthlyStats, 'powerUps'), 20, 1700],
+        ['m7', '50 maç oyna', 'Bu ay 50 maç tamamla.', by(monthlyStats, 'totalGames'), 50, 1900],
+        ['m8', 'Skor 4000 yap', 'Bu ay tek oyunda 4000 skora ulaş.', by(monthlyStats, 'highScore'), 4000, 2200],
+        ['m9', 'Level 10 aç', 'Final bölümüne ulaş.', by(monthlyStats, 'unlockedLevel'), 10, 2500],
+        ['m10', '25 galibiyet al', 'Bu ay 25 galibiyet al.', by(monthlyStats, 'totalWins'), 25, 3000],
+      ],
+    };
+  }
+
+  renderQuests() {
+    const list = document.getElementById('quests-list');
+    const summary = document.getElementById('quest-summary');
+    if (!list || !summary) return;
+    const groups = this.buildQuests();
+    {
+      const labels = { daily: 'GUNLUK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
+      const subtitles = {
+        daily: 'Bugun bitecek kisa gorevler.',
+        weekly: 'Daha uzun hedefler, daha guclu oduller.',
+        monthly: 'En zor gorevler ve en yuksek coin odulleri.',
+      };
+      let activeType = this.activeQuestType || localStorage.getItem('activeQuestType') || 'daily';
+      if (!groups[activeType]) activeType = 'daily';
+      const claimed = {};
+      const counts = {};
+      let doneCount = 0;
+      let totalCount = 0;
+
+      Object.entries(groups).forEach(([type, quests]) => {
+        const periodKey = this.getQuestPeriodKey(type);
+        claimed[type] = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
+        counts[type] = { ready: 0, claimed: 0, total: quests.length };
+        quests.forEach(([id, title, desc, value, target]) => {
+          totalCount++;
+          const ready = value >= target;
+          const isClaimed = claimed[type].includes(id);
+          if (isClaimed) doneCount++;
+          if (ready && !isClaimed) counts[type].ready++;
+          if (isClaimed) counts[type].claimed++;
+        });
+      });
+
+      summary.innerHTML = `
+        <h3>Gorev Merkezi</h3>
+        <p>${doneCount}/${totalCount} odul alindi. ${subtitles[activeType]}</p>
+        <div class="quest-tabs">
+          ${Object.keys(groups).map(type => `
+            <button class="quest-tab ${type === activeType ? 'active' : ''}" data-type="${type}">
+              <span>${labels[type]}</span>
+              <small>${counts[type].claimed}/${counts[type].total}</small>
+              ${counts[type].ready > 0 ? `<b>${counts[type].ready}</b>` : ''}
+            </button>
+          `).join('')}
+        </div>`;
+
+      summary.querySelectorAll('.quest-tab').forEach(tab => {
+        tab.onclick = () => {
+          this.activeQuestType = tab.dataset.type;
+          localStorage.setItem('activeQuestType', this.activeQuestType);
+          this.renderQuests();
+        };
+      });
+
+      const periodKey = this.getQuestPeriodKey(activeType);
+      list.innerHTML = '';
+      const section = document.createElement('section');
+      section.className = `quest-section quest-${activeType}`;
+      groups[activeType].forEach(([id, title, desc, value, target, reward]) => {
+        const ready = value >= target;
+        const isClaimed = claimed[activeType].includes(id);
+        const pct = Math.min(100, Math.floor((value / target) * 100));
+        const row = document.createElement('div');
+        row.className = `quest-card ${ready ? 'ready' : ''} ${isClaimed ? 'claimed' : ''}`;
+        row.innerHTML = `
+          <div class="quest-main">
+            <strong>${title}</strong>
+            <span>${desc}</span>
+            <div class="quest-bar"><div style="width:${pct}%"></div></div>
+            <small>${Math.min(value, target)} / ${target}</small>
+          </div>
+          <div class="quest-reward">
+            <b>${reward}</b>
+            <span>coin</span>
+            <button class="btn btn-buy btn-small quest-claim" ${!ready || isClaimed ? 'disabled' : ''}>${isClaimed ? 'ALINDI' : 'AL'}</button>
+          </div>`;
+        const btn = row.querySelector('.quest-claim');
+        btn.onclick = async () => {
+          if (!ready || isClaimed) return;
+          const success = await this.authManager.addCoins(reward);
+          if (!success) return;
+          const current = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
+          if (!current.includes(id)) current.push(id);
+          localStorage.setItem(`claimedQuests:${periodKey}`, JSON.stringify(current));
+          this.updateCoinDisplays();
+          this.audio.pickup();
+          this.renderQuests();
+        };
+        section.appendChild(row);
+      });
+      list.appendChild(section);
+      return;
+    }
+    const labels = { daily: 'GÜNLÜK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
+    const claimed = {};
+    let doneCount = 0;
+    let totalCount = 0;
+
+    list.innerHTML = '';
+    Object.entries(groups).forEach(([type, quests]) => {
+      const periodKey = this.getQuestPeriodKey(type);
+      claimed[type] = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
+      const section = document.createElement('section');
+      section.className = `quest-section quest-${type}`;
+      section.innerHTML = `<h3 class="section-title-cyber">${labels[type]} GÖREVLER</h3>`;
+      quests.forEach(([id, title, desc, value, target, reward]) => {
+        totalCount++;
+        const ready = value >= target;
+        const isClaimed = claimed[type].includes(id);
+        if (isClaimed) doneCount++;
+        const pct = Math.min(100, Math.floor((value / target) * 100));
+        const row = document.createElement('div');
+        row.className = `quest-card ${ready ? 'ready' : ''} ${isClaimed ? 'claimed' : ''}`;
+        row.innerHTML = `
+          <div class="quest-main">
+            <strong>${title}</strong>
+            <span>${desc}</span>
+            <div class="quest-bar"><div style="width:${pct}%"></div></div>
+            <small>${Math.min(value, target)} / ${target}</small>
+          </div>
+          <div class="quest-reward">
+            <b>${reward}</b>
+            <span>coin</span>
+            <button class="btn btn-buy btn-small quest-claim" ${!ready || isClaimed ? 'disabled' : ''}>${isClaimed ? 'ALINDI' : 'AL'}</button>
+          </div>`;
+        const btn = row.querySelector('.quest-claim');
+        btn.onclick = async () => {
+          if (!ready || isClaimed) return;
+          const success = await this.authManager.addCoins(reward);
+          if (!success) return;
+          const current = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
+          if (!current.includes(id)) current.push(id);
+          localStorage.setItem(`claimedQuests:${periodKey}`, JSON.stringify(current));
+          this.updateCoinDisplays();
+          this.audio.pickup();
+          this.renderQuests();
+        };
+        section.appendChild(row);
+      });
+      list.appendChild(section);
+    });
+
+    summary.innerHTML = `
+      <h3>Görev Merkezi</h3>
+      <p>${doneCount}/${totalCount} ödül alındı. Günlük görevler kolay, haftalıklar daha güçlü, aylık görevler en zor ve en yüksek ödüllü.</p>`;
+  }
+
+  applyUiTheme(theme) {
+    const selected = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.uiTheme = selected;
+    localStorage.setItem('uiTheme', selected);
+    const btn = document.getElementById('btn-theme-toggle');
+    if (btn) {
+      btn.textContent = selected === 'light' ? '☾' : '◐';
+      btn.title = selected === 'light' ? 'Koyu Temaya Geç' : 'Açık Temaya Geç';
     }
   }
 
@@ -635,7 +862,9 @@ class Game {
     }
     this.state = 'gameover';
     this.audio.win();
+    this.recordCompletedGame(true);
     this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
+    this.updatePlayerHeader();
     this.showGameOverScreen(true, `${this.currentLevel.id}. bölüm tamamlandı!`);
   }
 
@@ -658,11 +887,34 @@ class Game {
     this.updateScoreDisplay(); this.showScreen('game-screen');
   }
 
+  startEndlessGame() {
+    this.audio.init(); this.audio.resume();
+    this.currentLevel = null;
+    this.targetScore = 0;
+    this.mode = 'solo';
+    this.state = 'playing';
+    this.score = 0;
+    this.combo = 0;
+    this.animatingClear = false;
+    this.seed = Date.now();
+    this.rng = new SeededRandom(this.seed);
+    this.blockSetIndex = 0;
+    this.resetGrid();
+    this.generatePieces();
+    this.resizeCanvas();
+    this.resetPowerUps();
+    document.getElementById('opponent-board-wrap').classList.add('hidden');
+    document.getElementById('opponent-score-box').classList.add('hidden');
+    document.getElementById('timer-box').classList.add('hidden');
+    this.updateScoreDisplay();
+    this.showScreen('game-screen');
+  }
+
   startOnlineGame(seed, mode, timeLimit, targetScore) {
     this.audio.init(); this.audio.resume();
     this.mode = 'online'; this.onlineMode = mode; this.state = 'playing'; this.score = 0; this.combo = 0; this.animatingClear = false;
     this.seed = seed; this.rng = new SeededRandom(seed); this.blockSetIndex = 0;
-    this.timerRemaining = timeLimit || 180; this.targetScore = targetScore || 1000;
+    this.timerRemaining = timeLimit || 90; this.targetScore = targetScore || 1000;
     this.opponentBoard = null; this.opponentScore = 0;
     this.resetGrid(); this.generatePieces(); this.resizeCanvas();
     this.resetPowerUps();
@@ -821,11 +1073,7 @@ class Game {
     this.ad.showInterstitial();
     
     // Save to Firebase
-    if (this.authManager.isLoggedIn()) {
-      try { await this.dbManager.updateHighScore(this.authManager.user.uid, this.score, this.authManager.getUsername()); } catch (e) { console.error(e); }
-      await this.authManager.loadUserData();
-      this.highScore = (this.authManager.userData && this.authManager.userData.highScore) || this.highScore;
-    }
+    await this.recordCompletedGame(false);
     if (this.score > this.highScore) this.highScore = this.score;
     // Award coins for solo play (1 coin per 10 points)
     if (this.mode === 'solo') {
@@ -836,8 +1084,22 @@ class Game {
     setTimeout(() => this.endGame(), 800);
   }
 
-  onOpponentGameOver() { this.state = 'gameover'; this.audio.win(); this.showGameOverScreen(true, 'Rakip kaybetti! Kazandın! 🎉'); }
-  onOpponentLeft() { if (this.state === 'playing') { this.state = 'gameover'; this.showGameOverScreen(true, 'Rakip ayrıldı. Kazandın!'); } }
+  onOpponentGameOver() {
+    this.state = 'gameover';
+    this.audio.win();
+    this.recordCompletedGame(true);
+    this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
+    this.showGameOverScreen(true, 'Rakip kaybetti! Kazandın!');
+  }
+
+  onOpponentLeft() {
+    if (this.state === 'playing') {
+      this.state = 'gameover';
+      this.recordCompletedGame(true);
+      this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
+      this.showGameOverScreen(true, 'Rakip ayrıldı. Kazandın!');
+    }
+  }
 
   onTimeUp() {
     if (this.state !== 'playing') return;
@@ -845,15 +1107,18 @@ class Game {
     const won = this.score > this.opponentScore; const tied = this.score === this.opponentScore;
     if (won) { 
       this.audio.win(); 
+      this.recordCompletedGame(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(true, `Kazandın! ${this.score} - ${this.opponentScore}`); 
     }
     else if (tied) { 
+      this.recordCompletedGame(false);
       this.authManager.addCoins(50).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Berabere! ${this.score} - ${this.opponentScore}`); 
     }
     else { 
       this.audio.gameOver(); 
+      this.recordCompletedGame(false);
       this.authManager.addCoins(25).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Kaybettin! ${this.score} - ${this.opponentScore}`); 
     }
@@ -907,7 +1172,9 @@ class Game {
       if (this.mode === 'online' && this.onlineMode === 'score' && this.timerRemaining > 0) this.updateTimerDisplay();
       if (this.mode === 'online' && this.onlineMode === 'time' && this.score >= this.targetScore) {
         this.state = 'gameover'; this.audio.win(); this.network.sendGameOver();
-        this.showGameOverScreen(true, 'Hedefe ilk sen ulaştın! 🏆');
+        this.recordCompletedGame(true);
+        this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
+        this.showGameOverScreen(true, 'Hedefe ilk sen ulaştın!');
       }
     }
     requestAnimationFrame((t) => this.gameLoop(t));
@@ -931,12 +1198,30 @@ class Game {
     const storeCoins = document.getElementById('store-coins');
     if (menuCoins) menuCoins.textContent = coins;
     if (storeCoins) storeCoins.textContent = coins;
+    this.updatePlayerHeader();
     
-    // Disable buy buttons if not enough coins (skip free items)
+    // Keep non-theme shop buttons clickable so they can show feedback when coins are low.
     document.querySelectorAll('.btn-buy').forEach(btn => {
       const price = parseInt(btn.dataset.price);
-      if (price > 0) btn.disabled = coins < price;
+      if (btn.dataset.type !== 'theme' && Number.isFinite(price)) btn.disabled = false;
     });
+  }
+
+  updatePlayerHeader() {
+    const d = this.authManager.userData || {};
+    const username = this.authManager.getUsername ? this.authManager.getUsername() : 'Oyuncu';
+    const unlocked = this.unlockedLevel || this.getSavedUnlockedLevel();
+    const totalGames = d.totalGames || 0;
+    const highScore = d.highScore || this.highScore || 0;
+    const xp = Math.max(0, highScore + ((unlocked - 1) * 350) + (totalGames * 75));
+    const level = Math.max(1, Math.floor(xp / 500) + 1);
+    const currentXp = xp % 500;
+    const headerUsername = document.getElementById('header-username');
+    const headerLevel = document.getElementById('header-level');
+    const headerXp = document.getElementById('header-xp');
+    if (headerUsername) headerUsername.textContent = username;
+    if (headerLevel) headerLevel.textContent = level;
+    if (headerXp) headerXp.textContent = `${currentXp}/500`;
   }
 
   showStore() {

@@ -7,7 +7,7 @@ class DatabaseManager {
 
   // ── Score & Stats ──
 
-  async updateHighScore(uid, score, username) {
+  async updateHighScore(uid, score, username, won = false) {
     const userRef = db.collection('users').doc(uid);
     const doc = await userRef.get();
     if (!doc.exists) return;
@@ -16,6 +16,10 @@ class DatabaseManager {
     const updates = {
       totalGames: firebase.firestore.FieldValue.increment(1),
     };
+
+    if (won) {
+      updates.totalWins = firebase.firestore.FieldValue.increment(1);
+    }
 
     if (score > (data.highScore || 0)) {
       updates.highScore = score;

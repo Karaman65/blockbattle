@@ -8,7 +8,7 @@
   <title>Block Battle — Online Block Puzzle</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=1.6">
+  <link rel="stylesheet" href="css/style.css?v=2.3">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#05050f">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -116,16 +116,16 @@
           <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar"
             style="width: 100%; height: 100%; border-radius: 50%;">
         </div>
-        <span
-          style="font-size: 1.2rem; font-weight: 900; letter-spacing: 2px; font-style: italic; color: var(--neon-cyan);">CYBERPULSE</span>
+        <span id="header-username"
+          style="font-size: 1.2rem; font-weight: 900; letter-spacing: 2px; font-style: italic; color: var(--neon-cyan);">Oyuncu</span>
       </div>
       <div class="header-stats-capsule">
         <div class="stat-item">
           <span class="stat-label-mini">LVL</span>
-          <span class="stat-value-mini">42</span>
+          <span class="stat-value-mini" id="header-level">1</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label-mini" style="color: var(--neon-cyan);">2.5K</span>
+          <span class="stat-label-mini" style="color: var(--neon-cyan);" id="header-xp">0/500</span>
           <span class="stat-value-mini">XP</span>
         </div>
         <div class="stat-item">
@@ -147,7 +147,7 @@
       </div>
 
       <div class="menu-grid" style="display: flex; flex-direction: column; gap: 20px;">
-        <!-- SOLO OYNA -->
+        <!-- SONSUZ OYNA -->
         <button id="btn-solo" class="card-btn cyber-card"
           style="padding: 0; height: 200px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: linear-gradient(135deg, rgba(30,30,60,0.8), rgba(10,10,26,1));">
           <div
@@ -160,9 +160,9 @@
             style="position: relative; z-index: 1; padding: 40px 30px; display: flex; flex-direction: column; gap: 10px;">
             <div
               style="display: flex; align-items: center; gap: 8px; color: var(--neon-purple); font-size: 0.8rem; font-weight: 800; letter-spacing: 1px;">
-              <span>👤</span> ANTRENMAN
+              <span>∞</span> SINIRSIZ
             </div>
-            <h2 style="font-size: 2.2rem; font-weight: 900; color: #fff; letter-spacing: 1px;">SOLO OYNA</h2>
+            <h2 style="font-size: 2.2rem; font-weight: 900; color: #fff; letter-spacing: 1px;">SONSUZ</h2>
           </div>
         </button>
 
@@ -227,6 +227,7 @@
       </div>
 
       <div class="menu-footer-btns" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">
+        <button id="btn-theme-toggle" class="btn btn-icon-only" title="Tema Değiştir">◐</button>
         <button id="btn-sound-toggle" class="btn btn-icon-only">🔊</button>
         <button id="btn-logout" class="btn btn-icon-only">🚪</button>
       </div>
@@ -402,26 +403,8 @@
       </div>
 
       <div class="cyber-scroll-area">
-        <div class="cyber-card accent-purple" style="margin-bottom: 24px;">
-          <h3 style="font-size: 1.2rem; font-weight: 900; color: #fff; margin-bottom: 8px;">Haftalık İlerleme</h3>
-          <div class="progress-bar"
-            style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
-            <div style="width: 70%; height: 100%; background: var(--neon-purple);"></div>
-          </div>
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">7/10 görev tamamlandı</p>
-        </div>
-
-        <h3 class="section-title-cyber">GÜNLÜK GÖREVLER</h3>
-        <div class="cyber-list" style="display: flex; flex-direction: column; gap: 12px;">
-          <div class="cyber-card" style="display: flex; align-items: center; gap: 15px; padding: 15px;">
-            <div style="font-size: 1.5rem;">⚔️</div>
-            <div style="flex: 1;">
-              <h4 style="font-size: 0.9rem; font-weight: 800; color: #fff;">3 Maç Kazan</h4>
-              <p style="font-size: 0.75rem; color: var(--text-muted);">Ödül: 250 XP</p>
-            </div>
-            <button id="btn-daily-reward-quest" class="btn btn-primary btn-small" data-reward-coins="250">AL</button>
-          </div>
-        </div>
+        <div id="quest-summary" class="quest-summary-card"></div>
+        <div id="quests-list" class="quest-board"></div>
       </div>
     </div>
   </div>
@@ -687,19 +670,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <!-- Socket.IO -->
-  <script src="js/socket.io.min.js?v=1.6"></script>
+  <script src="js/socket.io.min.js?v=2.3"></script>
 
   <!-- Game Scripts -->
-  <script src="js/firebase-config.js?v=1.6"></script>
-  <script src="js/blocks.js?v=1.6"></script>
-  <script src="js/audio.js?v=1.6"></script>
-  <script src="js/renderer.js?v=1.6"></script>
-  <script src="js/input.js?v=1.6"></script>
-  <script src="js/network.js?v=1.6"></script>
-  <script src="js/auth.js?v=1.6"></script>
-  <script src="js/db.js?v=1.6"></script>
-  <script src="js/ad.js?v=1.6"></script>
-  <script src="js/game.js?v=1.6"></script>
+  <script src="js/firebase-config.js?v=2.3"></script>
+  <script src="js/blocks.js?v=2.3"></script>
+  <script src="js/audio.js?v=2.3"></script>
+  <script src="js/renderer.js?v=2.3"></script>
+  <script src="js/input.js?v=2.3"></script>
+  <script src="js/network.js?v=2.3"></script>
+  <script src="js/auth.js?v=2.3"></script>
+  <script src="js/db.js?v=2.3"></script>
+  <script src="js/ad.js?v=2.3"></script>
+  <script src="js/game.js?v=2.3"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => { });

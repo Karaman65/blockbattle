@@ -34,6 +34,32 @@
   --shadow-glow: 0 0 25px var(--neon-cyan-glow);
 }
 
+:root[data-ui-theme="light"] {
+  --bg-primary: #cfe0f7;
+  --bg-secondary: #b8d0ef;
+  --bg-card: rgba(219, 233, 249, 0.94);
+  --bg-card-border: rgba(38, 80, 132, 0.22);
+  --surface: #d7e8fb;
+  --accent: #b23b74;
+  --accent-light: #d65b91;
+  --accent-glow: rgba(178, 59, 116, 0.18);
+  --neon-cyan: #126782;
+  --neon-cyan-glow: rgba(18, 103, 130, 0.22);
+  --neon-purple: #5b55bd;
+  --neon-purple-glow: rgba(91, 85, 189, 0.20);
+  --danger: #d43f4b;
+  --success: #16835c;
+  --warning: #b7791f;
+  --text-primary: #10233f;
+  --text-secondary: #385271;
+  --text-muted: #667c96;
+  --neon-green: #16835c;
+  --glass: rgba(216, 232, 249, 0.76);
+  --glass-border: rgba(38, 80, 132, 0.18);
+  --shadow: 0 14px 30px rgba(31, 63, 104, 0.18);
+  --shadow-glow: 0 0 22px rgba(18, 103, 130, 0.12);
+}
+
 html, body {
   height: 100%;
   overflow: hidden;
@@ -47,6 +73,13 @@ html, body {
 
 body {
   background: radial-gradient(circle at 50% -20%, #171738 0%, var(--bg-primary) 70%);
+}
+
+:root[data-ui-theme="light"] body {
+  background:
+    radial-gradient(circle at 18% -8%, rgba(18,103,130,0.24), transparent 34%),
+    radial-gradient(circle at 100% 0%, rgba(91,85,189,0.18), transparent 32%),
+    linear-gradient(180deg, #dcecff 0%, #c4d9f3 52%, #b6cde9 100%);
 }
 
 /* â”€â”€ Screen System â”€â”€ */
@@ -1812,6 +1845,18 @@ body {
   box-shadow: 0 0 16px rgba(0,243,255,0.12);
 }
 
+.shop-item-details {
+  background: rgba(8, 14, 32, 0.24);
+}
+
+.shop-item-details span {
+  color: var(--text-primary);
+}
+
+.shop-item-details span:first-child {
+  color: #fff;
+}
+
 .store-power-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1863,6 +1908,171 @@ body {
   .store-power-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.quest-summary-card {
+  background: linear-gradient(135deg, rgba(0, 243, 255, 0.10), rgba(157, 0, 255, 0.12));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 22px;
+}
+
+.quest-summary-card h3 {
+  color: var(--text-primary);
+  font-size: 1.15rem;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.quest-summary-card p {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.quest-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.quest-tab {
+  position: relative;
+  min-width: 0;
+  min-height: 62px;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: var(--radius-sm);
+  background: rgba(11, 16, 36, 0.58);
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.quest-tab span {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.quest-tab small {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.quest-tab b {
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.quest-tab.active {
+  background: linear-gradient(135deg, rgba(0,243,255,0.18), rgba(157,0,255,0.16));
+  border-color: rgba(0, 243, 255, 0.34);
+  transform: translateY(-1px);
+}
+
+.quest-board,
+.quest-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quest-section {
+  margin-bottom: 24px;
+}
+
+.quest-card {
+  background: rgba(20, 20, 45, 0.62);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.quest-card.ready {
+  border-color: rgba(0, 255, 157, 0.35);
+}
+
+.quest-card.claimed {
+  opacity: 0.72;
+}
+
+.quest-main {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.quest-main strong {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.quest-main span,
+.quest-main small {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.quest-bar {
+  height: 7px;
+  background: rgba(0,0,0,0.28);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.quest-bar div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+  border-radius: inherit;
+}
+
+.quest-reward {
+  min-width: 82px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.quest-reward b {
+  color: var(--warning);
+  font-size: 1rem;
+}
+
+.quest-reward span {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.quest-claim {
+  min-width: 70px;
+  padding: 8px 10px;
 }
 .shop-item-name { font-weight: 800; font-size: 1rem; }
 .shop-item-price { font-weight: 700; color: #feca57; display: flex; align-items: center; gap: 4px; }
@@ -2062,4 +2272,210 @@ body {
 
 .pulse-active {
   animation: pulse-cyan 2s infinite;
+}
+
+/* ── Refined Light Theme Overrides ── */
+:root[data-ui-theme="light"] .screen {
+  color: var(--text-primary);
+}
+
+:root[data-ui-theme="light"] .cyber-header,
+:root[data-ui-theme="light"] .bottom-nav {
+  background: rgba(197, 218, 242, 0.88);
+  border-color: rgba(38, 80, 132, 0.18);
+  box-shadow: 0 10px 30px rgba(31, 63, 104, 0.14);
+}
+
+:root[data-ui-theme="light"] .header-stats-capsule,
+:root[data-ui-theme="light"] .premium-tag,
+:root[data-ui-theme="light"] .global-back {
+  background: rgba(223, 237, 252, 0.72) !important;
+  border-color: rgba(38, 80, 132, 0.20) !important;
+  color: var(--text-primary) !important;
+}
+
+:root[data-ui-theme="light"] .stat-value-mini,
+:root[data-ui-theme="light"] .cyber-header span,
+:root[data-ui-theme="light"] .logo-block,
+:root[data-ui-theme="light"] .panel-title,
+:root[data-ui-theme="light"] .gameover-title,
+:root[data-ui-theme="light"] .go-stat-value,
+:root[data-ui-theme="light"] .stat-value,
+:root[data-ui-theme="light"] .level-number,
+:root[data-ui-theme="light"] .level-title,
+:root[data-ui-theme="light"] .player-score,
+:root[data-ui-theme="light"] .player-name,
+:root[data-ui-theme="light"] .rank,
+:root[data-ui-theme="light"] .cyber-card h2,
+:root[data-ui-theme="light"] .cyber-card h3,
+:root[data-ui-theme="light"] .cyber-card h4,
+:root[data-ui-theme="light"] .cyber-card strong,
+:root[data-ui-theme="light"] .cyber-card > span,
+:root[data-ui-theme="light"] .shop-item-details span:first-child {
+  color: var(--text-primary) !important;
+}
+
+:root[data-ui-theme="light"] [style*="color: #fff"],
+:root[data-ui-theme="light"] [style*="color:#fff"],
+:root[data-ui-theme="light"] [style*="color: white"],
+:root[data-ui-theme="light"] [style*="color:white"] {
+  color: var(--text-primary) !important;
+}
+
+:root[data-ui-theme="light"] #btn-solo,
+:root[data-ui-theme="light"] #btn-online,
+:root[data-ui-theme="light"] #btn-leaderboard,
+:root[data-ui-theme="light"] #btn-profile,
+:root[data-ui-theme="light"] .cyber-card,
+:root[data-ui-theme="light"] .shop-item-card,
+:root[data-ui-theme="light"] .power-shop-card,
+:root[data-ui-theme="light"] .level-card,
+:root[data-ui-theme="light"] .glass-panel,
+:root[data-ui-theme="light"] .store-panel {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(178, 59, 116, 0.10), transparent 34%),
+    linear-gradient(145deg, rgba(231, 241, 253, 0.96), rgba(199, 220, 244, 0.90)) !important;
+  border-color: rgba(38, 80, 132, 0.18) !important;
+  box-shadow: 0 14px 30px rgba(31, 63, 104, 0.15) !important;
+}
+
+:root[data-ui-theme="light"] #btn-solo {
+  background:
+    radial-gradient(circle at 80% 10%, rgba(91, 85, 189, 0.20), transparent 36%),
+    linear-gradient(135deg, #e3effc, #bdd5f2) !important;
+}
+
+:root[data-ui-theme="light"] #btn-online {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(18, 103, 130, 0.20), transparent 38%),
+    linear-gradient(135deg, #d9edf8, #b9d7ec) !important;
+}
+
+:root[data-ui-theme="light"] #btn-leaderboard,
+:root[data-ui-theme="light"] #btn-profile {
+  background:
+    radial-gradient(circle at 100% 20%, rgba(178, 59, 116, 0.12), transparent 35%),
+    linear-gradient(135deg, #e6effb, #c9d9f2) !important;
+}
+
+:root[data-ui-theme="light"] #btn-solo [style*="background: rgba(181"],
+:root[data-ui-theme="light"] #btn-online [style*="background: url"] {
+  opacity: 0.08 !important;
+}
+
+:root[data-ui-theme="light"] #btn-solo [style*="rgba(255,255,255,0.2)"],
+:root[data-ui-theme="light"] #btn-profile [style*="rgba(255,255,255,0.05)"],
+:root[data-ui-theme="light"] #btn-leaderboard [style*="rgba(255,255,255,0.1)"] {
+  background: rgba(18, 103, 130, 0.12) !important;
+  color: var(--neon-cyan) !important;
+  border: 1px solid rgba(18, 103, 130, 0.20);
+}
+
+:root[data-ui-theme="light"] .menu-content h1 span:first-child,
+:root[data-ui-theme="light"] #btn-solo h2,
+:root[data-ui-theme="light"] #btn-online h2,
+:root[data-ui-theme="light"] #btn-leaderboard h2,
+:root[data-ui-theme="light"] #btn-profile h2,
+:root[data-ui-theme="light"] .premium-hero-card h2,
+:root[data-ui-theme="light"] .cyber-card p {
+  color: var(--text-primary) !important;
+}
+
+:root[data-ui-theme="light"] .section-title-cyber::after {
+  background: linear-gradient(90deg, rgba(38, 80, 132, 0.22), transparent);
+}
+
+:root[data-ui-theme="light"] .store-pack-icons span,
+:root[data-ui-theme="light"] .power-shop-icon {
+  background: rgba(162, 198, 230, 0.46);
+  border-color: rgba(18, 103, 130, 0.26);
+  color: var(--neon-cyan);
+}
+
+:root[data-ui-theme="light"] .btn {
+  box-shadow: 0 8px 18px rgba(30, 49, 92, 0.12);
+}
+
+:root[data-ui-theme="light"] .stat-box,
+:root[data-ui-theme="light"] .go-stat,
+:root[data-ui-theme="light"] .p-stat-card,
+:root[data-ui-theme="light"] .leaderboard-item,
+:root[data-ui-theme="light"] .match-history-item,
+:root[data-ui-theme="light"] .room-code-container,
+:root[data-ui-theme="light"] .input-field,
+:root[data-ui-theme="light"] .level-help,
+:root[data-ui-theme="light"] .profile-card-cyber {
+  background: rgba(186, 212, 238, 0.62) !important;
+  border: 1px solid rgba(38, 80, 132, 0.22) !important;
+  color: var(--text-primary) !important;
+}
+
+:root[data-ui-theme="light"] .stat-label,
+:root[data-ui-theme="light"] .go-stat-label,
+:root[data-ui-theme="light"] .stat-label-mini,
+:root[data-ui-theme="light"] .level-target,
+:root[data-ui-theme="light"] .level-difficulty,
+:root[data-ui-theme="light"] .section-title-cyber,
+:root[data-ui-theme="light"] .item-desc,
+:root[data-ui-theme="light"] .p-email,
+:root[data-ui-theme="light"] .opponent-label {
+  color: #385271 !important;
+}
+
+:root[data-ui-theme="light"] .level-state {
+  background: rgba(18, 103, 130, 0.14) !important;
+  color: #0f5067 !important;
+  border: 1px solid rgba(18, 103, 130, 0.22);
+}
+
+:root[data-ui-theme="light"] .piece-slot,
+:root[data-ui-theme="light"] .piece-grid {
+  background: rgba(186, 212, 238, 0.42);
+}
+
+:root[data-ui-theme="light"] .shop-item-details,
+:root[data-ui-theme="light"] .quest-summary-card,
+:root[data-ui-theme="light"] .quest-card {
+  background: rgba(186, 212, 238, 0.64) !important;
+  border: 1px solid rgba(38, 80, 132, 0.24) !important;
+}
+
+:root[data-ui-theme="light"] .shop-item-details span,
+:root[data-ui-theme="light"] .shop-item-details span:first-child,
+:root[data-ui-theme="light"] .quest-summary-card h3,
+:root[data-ui-theme="light"] .quest-main strong {
+  color: var(--text-primary) !important;
+}
+
+:root[data-ui-theme="light"] .quest-main span,
+:root[data-ui-theme="light"] .quest-main small,
+:root[data-ui-theme="light"] .quest-summary-card p {
+  color: #385271 !important;
+}
+
+:root[data-ui-theme="light"] .quest-bar {
+  background: rgba(38, 80, 132, 0.18);
+}
+
+:root[data-ui-theme="light"] .quest-tab {
+  background: rgba(212, 229, 247, 0.78);
+  border-color: rgba(38, 80, 132, 0.22);
+}
+
+:root[data-ui-theme="light"] .quest-tab.active {
+  background: linear-gradient(135deg, rgba(18, 103, 130, 0.18), rgba(91, 85, 189, 0.14));
+  border-color: rgba(18, 103, 130, 0.34);
+}
+
+:root[data-ui-theme="light"] .quest-tab span {
+  color: var(--text-primary);
+}
+
+:root[data-ui-theme="light"] .quest-tab small {
+  color: #385271;
+}
+
+:root[data-ui-theme="light"] #game-canvas,
+:root[data-ui-theme="light"] #opponent-canvas {
+  filter: drop-shadow(0 10px 18px rgba(31, 63, 104, 0.16));
 }
