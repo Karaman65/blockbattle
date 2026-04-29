@@ -86,7 +86,7 @@ class Game {
         this.updateCoinDisplays();
         const savedTheme = localStorage.getItem('selectedTheme') || 'default';
         this.setTheme(savedTheme);
-        this.showScreen('map-screen'); // Default to map screen after login
+        this.showScreen('menu-screen'); // Default to main menu after login
       } else {
         this.showScreen('login-screen');
       }
@@ -108,6 +108,7 @@ class Game {
     const el = document.getElementById(id);
     if (el) el.classList.add('active');
     if (id === 'map-screen') this.renderLevelMap();
+    this.updateBackButton(id);
 
     // Bottom Nav Visibility
     const bottomNav = document.getElementById('bottom-nav');
@@ -123,6 +124,37 @@ class Game {
         bottomNav.classList.add('hidden');
       }
     }
+  }
+
+  updateBackButton(id) {
+    const backBtn = document.getElementById('global-back');
+    if (!backBtn) return;
+    const visibleScreens = [
+      'map-screen',
+      'quests-screen',
+      'store-screen',
+      'premium-screen',
+      'leaderboard-screen',
+      'profile-screen',
+      'online-screen',
+      'waiting-screen',
+      'register-screen',
+      'gameover-screen',
+    ];
+    backBtn.classList.toggle('hidden', !visibleScreens.includes(id));
+  }
+
+  goBack() {
+    const active = document.querySelector('.screen.active:not(.overlay)');
+    const id = active ? active.id : 'menu-screen';
+    if (id === 'register-screen') return this.showScreen('login-screen');
+    if (id === 'waiting-screen') {
+      this.network.leaveRoom();
+      return this.showScreen('online-screen');
+    }
+    if (id === 'online-screen') return this.showScreen('menu-screen');
+    if (id === 'gameover-screen') return this.showScreen(this.mode === 'online' ? 'online-screen' : 'map-screen');
+    return this.showScreen('menu-screen');
   }
 
   // ── Auth UI ──
@@ -162,6 +194,9 @@ class Game {
   }
 
   setupUI() {
+    const globalBack = document.getElementById('global-back');
+    if (globalBack) globalBack.onclick = () => this.goBack();
+
     document.getElementById('btn-solo').onclick = () => this.showScreen('map-screen');
     const btnOnline = document.getElementById('btn-online');
     if (btnOnline) {
