@@ -29,6 +29,42 @@ const THEMES = {
     { base: '#00b894', light: '#55efc4', dark: '#006266', glow: 'rgba(0,184,148,0.4)' },
     { base: '#e17055', light: '#fab1a0', dark: '#b33939', glow: 'rgba(225,112,85,0.4)' },
     { base: '#fdcb6e', light: '#ffeaa7', dark: '#f39c12', glow: 'rgba(253,203,110,0.4)' }
+  ],
+  matrix: [
+    { base: '#00f3ff', light: '#7cfff8', dark: '#008ea3', glow: 'rgba(0,243,255,0.45)' },
+    { base: '#0984e3', light: '#74b9ff', dark: '#0051a8', glow: 'rgba(9,132,227,0.45)' },
+    { base: '#00cec9', light: '#81ecec', dark: '#008b87', glow: 'rgba(0,206,201,0.45)' },
+    { base: '#54a0ff', light: '#a2d2ff', dark: '#2f68c5', glow: 'rgba(84,160,255,0.45)' },
+    { base: '#2e86de', light: '#74b9ff', dark: '#1b4f9c', glow: 'rgba(46,134,222,0.45)' },
+    { base: '#00a8ff', light: '#7ed6df', dark: '#006ba6', glow: 'rgba(0,168,255,0.45)' },
+    { base: '#48dbfb', light: '#c7f9ff', dark: '#2aa8bf', glow: 'rgba(72,219,251,0.45)' }
+  ],
+  nebula: [
+    { base: '#9d00ff', light: '#c471ed', dark: '#5f27cd', glow: 'rgba(157,0,255,0.45)' },
+    { base: '#ff00ff', light: '#ff9ff3', dark: '#b000b8', glow: 'rgba(255,0,255,0.45)' },
+    { base: '#6c5ce7', light: '#a29bfe', dark: '#4834d4', glow: 'rgba(108,92,231,0.45)' },
+    { base: '#ff007a', light: '#ff6b9d', dark: '#a80052', glow: 'rgba(255,0,122,0.45)' },
+    { base: '#341f97', light: '#786fa6', dark: '#1b1464', glow: 'rgba(52,31,151,0.45)' },
+    { base: '#e84393', light: '#fd79a8', dark: '#ad1457', glow: 'rgba(232,67,147,0.45)' },
+    { base: '#8e44ad', light: '#be90d4', dark: '#5b2c6f', glow: 'rgba(142,68,173,0.45)' }
+  ],
+  lava: [
+    { base: '#ff4757', light: '#ff7f7f', dark: '#c0392b', glow: 'rgba(255,71,87,0.45)' },
+    { base: '#ff6b35', light: '#ff9f43', dark: '#d35400', glow: 'rgba(255,107,53,0.45)' },
+    { base: '#ffa502', light: '#ffd166', dark: '#cc7700', glow: 'rgba(255,165,2,0.45)' },
+    { base: '#e84118', light: '#ff7675', dark: '#9c1f00', glow: 'rgba(232,65,24,0.45)' },
+    { base: '#f368e0', light: '#ff9ff3', dark: '#b53471', glow: 'rgba(243,104,224,0.45)' },
+    { base: '#ff3838', light: '#ff6b6b', dark: '#b71540', glow: 'rgba(255,56,56,0.45)' },
+    { base: '#feca57', light: '#ffeaa7', dark: '#cd8b00', glow: 'rgba(254,202,87,0.45)' }
+  ],
+  toxic: [
+    { base: '#00ff88', light: '#7dffb2', dark: '#00b35f', glow: 'rgba(0,255,136,0.45)' },
+    { base: '#2ed573', light: '#7bed9f', dark: '#079246', glow: 'rgba(46,213,115,0.45)' },
+    { base: '#a3ff12', light: '#d4ff7a', dark: '#6fb000', glow: 'rgba(163,255,18,0.45)' },
+    { base: '#00d2d3', light: '#81ecec', dark: '#008c8c', glow: 'rgba(0,210,211,0.45)' },
+    { base: '#55efc4', light: '#b8fff0', dark: '#00b894', glow: 'rgba(85,239,196,0.45)' },
+    { base: '#badc58', light: '#eaff9a', dark: '#6ab04c', glow: 'rgba(186,220,88,0.45)' },
+    { base: '#7bed9f', light: '#c8ffd8', dark: '#2ecc71', glow: 'rgba(123,237,159,0.45)' }
   ]
 };
 

@@ -1788,6 +1788,82 @@ body {
 }
 .shop-item-details { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .shop-item-header { display: flex; flex-direction: column; gap: 4px; }
+
+.store-pack-icons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.store-pack-icons span {
+  min-width: 70px;
+  height: 54px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  color: var(--neon-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 0.78rem;
+  box-shadow: 0 0 16px rgba(0,243,255,0.12);
+}
+
+.store-power-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.power-shop-card {
+  padding: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  align-items: center;
+}
+
+.power-shop-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(0, 243, 255, 0.1);
+  border: 1px solid rgba(0, 243, 255, 0.24);
+  color: var(--neon-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.power-shop-card strong {
+  color: #fff;
+  font-size: 0.92rem;
+}
+
+.power-shop-card span {
+  min-height: 34px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.power-shop-card .btn-buy {
+  width: 100%;
+  padding: 9px 8px;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 420px) {
+  .store-power-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .shop-item-name { font-weight: 800; font-size: 1rem; }
 .shop-item-price { font-weight: 700; color: #feca57; display: flex; align-items: center; gap: 4px; }
 

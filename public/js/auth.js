@@ -37,6 +37,7 @@ class AuthManager {
           email: email,
           highScore: 0,
           coins: 500, // Başlangıç hediyesi!
+          unlockedLevel: 1,
           inventory: {
             bomb: 2,
             rotate: 5,
@@ -121,6 +122,22 @@ class AuthManager {
     return (this.userData && this.userData.inventory) || { bomb: 0, rotate: 0, skip: 0 };
   }
 
+  getUnlockedLevel() {
+    return Math.max(1, (this.userData && this.userData.unlockedLevel) || 1);
+  }
+
+  async setUnlockedLevel(level) {
+    if (!this.user) return false;
+    const safeLevel = Math.max(1, level);
+    try {
+      await db.collection('users').doc(this.user.uid).set({
+        unlockedLevel: safeLevel
+      }, { merge: true });
+      if (this.userData) this.userData.unlockedLevel = safeLevel;
+      return true;
+    } catch (e) { console.error(e); return false; }
+  }
+
   async addCoins(amount) {
     if (!this.user) return false;
     try {
@@ -144,6 +161,28 @@ class AuthManager {
       if (this.userData) {
         this.userData.coins -= price;
         this.userData.inventory[type] = (this.userData.inventory[type] || 0) + 1;
+      }
+      return true;
+    } catch (e) { console.error(e); return false; }
+  }
+
+  async buyBundle(items, price) {
+    if (!this.user || this.getCoins() < price) return false;
+    try {
+      const update = {
+        coins: firebase.firestore.FieldValue.increment(-price)
+      };
+      for (const [type, count] of Object.entries(items)) {
+        if (count > 0) update[`inventory.${type}`] = firebase.firestore.FieldValue.increment(count);
+      }
+      await db.collection('users').doc(this.user.uid).update(update);
+
+      if (this.userData) {
+        this.userData.coins -= price;
+        if (!this.userData.inventory) this.userData.inventory = {};
+        for (const [type, count] of Object.entries(items)) {
+          this.userData.inventory[type] = (this.userData.inventory[type] || 0) + count;
+        }
       }
       return true;
     } catch (e) { console.error(e); return false; }

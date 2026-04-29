@@ -27,7 +27,7 @@ class Game {
     this.levels = this.createLevels();
     this.currentLevel = null;
     this.levelProgressKey = 'blockBattleUnlockedLevel';
-    this.unlockedLevel = parseInt(localStorage.getItem(this.levelProgressKey) || '1', 10);
+    this.unlockedLevel = 1;
     this.ghost = null;
     this.animatingClear = false;
     this.rng = null;
@@ -86,6 +86,7 @@ class Game {
         this.updateCoinDisplays();
         const savedTheme = localStorage.getItem('selectedTheme') || 'default';
         this.setTheme(savedTheme);
+        this.unlockedLevel = this.getSavedUnlockedLevel();
         this.showScreen('menu-screen'); // Default to main menu after login
       } else {
         this.showScreen('login-screen');
@@ -345,6 +346,24 @@ class Game {
           return;
         }
 
+        if (type === 'bundle') {
+          const items = {
+            bomb: parseInt(btn.dataset.bomb || '0', 10),
+            rotate: parseInt(btn.dataset.rotate || '0', 10),
+            skip: parseInt(btn.dataset.skip || '0', 10),
+          };
+          const success = await this.authManager.buyBundle(items, price);
+          if (!success) { btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 500); return; }
+          this.updateCoinDisplays();
+          this.updatePowerUpUI();
+          this.audio.pickup();
+          const originalText = btn.textContent;
+          btn.textContent = 'ALINDI';
+          btn.style.background = '#27ae60';
+          setTimeout(() => { btn.textContent = originalText; btn.style.background = ''; }, 1000);
+          return;
+        }
+
         const success = await this.authManager.buyPowerUp(type, price);
         if (success) {
           this.updateCoinDisplays();
@@ -532,23 +551,43 @@ class Game {
   // ── Levels ──
   createLevels() {
     return [
-      { id: 1, title: 'Isinma', target: 120, blockers: 0, difficulty: 'Kolay' },
-      { id: 2, title: 'Hat Temizligi', target: 220, blockers: 4, difficulty: 'Kolay' },
-      { id: 3, title: 'Kose Baskisi', target: 340, blockers: 7, difficulty: 'Orta' },
+      { id: 1, title: 'Isınma', target: 120, blockers: 0, difficulty: 'Kolay' },
+      { id: 2, title: 'Hat Temizliği', target: 220, blockers: 4, difficulty: 'Kolay' },
+      { id: 3, title: 'Köşe Baskısı', target: 340, blockers: 7, difficulty: 'Orta' },
       { id: 4, title: 'Dar Koridor', target: 480, blockers: 10, difficulty: 'Orta' },
-      { id: 5, title: 'Cift Cephe', target: 650, blockers: 13, difficulty: 'Orta' },
+      { id: 5, title: 'Çift Cephe', target: 650, blockers: 13, difficulty: 'Orta' },
       { id: 6, title: 'Neon Kilit', target: 850, blockers: 16, difficulty: 'Zor' },
-      { id: 7, title: 'Yogun Alan', target: 1100, blockers: 19, difficulty: 'Zor' },
-      { id: 8, title: 'Siber Kusatma', target: 1400, blockers: 22, difficulty: 'Zor' },
+      { id: 7, title: 'Yoğun Alan', target: 1100, blockers: 19, difficulty: 'Zor' },
+      { id: 8, title: 'Siber Kuşatma', target: 1400, blockers: 22, difficulty: 'Zor' },
       { id: 9, title: 'Son Hat', target: 1750, blockers: 25, difficulty: 'Usta' },
-      { id: 10, title: 'Final Cekirdegi', target: 2200, blockers: 28, difficulty: 'Usta' },
+      { id: 10, title: 'Final Çekirdeği', target: 2200, blockers: 28, difficulty: 'Usta' },
     ];
+  }
+
+  getLevelProgressKey() {
+    const uid = this.authManager && this.authManager.user ? this.authManager.user.uid : 'guest';
+    return `${this.levelProgressKey}:${uid}`;
+  }
+
+  getSavedUnlockedLevel() {
+    const accountLevel = this.authManager && this.authManager.getUnlockedLevel ? this.authManager.getUnlockedLevel() : 1;
+    const deviceLevel = parseInt(localStorage.getItem(this.getLevelProgressKey()) || '1', 10);
+    return Math.max(1, Math.min(this.levels.length + 1, Math.max(accountLevel, deviceLevel)));
+  }
+
+  async saveUnlockedLevel(level) {
+    const safeLevel = Math.max(1, Math.min(this.levels.length + 1, level));
+    this.unlockedLevel = safeLevel;
+    localStorage.setItem(this.getLevelProgressKey(), String(safeLevel));
+    if (this.authManager && this.authManager.setUnlockedLevel) {
+      await this.authManager.setUnlockedLevel(safeLevel);
+    }
   }
 
   renderLevelMap() {
     const map = document.getElementById('level-map');
     if (!map) return;
-    this.unlockedLevel = Math.max(1, Math.min(this.levels.length + 1, parseInt(localStorage.getItem(this.levelProgressKey) || String(this.unlockedLevel || 1), 10)));
+    this.unlockedLevel = this.getSavedUnlockedLevel();
     map.innerHTML = '';
     this.levels.forEach(level => {
       const isUnlocked = level.id <= Math.min(this.unlockedLevel, this.levels.length);
@@ -588,17 +627,16 @@ class Game {
     }
   }
 
-  completeCurrentLevel() {
+  async completeCurrentLevel() {
     if (!this.currentLevel) return;
     const nextLevel = Math.min(this.currentLevel.id + 1, this.levels.length + 1);
     if (this.currentLevel.id >= this.unlockedLevel) {
-      this.unlockedLevel = nextLevel;
-      localStorage.setItem(this.levelProgressKey, String(this.unlockedLevel));
+      await this.saveUnlockedLevel(nextLevel);
     }
     this.state = 'gameover';
     this.audio.win();
     this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
-    this.showGameOverScreen(true, `${this.currentLevel.id}. bolum tamamlandi!`);
+    this.showGameOverScreen(true, `${this.currentLevel.id}. bölüm tamamlandı!`);
   }
 
   // ── Game Start ──
