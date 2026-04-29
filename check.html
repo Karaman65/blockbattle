@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <meta name="description" content="Block Battle - Online çok oyunculu blok bulmaca oyunu. Arkadaşlarınla yarış!">
+  <title>Block Battle — Online Block Puzzle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6c5ce7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-512.png">
+</head>
+<body>
+
+  <!-- ═══ AUTH: LOGIN SCREEN ═══ -->
+  <div id="login-screen" class="screen active">
+    <div class="menu-bg-effects">
+      <div class="floating-block fb1"></div>
+      <div class="floating-block fb2"></div>
+      <div class="floating-block fb3"></div>
+      <div class="floating-block fb4"></div>
+      <div class="floating-block fb5"></div>
+    </div>
+    <div class="panel glass-panel auth-panel">
+      <div class="menu-header" style="text-align: center; margin-bottom: 20px;">
+        <h1 class="logo" style="justify-content: center;">
+          <span class="logo-block">BLOCK</span><span class="logo-battle">BATTLE</span>
+        </h1>
+        <p class="subtitle">Sisteme bağlanılıyor...</p>
+      </div>
+      
+      <div id="login-error" class="auth-error hidden"></div>
+      <form id="login-form" class="auth-form">
+        <div class="input-group">
+          <label for="login-email">OPERATÖR KİMLİĞİ</label>
+          <input type="text" id="login-email" class="input-field auth-input" placeholder="Email veya kullanıcı adı" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label for="login-password">ERİŞİM ANAHTARI</label>
+          <input type="password" id="login-password" class="input-field auth-input" placeholder="••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" id="btn-login" class="btn btn-primary btn-large btn-full">🔑 GİRİŞ YAP</button>
+      </form>
+      <div class="auth-switch">
+        Yeni operatör müsün? <a href="#" id="goto-register" class="auth-link">KAYIT OL</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ AUTH: REGISTER SCREEN ═══ -->
+  <div id="register-screen" class="screen">
+    <div class="menu-bg-effects">
+      <div class="floating-block fb1"></div>
+      <div class="floating-block fb2"></div>
+      <div class="floating-block fb3"></div>
+    </div>
+    <div class="panel glass-panel auth-panel">
+      <div class="menu-header" style="text-align: center; margin-bottom: 20px;">
+        <h1 class="logo" style="justify-content: center;">
+          <span class="logo-block">BLOCK</span><span class="logo-battle">BATTLE</span>
+        </h1>
+        <p class="subtitle">Yeni hesap oluşturuluyor...</p>
+      </div>
+
+      <div id="register-error" class="auth-error hidden"></div>
+      <form id="register-form" class="auth-form">
+        <div class="input-group">
+          <label for="reg-username">KULLANICI ADI</label>
+          <input type="text" id="reg-username" class="input-field auth-input" placeholder="CoolPlayer" required minlength="3" maxlength="16" autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label for="reg-email">E-POSTA ADRESİ</label>
+          <input type="email" id="reg-email" class="input-field auth-input" placeholder="ornek@email.com" required autocomplete="email">
+        </div>
+        <div class="input-group">
+          <label for="reg-password">ŞİFRE</label>
+          <input type="password" id="reg-password" class="input-field auth-input" placeholder="En az 6 karakter" required minlength="6" autocomplete="new-password">
+        </div>
+        <button type="submit" id="btn-register" class="btn btn-accent btn-large btn-full">🚀 KAYIT OL</button>
+      </form>
+      <div class="auth-switch">
+        Zaten hesabın var mı? <a href="#" id="goto-login" class="auth-link">GİRİŞ YAP</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LOADING SCREEN ═══ -->
+  <div id="loading-screen" class="screen">
+    <div class="spinner-container"><div class="spinner"></div></div>
+    <p class="loading-text">Yükleniyor...</p>
+  </div>
+
+  <!-- ═══ MAIN MENU (KONTROL MERKEZİ) ═══ -->
+  <div id="menu-screen" class="screen">
+    <div class="menu-bg-effects">
+      <div class="floating-block fb1"></div>
+      <div class="floating-block fb2"></div>
+      <div class="floating-block fb3"></div>
+      <div class="floating-block fb4"></div>
+      <div class="floating-block fb5"></div>
+    </div>
+    <div class="menu-content">
+      <div class="menu-header">
+        <h1 class="logo" id="main-logo">
+          <span class="logo-block">KONTROL</span><span class="logo-battle">MERKEZİ</span>
+        </h1>
+        <p class="subtitle">Sisteme hoş geldin, operatör. Hedefini seç.</p>
+        <div class="user-stats-bar">
+          <div class="user-badge" id="user-badge">
+            <span class="user-avatar">👤</span>
+            <span class="user-name" id="menu-username">Oyuncu</span>
+          </div>
+          <div class="stats-right">
+            <div class="level-badge">LVL <span id="user-level">1</span></div>
+            <div class="coin-badge" id="menu-coin-badge">
+              <span id="menu-coins">0</span> <span class="coin-icon">§</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-grid">
+        <button id="btn-solo" class="card-btn card-large">
+          <div class="card-icon">🎯</div>
+          <div class="card-label">ANTRENMAN</div>
+          <h2 class="card-title">SOLO OYNA</h2>
+        </button>
+
+        <div class="card-row">
+          <button id="btn-online" class="card-btn card-half">
+            <div class="card-icon">⚔️</div>
+            <h2 class="card-title">Online<br>Oyna</h2>
+          </button>
+          <button id="btn-leaderboard" class="card-btn card-half">
+            <div class="card-icon">🏆</div>
+            <div class="card-label">TOP 100</div>
+            <h2 class="card-title">Sıralama</h2>
+          </button>
+        </div>
+
+        <button id="btn-profile" class="card-btn card-list">
+          <div class="card-icon">👤</div>
+          <div class="card-text">
+            <h2 class="card-title">PROFİL AYARLARI</h2>
+            <p>İstatistikleri ve ekipmanları yönet</p>
+          </div>
+          <div class="card-arrow">›</div>
+        </button>
+      </div>
+
+      <div class="menu-footer-btns">
+        <button id="btn-sound-toggle" class="btn btn-icon-only" title="Ses Aç/Kapat">🔊</button>
+        <button id="btn-logout" class="btn btn-icon-only" title="Çıkış Yap">🚪</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STORE SCREEN ═══ -->
+  <div id="store-screen" class="screen">
+    <div class="panel glass-panel store-panel">
+      <div class="store-header">
+        <h2 class="store-title">MAĞAZA</h2>
+        <div class="coin-badge">
+          <span id="store-coins">0</span>
+          <span class="coin-icon">§</span>
+        </div>
+      </div>
+
+      <div class="store-scroll-area">
+        <!-- ── FEATURED ITEMS (Güçlendiriciler) ── -->
+        <div class="store-section-title">FEATURED ITEMS</div>
+        <p class="store-section-subtitle">Oyun içi avantaj sağlayan güçlendiriciler</p>
+        
+        <div id="store-powerups" class="store-grid-large">
+          <div class="store-card-large">
+            <div class="card-image-placeholder">
+              <span class="card-big-icon">💣</span>
+            </div>
+            <div class="card-details">
+              <div class="card-text-left">
+                <span class="item-name">Bomba</span>
+                <span class="item-price">150 §</span>
+              </div>
+              <button class="btn btn-buy" data-type="bomb" data-price="150">SATIN AL</button>
+            </div>
+          </div>
+          <div class="store-card-large">
+            <div class="card-image-placeholder">
+              <span class="card-big-icon">🔄</span>
+            </div>
+            <div class="card-details">
+              <div class="card-text-left">
+                <span class="item-name">Döndür</span>
+                <span class="item-price">50 §</span>
+              </div>
+              <button class="btn btn-buy" data-type="rotate" data-price="50">SATIN AL</button>
+            </div>
+          </div>
+          <div class="store-card-large">
+            <div class="card-image-placeholder">
+              <span class="card-big-icon">⏭️</span>
+            </div>
+            <div class="card-details">
+              <div class="card-text-left">
+                <span class="item-name">Pas Geç</span>
+                <span class="item-price">100 §</span>
+              </div>
+              <button class="btn btn-buy" data-type="skip" data-price="100">SATIN AL</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── BLOCK SKINS (Temalar) ── -->
+        <div class="store-section-title mt-24">BLOCK SKINS</div>
+        
+        <div id="store-themes" class="store-grid-half">
+          <div class="store-card-small">
+            <div class="card-icon-box">🌈</div>
+            <span class="item-name">Neon Klasik</span>
+            <button class="btn btn-buy btn-small" data-type="theme" data-id="default" data-price="0">Seçildi</button>
+          </div>
+          <div class="store-card-small">
+            <div class="card-icon-box">🎨</div>
+            <span class="item-name">Yumuşak Pastel</span>
+            <button class="btn btn-buy btn-small" data-type="theme" data-id="pastel" data-price="1000">1000 §</button>
+          </div>
+          <div class="store-card-small">
+            <div class="card-icon-box">🌑</div>
+            <span class="item-name">Gece Modu</span>
+            <button class="btn btn-buy btn-small" data-type="theme" data-id="dark" data-price="1500">1500 §</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LEADERBOARD SCREEN ═══ -->
+  <div id="leaderboard-screen" class="screen">
+    <div class="panel glass-panel leaderboard-panel">
+      <div class="store-header">
+        <h2 class="store-title">SIRALAMA</h2>
+      </div>
+      <div id="leaderboard-list" class="leaderboard-list cyber-list">
+        <!-- Rows will be injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PROFILE SCREEN ═══ -->
+  <div id="profile-screen" class="screen">
+    <div class="panel glass-panel profile-panel">
+      <div class="store-header">
+        <h2 class="store-title">PROFİL</h2>
+      </div>
+      
+      <div class="store-scroll-area">
+        <div class="profile-card-cyber">
+          <div class="profile-avatar-big">👤</div>
+          <div class="profile-info-main">
+            <h2 id="profile-username" class="p-name">Oyuncu</h2>
+            <p id="profile-email" class="p-email">email@example.com</p>
+          </div>
+        </div>
+
+        <div class="profile-stats-grid">
+          <div class="p-stat-card">
+            <span class="p-stat-value" id="p-high-score">0</span>
+            <span class="p-stat-label">REKOR</span>
+          </div>
+          <div class="p-stat-card">
+            <span class="p-stat-value" id="p-total-games">0</span>
+            <span class="p-stat-label">MAÇLAR</span>
+          </div>
+          <div class="p-stat-card">
+            <span class="p-stat-value" id="p-total-wins">0</span>
+            <span class="p-stat-label">ZAFER</span>
+          </div>
+        </div>
+
+        <div class="store-section-title mt-24">MATCH HISTORY</div>
+        <div id="match-history" class="match-history cyber-list">
+          <!-- History injected here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ONLINE MENU ═══ -->
+  <div id="online-screen" class="screen">
+    <div class="panel glass-panel auth-panel">
+      <div class="store-header">
+        <h2 class="store-title">ONLINE MOD</h2>
+      </div>
+      
+      <div class="mode-select mt-24">
+        <button class="mode-btn active" data-mode="score" id="mode-score">
+          <span class="mode-icon">🏆</span>
+          <span class="mode-name">Puan Savaşı</span>
+          <span class="mode-desc">3 dakikada en çok puan</span>
+        </button>
+        <button class="mode-btn" data-mode="time" id="mode-time">
+          <span class="mode-icon">⚡</span>
+          <span class="mode-name">Hız Yarışı</span>
+          <span class="mode-desc">1000 puana ilk ulaşan</span>
+        </button>
+      </div>
+
+      <div class="match-options">
+        <button id="btn-quick-match" class="btn btn-primary btn-large btn-full">🎯 Hızlı Eşleşme</button>
+        <button id="btn-create-room" class="btn btn-secondary btn-full mt-10">🏠 Oda Oluştur</button>
+        
+        <div class="join-section mt-24">
+          <input type="text" id="room-code-input" class="input-field" placeholder="Oda Kodu Gir" maxlength="6" autocomplete="off">
+          <button id="btn-join-room" class="btn btn-accent">Katıl</button>
+        </div>
+      </div>
+      <button id="online-back" class="btn btn-ghost mt-24">← Geri Dön</button>
+    </div>
+  </div>
+
+  <!-- ═══ WAITING ROOM ═══ -->
+  <div id="waiting-screen" class="screen">
+    <div class="panel glass-panel waiting-panel auth-panel">
+      <div class="spinner-container">
+        <div class="spinner"></div>
+      </div>
+      <h2 class="panel-title-cyber mt-24">RAKİP BEKLENİYOR</h2>
+      <div id="room-info" class="room-info mt-24">
+        <p class="room-code-label">SİSTEM KODU</p>
+        <div class="room-code-display" id="room-code-display">------</div>
+        <div class="room-share-btns mt-10">
+          <button id="btn-copy-code" class="btn btn-small btn-secondary">📋 Kodu Kopyala</button>
+          <button id="btn-copy-link" class="btn btn-small btn-accent">🔗 Link Kopyala</button>
+        </div>
+      </div>
+      <button id="waiting-back" class="btn btn-ghost mt-24">İptal Et</button>
+    </div>
+  </div>
+
+  <!-- ═══ PREMIUM SCREEN ═══ -->
+  <div id="premium-screen" class="screen">
+    <div class="panel glass-panel premium-panel">
+      <div class="premium-header">
+        <h2 class="premium-title-cyber">PREMIUM UPGRADE</h2>
+        <p class="premium-subtitle-cyber">Oyun deneyimini bir üst seviyeye taşı</p>
+      </div>
+      
+      <div class="premium-perks-cyber">
+        <div class="perk-cyber">
+          <div class="perk-icon-cyber" style="color:var(--neon-purple);">🚫</div>
+          <div class="perk-info-cyber">
+            <span class="perk-name-cyber">Reklamları Kaldır</span>
+            <span class="perk-desc-cyber">Kesintisiz oyun keyfi yaşa.</span>
+          </div>
+        </div>
+        <div class="perk-cyber">
+          <div class="perk-icon-cyber" style="color:var(--neon-cyan);">✨</div>
+          <div class="perk-info-cyber">
+            <span class="perk-name-cyber">Özel İsim Rengi</span>
+            <span class="perk-desc-cyber">Liderlik tablosunda neonlarla parla.</span>
+          </div>
+        </div>
+        <div class="perk-cyber">
+          <div class="perk-icon-cyber" style="color:#feca57;">💎</div>
+          <div class="perk-info-cyber">
+            <span class="perk-name-cyber">VIP Destek & Temalar</span>
+            <span class="perk-desc-cyber">Özel skinlere öncelikli erişim.</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-buy-premium" class="btn btn-buy-cyber">
+        <span class="buy-cyber-text">HEMEN SATIN AL</span>
+        <span class="buy-cyber-price">₺99 / Ay</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ GAME SCREEN ═══ -->
+  <div id="game-screen" class="screen">
+    <div id="game-header">
+      <div class="header-left">
+        <div class="stat-box" id="score-box">
+          <span class="stat-label">SKOR</span>
+          <span class="stat-value" id="score-value">0</span>
+        </div>
+      </div>
+      <div class="header-center">
+        <div class="stat-box timer-box hidden" id="timer-box">
+          <span class="stat-value timer-value" id="timer-value">3:00</span>
+        </div>
+        <div id="combo-display" class="combo-display hidden">
+          <span id="combo-text">COMBO ×2</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="stat-box hidden" id="opponent-score-box">
+          <span class="stat-label">RAKİP</span>
+          <span class="stat-value" id="opponent-score-value">0</span>
+        </div>
+        <button id="btn-game-menu" class="btn btn-icon-only btn-small">☰</button>
+      </div>
+    </div>
+
+    <div id="game-area">
+      <div id="boards-container">
+        <div id="main-board-wrap">
+          <canvas id="game-canvas"></canvas>
+        </div>
+        <div id="opponent-board-wrap" class="hidden">
+          <div class="opponent-label">Rakip</div>
+          <canvas id="opponent-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div id="power-ups">
+      <button id="btn-bomb" class="power-up-btn" title="Bomba: 3x3 Alanı Patlat">
+        <span class="pu-icon">💣</span>
+        <span class="pu-count" id="count-bomb">1</span>
+      </button>
+      <button id="btn-rotate" class="power-up-btn" title="Döndür: Parçaları Döndür">
+        <span class="pu-icon">🔄</span>
+        <span class="pu-count" id="count-rotate">2</span>
+      </button>
+      <button id="btn-skip" class="power-up-btn" title="Pas Geç: Yeni Parçalar Al">
+        <span class="pu-icon">⏭️</span>
+        <span class="pu-count" id="count-skip">1</span>
+      </button>
+    </div>
+
+    <div id="piece-tray"></div>
+
+    <div id="score-popup-container"></div>
+  </div>
+
+  <!-- ═══ GAME OVER ═══ -->
+  <div id="gameover-screen" class="screen">
+    <div class="panel glass-panel gameover-panel">
+      <h2 id="gameover-title" class="gameover-title">Oyun Bitti!</h2>
+      <div class="gameover-stats">
+        <div class="go-stat">
+          <span class="go-stat-label">Skor</span>
+          <span class="go-stat-value" id="gameover-score">0</span>
+        </div>
+        <div class="go-stat" id="go-high-score-wrap">
+          <span class="go-stat-label">En Yüksek</span>
+          <span class="go-stat-value" id="gameover-high">0</span>
+        </div>
+      </div>
+      <div id="gameover-result" class="gameover-result hidden"></div>
+      <div class="gameover-buttons">
+        <button id="btn-play-again" class="btn btn-primary btn-large">🔄 Tekrar Oyna</button>
+        <button id="btn-go-menu" class="btn btn-ghost">Ana Menü</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAUSE OVERLAY ═══ -->
+  <div id="pause-overlay" class="screen overlay hidden">
+    <div class="panel glass-panel">
+      <h2 class="panel-title">Duraklatıldı</h2>
+      <button id="btn-resume" class="btn btn-primary">▶ Devam Et</button>
+      <button id="btn-quit" class="btn btn-ghost">🚪 Çık</button>
+    </div>
+  </div>
+
+  <!-- ═══ BOTTOM NAVIGATION BAR ═══ -->
+  <nav id="bottom-nav" class="bottom-nav hidden">
+    <button class="nav-item active" data-target="menu-screen">
+      <div class="nav-icon">🗺️</div>
+      <span>MAP</span>
+    </button>
+    <button class="nav-item" data-target="quests-screen">
+      <div class="nav-icon">📋</div>
+      <span>QUESTS</span>
+    </button>
+    <button class="nav-item" data-target="store-screen">
+      <div class="nav-icon">🛒</div>
+      <span>SHOP</span>
+    </button>
+    <button class="nav-item" data-target="premium-screen">
+      <div class="nav-icon">⭐</div>
+      <span>PREMIUM</span>
+    </button>
+  </nav>
+
+  <!-- ═══ QUESTS SCREEN ═══ -->
+  <div id="quests-screen" class="screen">
+    <div class="panel glass-panel store-panel">
+      <div class="store-header">
+        <h2 class="store-title">GÖREVLER</h2>
+      </div>
+
+      <div class="store-scroll-area">
+        <!-- ── PATH TO LEGEND ── -->
+        <div class="store-section-title">PATH TO LEGEND</div>
+        <div class="path-container">
+          <div class="path-track">
+            <div class="path-step active">
+              <div class="step-num">1</div>
+              <div class="step-reward">🎁</div>
+              <div class="step-label">ALINDI</div>
+            </div>
+            <div class="path-step">
+              <div class="step-num">2</div>
+              <div class="step-reward">💎</div>
+              <div class="step-label">KİLİTLİ</div>
+            </div>
+            <div class="path-step">
+              <div class="step-num">3</div>
+              <div class="step-reward">💰</div>
+              <div class="step-label">KİLİTLİ</div>
+            </div>
+            <div class="path-step">
+              <div class="step-num">4</div>
+              <div class="step-reward">👑</div>
+              <div class="step-label">KİLİTLİ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── WEEKLY REWARDS ── -->
+        <div class="store-section-title mt-24">WEEKLY REWARDS</div>
+        <div class="weekly-container">
+          <div class="weekly-progress-bar">
+            <div class="weekly-fill" style="width: 40%"></div>
+            <div class="weekly-marker m1 active">🎁</div>
+            <div class="weekly-marker m2">🎁</div>
+            <div class="weekly-marker m3">🎁</div>
+          </div>
+          <p class="weekly-hint">4/10 Görev tamamlandı</p>
+        </div>
+
+        <!-- ── DAILY QUESTS ── -->
+        <div class="store-section-title mt-24">DAILY QUESTS</div>
+        <div class="store-items-grid" style="padding: 0;">
+          <div class="store-item">
+            <div class="item-icon" style="background: rgba(0, 229, 255, 0.1); color: var(--neon-cyan);">🎁</div>
+            <div class="item-info">
+              <span class="item-name">Günlük Giriş</span>
+              <span class="item-desc">Sisteme giriş yapıldı</span>
+            </div>
+            <button id="btn-daily-reward-quest" class="btn btn-buy">AL</button>
+          </div>
+          <div class="store-item" style="opacity: 0.6;">
+            <div class="item-icon">⚔️</div>
+            <div class="item-info">
+              <span class="item-name">3 Maç Kazan</span>
+              <div class="quest-progress"><div class="quest-fill" style="width:33%"></div></div>
+            </div>
+            <button class="btn btn-buy" disabled>1/3</button>
+          </div>
+          <div class="store-item" style="opacity: 0.6;">
+            <div class="item-icon">💯</div>
+            <div class="item-info">
+              <span class="item-name">5000 Puan Yap</span>
+              <div class="quest-progress"><div class="quest-fill" style="width:60%"></div></div>
+            </div>
+            <button class="btn btn-buy" disabled>3K/5K</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <!-- Socket.IO -->
+  <script src="js/socket.io.min.js?v=1.1"></script>
+
+  <!-- Game Scripts -->
+  <script src="js/firebase-config.js?v=1.1"></script>
+  <script src="js/blocks.js?v=1.1"></script>
+  <script src="js/audio.js?v=1.1"></script>
+  <script src="js/renderer.js?v=1.1"></script>
+  <script src="js/input.js?v=1.1"></script>
+  <script src="js/network.js?v=1.1"></script>
+  <script src="js/auth.js?v=1.1"></script>
+  <script src="js/db.js?v=1.1"></script>
+  <script src="js/ad.js?v=1.1"></script>
+  <script src="js/game.js?v=1.1"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

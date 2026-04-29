@@ -24,6 +24,10 @@ class Game {
     this.opponentCellSize = 18;
     this.timerRemaining = 0;
     this.targetScore = 1000;
+    this.levels = this.createLevels();
+    this.currentLevel = null;
+    this.levelProgressKey = 'blockBattleUnlockedLevel';
+    this.unlockedLevel = parseInt(localStorage.getItem(this.levelProgressKey) || '1', 10);
     this.ghost = null;
     this.animatingClear = false;
     this.rng = null;
@@ -72,7 +76,8 @@ class Game {
         // Premium checks
         let displayName = this.authManager.getUsername();
         if (this.authManager.isPremium()) {
-          document.getElementById('btn-premium-menu').classList.add('hidden');
+          const premiumMenuBtn = document.getElementById('btn-premium-menu');
+          if (premiumMenuBtn) premiumMenuBtn.classList.add('hidden');
           this.ad.hideBanner();
           displayName += ' 👑';
         }
@@ -81,7 +86,7 @@ class Game {
         this.updateCoinDisplays();
         const savedTheme = localStorage.getItem('selectedTheme') || 'default';
         this.setTheme(savedTheme);
-        this.showScreen('menu-screen');
+        this.showScreen('map-screen'); // Default to map screen after login
       } else {
         this.showScreen('login-screen');
       }
@@ -102,6 +107,22 @@ class Game {
     });
     const el = document.getElementById(id);
     if (el) el.classList.add('active');
+    if (id === 'map-screen') this.renderLevelMap();
+
+    // Bottom Nav Visibility
+    const bottomNav = document.getElementById('bottom-nav');
+    if (bottomNav) {
+      const showNavScreens = ['menu-screen', 'store-screen', 'quests-screen', 'premium-screen', 'profile-screen', 'leaderboard-screen', 'map-screen'];
+      if (showNavScreens.includes(id) && this.authManager && this.authManager.user) {
+        bottomNav.classList.remove('hidden');
+        // Update active state
+        document.querySelectorAll('.nav-item').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.target === id);
+        });
+      } else {
+        bottomNav.classList.add('hidden');
+      }
+    }
   }
 
   // ── Auth UI ──
@@ -141,7 +162,7 @@ class Game {
   }
 
   setupUI() {
-    document.getElementById('btn-solo').onclick = () => this.startSoloGame();
+    document.getElementById('btn-solo').onclick = () => this.showScreen('map-screen');
     const btnOnline = document.getElementById('btn-online');
     if (btnOnline) {
       btnOnline.onclick = null; // Clear previous
@@ -182,51 +203,92 @@ class Game {
       await this.authManager.logout();
     };
 
-    const btnDaily = document.getElementById('btn-daily-reward');
-    if (btnDaily) {
-      btnDaily.onclick = async () => {
+    const btnDailyQuest = document.getElementById('btn-daily-reward-quest');
+    if (btnDailyQuest) {
+      btnDailyQuest.onclick = async () => {
         const last = localStorage.getItem('lastDaily');
         const today = new Date().toDateString();
         if (last === today) {
-          btnDaily.textContent = '❌ Bugün aldın!';
-          setTimeout(() => btnDaily.innerHTML = '<span class="btn-icon">🎁</span> Günlük Hediye', 2000);
+          btnDailyQuest.textContent = 'ALINDI';
+          btnDailyQuest.disabled = true;
           return;
         }
-        const success = await this.authManager.addCoins(100);
+        const reward = parseInt(btnDailyQuest.dataset.rewardCoins || '250', 10);
+        const success = await this.authManager.addCoins(reward);
         if (success) {
           localStorage.setItem('lastDaily', today);
-          btnDaily.textContent = '✅ +100 💰 Kazandın!';
+          btnDailyQuest.textContent = 'ALINDI';
+          btnDailyQuest.disabled = true;
           this.updateCoinDisplays();
           this.audio.pickup();
-          setTimeout(() => btnDaily.innerHTML = '<span class="btn-icon">🎁</span> Günlük Hediye', 3000);
         }
+      };
+      // Initial check
+      if (localStorage.getItem('lastDaily') === new Date().toDateString()) {
+        btnDailyQuest.textContent = 'ALINDI';
+        btnDailyQuest.disabled = true;
+      }
+    }
+
+    const btnUpdateDetails = document.getElementById('btn-update-details');
+    if (btnUpdateDetails) {
+      btnUpdateDetails.onclick = () => {
+        alert("Sezon 4: Neon Pulse aktif. Neo-Istanbul haritasında günlük görevleri tamamla, XP kazan ve mağazadaki yeni görünümleri aç.");
       };
     }
 
     // Leaderboard
     document.getElementById('btn-leaderboard').onclick = () => this.showLeaderboard();
-    document.getElementById('leaderboard-back').onclick = () => this.showScreen('menu-screen');
 
     // Profile
     document.getElementById('btn-profile').onclick = () => this.showProfile();
-    document.getElementById('profile-back').onclick = () => this.showScreen('menu-screen');
 
-    // Store
-    const btnStore = document.getElementById('btn-store');
-    if (btnStore) btnStore.onclick = () => this.showStore();
-    
-    const storeBack = document.getElementById('store-back');
-    if (storeBack) storeBack.onclick = () => this.showScreen('menu-screen');
-    
-    // Store Tabs
-    document.querySelectorAll('.store-tab').forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll('.store-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        const target = tab.dataset.tab;
-        document.getElementById('store-powerups').classList.add('hidden');
-        document.getElementById('store-themes').classList.add('hidden');
-        document.getElementById(`store-${target}`).classList.remove('hidden');
+    // Quest Claim buttons
+    document.querySelectorAll('#quests-screen [data-reward-coins]').forEach(btn => {
+      if (btn.id !== 'btn-daily-reward-quest') {
+        btn.onclick = async () => {
+          const reward = parseInt(btn.dataset.rewardCoins || '250', 10);
+          const success = await this.authManager.addCoins(reward);
+          if (success) {
+            btn.textContent = 'ALINDI';
+            btn.disabled = true;
+            this.updateCoinDisplays();
+            this.audio.pickup();
+          }
+        };
+      }
+    });
+
+    // Premium Plans
+    const planMonthly = document.getElementById('plan-monthly');
+    const planAnnual = document.getElementById('plan-annual');
+    if (planMonthly && planAnnual) {
+      planMonthly.onclick = () => {
+        planMonthly.classList.add('active');
+        planAnnual.classList.remove('active');
+      };
+      planAnnual.onclick = () => {
+        planAnnual.classList.add('active');
+        planMonthly.classList.remove('active');
+      };
+    }
+
+    const btnBuyPremiumNew = document.getElementById('btn-buy-premium-new');
+    if (btnBuyPremiumNew) {
+      btnBuyPremiumNew.onclick = () => {
+        btnBuyPremiumNew.disabled = true;
+        btnBuyPremiumNew.textContent = '⏳ İşlem yapılıyor...';
+        document.getElementById('btn-buy-premium').click(); // Trigger the actual logic
+      };
+    }
+
+    // Bottom Navigation Logic
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      btn.onclick = () => {
+        const target = btn.dataset.target;
+        if (target === 'store-screen') this.showStore();
+        else if (target === 'map-screen') this.showScreen('map-screen');
+        else this.showScreen(target);
       };
     });
 
@@ -264,12 +326,6 @@ class Game {
       };
     });
 
-    const btnPremiumMenu = document.getElementById('btn-premium-menu');
-    if (btnPremiumMenu) btnPremiumMenu.onclick = () => this.showScreen('premium-screen');
-    
-    const premiumBack = document.getElementById('premium-back');
-    if (premiumBack) premiumBack.onclick = () => this.showScreen('menu-screen');
-    
     const btnBuyPremium = document.getElementById('btn-buy-premium');
     if (btnBuyPremium) {
       btnBuyPremium.onclick = async () => {
@@ -279,12 +335,21 @@ class Game {
         if (success) {
           btnBuyPremium.textContent = '✅ Artık Premium Üyesiniz!';
           btnBuyPremium.style.background = '#2ed573';
+          if (btnBuyPremiumNew) {
+            btnBuyPremiumNew.textContent = '✅ PREMIUM AKTİF';
+            btnBuyPremiumNew.style.background = '#2ed573';
+          }
           this.ad.hideBanner();
+          const btnPremiumMenu = document.getElementById('btn-premium-menu');
           if (btnPremiumMenu) btnPremiumMenu.classList.add('hidden');
           setTimeout(() => this.showScreen('menu-screen'), 2000);
         } else {
           btnBuyPremium.disabled = false;
           btnBuyPremium.textContent = '❌ Hata oluştu!';
+          if (btnBuyPremiumNew) {
+            btnBuyPremiumNew.disabled = false;
+            btnBuyPremiumNew.textContent = 'ŞİMDİ YÜKSELT';
+          }
           setTimeout(() => btnBuyPremium.textContent = '💎 Hemen Satın Al', 2000);
         }
       };
@@ -303,24 +368,33 @@ class Game {
     // Waiting
     document.getElementById('waiting-back').onclick = () => { this.network.leaveRoom(); this.showScreen('online-screen'); };
     document.getElementById('btn-copy-code').onclick = () => {
-      navigator.clipboard.writeText(document.getElementById('room-code-display').textContent).then(() => {
-        document.getElementById('btn-copy-code').textContent = '✅ Kopyalandı!';
-        setTimeout(() => { document.getElementById('btn-copy-code').textContent = '📋 Kodu Kopyala'; }, 1500);
-      });
+      const btn = document.getElementById('btn-copy-code');
+      this.copyText(document.getElementById('room-code-display').textContent, btn, '📋 KOPYALA');
     };
     document.getElementById('btn-copy-link').onclick = () => {
-      navigator.clipboard.writeText(this.network.getRoomLink()).then(() => {
-        document.getElementById('btn-copy-link').textContent = '✅ Kopyalandı!';
-        setTimeout(() => { document.getElementById('btn-copy-link').textContent = '🔗 Link Kopyala'; }, 1500);
-      });
+      const btn = document.getElementById('btn-copy-link');
+      this.copyText(this.network.getRoomLink(), btn, '🔗 LİNK');
     };
 
     // Game screen
     document.getElementById('btn-game-menu').onclick = () => {
-      if (this.mode === 'solo') { document.getElementById('pause-overlay').classList.remove('hidden'); document.getElementById('pause-overlay').classList.add('active'); }
+      const pauseTitle = document.getElementById('pause-title');
+      if (pauseTitle) pauseTitle.textContent = this.mode === 'online' ? 'Maç Menüsü' : 'Duraklatıldı';
+      document.getElementById('pause-overlay').classList.remove('hidden');
+      document.getElementById('pause-overlay').classList.add('active');
     };
     document.getElementById('btn-resume').onclick = () => { document.getElementById('pause-overlay').classList.add('hidden'); document.getElementById('pause-overlay').classList.remove('active'); };
-    document.getElementById('btn-quit').onclick = () => { document.getElementById('pause-overlay').classList.add('hidden'); document.getElementById('pause-overlay').classList.remove('active'); this.endGame(); };
+    document.getElementById('btn-quit').onclick = () => {
+      document.getElementById('pause-overlay').classList.add('hidden');
+      document.getElementById('pause-overlay').classList.remove('active');
+      if (this.mode === 'online') {
+        this.network.leaveRoom();
+        this.state = 'menu';
+        this.showScreen('menu-screen');
+      } else {
+        this.endGame();
+      }
+    };
 
     // Power-ups
     document.getElementById('btn-bomb').onclick = () => this.toggleBombMode();
@@ -328,8 +402,37 @@ class Game {
     document.getElementById('btn-skip').onclick = () => this.useSkip();
 
     // Game over
-    document.getElementById('btn-play-again').onclick = () => { this.mode === 'online' ? this.showScreen('online-screen') : this.startSoloGame(); };
-    document.getElementById('btn-go-menu').onclick = () => { this.network.leaveRoom(); this.showScreen('menu-screen'); };
+    document.getElementById('btn-play-again').onclick = () => {
+      this.mode === 'online' ? this.showScreen('online-screen') : this.startSoloGame(this.currentLevel ? this.currentLevel.id : 1);
+    };
+    document.getElementById('btn-go-menu').onclick = () => { this.network.leaveRoom(); this.showScreen('map-screen'); };
+  }
+
+  async copyText(text, btn, originalText) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const input = document.createElement('textarea');
+        input.value = text;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+      }
+      if (btn) {
+        btn.textContent = '✅ KOPYALANDI';
+        setTimeout(() => { btn.textContent = originalText; }, 1500);
+      }
+    } catch (err) {
+      if (btn) {
+        btn.textContent = 'KOPYALANAMADI';
+        setTimeout(() => { btn.textContent = originalText; }, 1500);
+      }
+    }
   }
 
   // ── Leaderboard ──
@@ -341,11 +444,19 @@ class Game {
     if (data.length === 0) { list.innerHTML = '<p class="text-muted">Henüz skor yok</p>'; return; }
     const uid = this.authManager.user ? this.authManager.user.uid : '';
     list.innerHTML = data.map((entry, i) => {
-      const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
-      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+      const rankVal = i + 1;
+      const rankClass = rankVal <= 3 ? ` rank-${rankVal}` : '';
+      const medal = rankVal === 1 ? '🥇' : rankVal === 2 ? '🥈' : rankVal === 3 ? '🥉' : `${rankVal}`;
       const meClass = entry.uid === uid ? ' me' : '';
       const crown = entry.isPremium ? ' <span class="premium-icon" title="Premium">👑</span>' : '';
-      return `<div class="lb-row"><span class="lb-rank ${rankClass}">${medal}</span><span class="lb-name${meClass}">${entry.username}${crown}</span><span class="lb-score">${entry.highScore}</span></div>`;
+      return `
+        <div class="leaderboard-item${meClass}">
+          <span class="rank${rankClass}">${medal}</span>
+          <div class="player-info">
+            <span class="player-name">${entry.username}${crown}</span>
+          </div>
+          <span class="player-score">${entry.highScore}</span>
+        </div>`;
     }).join('');
   }
 
@@ -372,18 +483,101 @@ class Game {
       const oppName = isP1 ? (m.player2 ? m.player2.username : '?') : (m.player1 ? m.player1.username : '?');
       const oppScore = isP1 ? (m.player2 ? m.player2.score : 0) : (m.player1 ? m.player1.score : 0);
       const won = m.winnerUid === uid;
-      return `<div class="match-row ${won ? 'win' : 'lose'}"><span class="match-opponent">vs ${oppName}</span><span class="match-scores">${myScore} - ${oppScore}</span><span class="match-result ${won ? 'w' : 'l'}">${won ? 'GALİBİYET' : 'MAĞLUBİYET'}</span></div>`;
+      return `
+        <div class="match-history-item ${won ? 'win' : 'lose'}">
+          <div class="player-info">
+            <span class="player-name">vs ${oppName}</span>
+            <span class="p-email">${won ? 'ZAFER' : 'MAĞLUBİYET'}</span>
+          </div>
+          <span class="player-score">${myScore} - ${oppScore}</span>
+        </div>`;
     }).join('');
+  }
+
+  // ── Levels ──
+  createLevels() {
+    return [
+      { id: 1, title: 'Isinma', target: 120, blockers: 0, difficulty: 'Kolay' },
+      { id: 2, title: 'Hat Temizligi', target: 220, blockers: 4, difficulty: 'Kolay' },
+      { id: 3, title: 'Kose Baskisi', target: 340, blockers: 7, difficulty: 'Orta' },
+      { id: 4, title: 'Dar Koridor', target: 480, blockers: 10, difficulty: 'Orta' },
+      { id: 5, title: 'Cift Cephe', target: 650, blockers: 13, difficulty: 'Orta' },
+      { id: 6, title: 'Neon Kilit', target: 850, blockers: 16, difficulty: 'Zor' },
+      { id: 7, title: 'Yogun Alan', target: 1100, blockers: 19, difficulty: 'Zor' },
+      { id: 8, title: 'Siber Kusatma', target: 1400, blockers: 22, difficulty: 'Zor' },
+      { id: 9, title: 'Son Hat', target: 1750, blockers: 25, difficulty: 'Usta' },
+      { id: 10, title: 'Final Cekirdegi', target: 2200, blockers: 28, difficulty: 'Usta' },
+    ];
+  }
+
+  renderLevelMap() {
+    const map = document.getElementById('level-map');
+    if (!map) return;
+    this.unlockedLevel = Math.max(1, Math.min(this.levels.length + 1, parseInt(localStorage.getItem(this.levelProgressKey) || String(this.unlockedLevel || 1), 10)));
+    map.innerHTML = '';
+    this.levels.forEach(level => {
+      const isUnlocked = level.id <= Math.min(this.unlockedLevel, this.levels.length);
+      const isCompleted = level.id < this.unlockedLevel;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `level-card${isCompleted ? ' completed' : ''}${level.id === Math.min(this.unlockedLevel, this.levels.length) ? ' active' : ''}${!isUnlocked ? ' locked' : ''}`;
+      btn.disabled = !isUnlocked;
+      btn.innerHTML = `
+        <div class="level-card-top">
+          <span class="level-number">${level.id}</span>
+          <span class="level-state">${isCompleted ? 'OK' : isUnlocked ? 'PLAY' : 'LOCK'}</span>
+        </div>
+        <div class="level-title">${level.title}</div>
+        <div class="level-card-bottom">
+          <span class="level-target">${level.target} skor</span>
+          <span class="level-difficulty">${level.difficulty}</span>
+        </div>`;
+      btn.onclick = () => this.startSoloGame(level.id);
+      map.appendChild(btn);
+    });
+  }
+
+  applyLevelSetup(level) {
+    if (!level || level.blockers <= 0) return;
+    const rng = new SeededRandom(9000 + level.id * 97);
+    let placed = 0;
+    let guard = 0;
+    while (placed < level.blockers && guard < 400) {
+      guard++;
+      const r = rng.nextInt(0, this.GRID_SIZE - 1);
+      const c = rng.nextInt(0, this.GRID_SIZE - 1);
+      const keepCenterOpen = r >= 3 && r <= 5 && c >= 3 && c <= 5;
+      if (keepCenterOpen || this.grid[r][c] !== 0) continue;
+      this.grid[r][c] = (placed % BLOCK_COLORS.length) + 1;
+      placed++;
+    }
+  }
+
+  completeCurrentLevel() {
+    if (!this.currentLevel) return;
+    const nextLevel = Math.min(this.currentLevel.id + 1, this.levels.length + 1);
+    if (this.currentLevel.id >= this.unlockedLevel) {
+      this.unlockedLevel = nextLevel;
+      localStorage.setItem(this.levelProgressKey, String(this.unlockedLevel));
+    }
+    this.state = 'gameover';
+    this.audio.win();
+    this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
+    this.showGameOverScreen(true, `${this.currentLevel.id}. bolum tamamlandi!`);
   }
 
   // ── Game Start ──
   resetGrid() { this.grid = []; for (let r = 0; r < this.GRID_SIZE; r++) this.grid.push(new Array(this.GRID_SIZE).fill(0)); }
 
-  startSoloGame() {
+  startSoloGame(levelId = 1) {
     this.audio.init(); this.audio.resume();
+    const requestedLevel = this.levels.find(level => level.id === levelId) || this.levels[0];
+    const highestPlayable = Math.min(this.unlockedLevel, this.levels.length);
+    this.currentLevel = requestedLevel.id <= highestPlayable ? requestedLevel : this.levels[highestPlayable - 1];
+    this.targetScore = this.currentLevel.target;
     this.mode = 'solo'; this.state = 'playing'; this.score = 0; this.combo = 0; this.animatingClear = false;
     this.seed = Date.now(); this.rng = new SeededRandom(this.seed); this.blockSetIndex = 0;
-    this.resetGrid(); this.generatePieces(); this.resizeCanvas();
+    this.resetGrid(); this.applyLevelSetup(this.currentLevel); this.generatePieces(); this.resizeCanvas();
     this.resetPowerUps();
     document.getElementById('opponent-board-wrap').classList.add('hidden');
     document.getElementById('opponent-score-box').classList.add('hidden');
@@ -486,6 +680,11 @@ class Game {
     if (slot) slot.classList.add('placed');
     this.checkAndClearLines();
     if (this.pieces.every(p => p.placed)) this.generatePieces();
+    if (this.mode === 'solo' && this.currentLevel && this.score >= this.currentLevel.target) {
+      this.updateScoreDisplay();
+      this.completeCurrentLevel();
+      return true;
+    }
     if (this.checkGameOver()) { this.onGameOver(); return true; }
     if (this.mode === 'online') this.network.sendBoardUpdate(this.grid, this.score);
     this.updateScoreDisplay();
@@ -594,11 +793,12 @@ class Game {
     const scoreEl = document.getElementById('gameover-score');
     const highEl = document.getElementById('gameover-high');
     const resultEl = document.getElementById('gameover-result');
-    if (this.mode === 'online' && resultMsg) {
+    if (resultMsg) {
       title.textContent = won ? '🎉 Zafer!' : '💥 Oyun Bitti!';
       title.className = 'gameover-title ' + (won ? 'win' : 'lose');
       resultEl.textContent = resultMsg; resultEl.className = 'gameover-result ' + (won ? 'win' : 'lose');
-      document.getElementById('go-high-score-wrap').classList.add('hidden');
+      document.getElementById('go-high-score-wrap').classList.toggle('hidden', this.mode === 'online');
+      if (this.mode !== 'online') highEl.textContent = this.highScore;
     } else {
       title.textContent = 'Oyun Bitti!'; title.className = 'gameover-title';
       resultEl.className = 'gameover-result hidden';
@@ -608,7 +808,12 @@ class Game {
     scoreEl.textContent = this.score; this.showScreen('gameover-screen');
   }
 
-  updateScoreDisplay() { document.getElementById('score-value').textContent = this.score; }
+  updateScoreDisplay() {
+    const scoreText = this.mode === 'solo' && this.currentLevel
+      ? `${this.score}/${this.currentLevel.target}`
+      : this.score;
+    document.getElementById('score-value').textContent = scoreText;
+  }
   updateTimerDisplay() {
     const m = Math.floor(this.timerRemaining / 60); const s = Math.floor(this.timerRemaining % 60);
     document.getElementById('timer-value').textContent = `${m}:${s.toString().padStart(2, '0')}`;

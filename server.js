@@ -245,7 +245,7 @@ function handleDisconnect(socket) {
 
 // ── Start Server ──
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`\n  ⚔️  Block Battle Server`);
   console.log(`  🌐 http://localhost:${PORT}\n`);

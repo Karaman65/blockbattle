@@ -20,11 +20,12 @@ class NetworkManager {
     }
 
     try {
-      // Capacitor veya normal web ortamı için her zaman Render sunucusunu kullan.
-      // Sadece yerel geliştirme sırasında (localhost:3000) yereli kullan.
+      // Capacitor veya canlı web ortamı için Render sunucusunu kullan.
+      // Yerel geliştirmede sayfanın açıldığı porttaki Socket.IO sunucusuna bağlan.
       let serverUrl = 'https://blockbattle.onrender.com';
-      if (window.location.hostname === 'localhost' && window.location.port === '3000') {
-         serverUrl = 'http://localhost:3000';
+      const isLocal = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+      if (isLocal) {
+        serverUrl = window.location.origin;
       }
       this.socket = io(serverUrl, { transports: ['websocket'] });
     } catch(err) {
@@ -50,6 +51,10 @@ class NetworkManager {
     this.socket.on('room-created', (data) => {
       this.roomId = data.roomId;
       document.getElementById('room-code-display').textContent = data.roomId;
+      const copyCode = document.getElementById('btn-copy-code');
+      const copyLink = document.getElementById('btn-copy-link');
+      if (copyCode) copyCode.disabled = false;
+      if (copyLink) copyLink.disabled = false;
       this.game.showScreen('waiting-screen');
     });
 
@@ -106,6 +111,11 @@ class NetworkManager {
     this.gameMode = mode;
     this.socket.emit('quick-match', { mode });
     this.game.showScreen('waiting-screen');
+    document.getElementById('room-code-display').textContent = 'HIZLI';
+    const copyCode = document.getElementById('btn-copy-code');
+    const copyLink = document.getElementById('btn-copy-link');
+    if (copyCode) copyCode.disabled = true;
+    if (copyLink) copyLink.disabled = true;
     document.getElementById('room-info').classList.add('hidden');
   }
 
