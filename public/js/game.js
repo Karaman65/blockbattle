@@ -112,6 +112,10 @@ class Game {
     if (el) el.classList.add('active');
     if (id === 'map-screen') this.renderLevelMap();
     if (id === 'quests-screen') this.renderQuests();
+    if (id === 'online-screen') {
+      const roomInfo = document.getElementById('room-info');
+      if (roomInfo) roomInfo.classList.remove('hidden');
+    }
     this.updateBackButton(id);
 
     // Bottom Nav Visibility
@@ -222,7 +226,7 @@ class Game {
           this.showScreen('online-screen');
           
           // Then attempt connection
-          this.network.connect();
+          this.network.connect().catch(err => console.warn('Online connection pending:', err.message));
           
           if (this._pendingRoom) {
             document.getElementById('room-code-input').value = this._pendingRoom;
@@ -382,7 +386,7 @@ class Game {
       btn.onclick = () => { modeBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); this.onlineMode = btn.dataset.mode; };
     });
     document.getElementById('btn-quick-match').onclick = () => this.network.quickMatch(this.onlineMode);
-    document.getElementById('btn-create-room').onclick = () => { this.network.createRoom(this.onlineMode); document.getElementById('room-info').classList.remove('hidden'); };
+    document.getElementById('btn-create-room').onclick = () => this.network.createRoom(this.onlineMode);
     document.getElementById('btn-join-room').onclick = () => { const c = document.getElementById('room-code-input').value.trim(); if (c.length >= 4) this.network.joinRoom(c); };
     document.getElementById('online-back').onclick = () => this.showScreen('menu-screen');
 

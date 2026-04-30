@@ -109,6 +109,8 @@ io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
   socket.on('create-room', (data) => {
+    removeFromQueues(socket);
+    handleDisconnect(socket);
     const roomId = generateRoomId();
     const room = new GameRoom(roomId, data.mode || 'score');
     room.addPlayer(socket);
@@ -118,7 +120,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join-room', (data) => {
+    removeFromQueues(socket);
     const roomId = data.roomId.toUpperCase();
+    if (socket._roomId && socket._roomId !== roomId) handleDisconnect(socket);
     const room = rooms.get(roomId);
 
     if (!room) {
@@ -143,6 +147,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('quick-match', (data) => {
+    if (socket._roomId) handleDisconnect(socket);
     const mode = data.mode || 'score';
     const queue = waitingQueues[mode];
 
@@ -242,6 +247,7 @@ function handleDisconnect(socket) {
   }
 
   room.removePlayer(socket.id);
+  socket.leave(roomId);
   socket._roomId = null;
 
   if (room.players.length === 0) {

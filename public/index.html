@@ -8,7 +8,7 @@
   <title>Block Battle — Online Block Puzzle</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=2.3">
+  <link rel="stylesheet" href="css/style.css?v=2.6">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#05050f">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -519,9 +519,9 @@
         <button class="mode-btn" data-mode="time">Zamana Karşı</button>
       </div>
       <button id="btn-quick-match" class="btn btn-primary btn-large btn-full">⚡ HIZLI MAÇ</button>
-      <div style="margin: 15px 0; color: var(--text-muted); font-size: 0.8rem;">Veya oda oluştur</div>
+      <div style="margin: 15px 0; color: var(--text-muted); font-size: 0.8rem;">Oda kur veya koda katıl</div>
       <button id="btn-create-room" class="btn btn-secondary btn-full">🏠 ODA OLUŞTUR</button>
-      <div id="room-info" class="hidden" style="margin-top: 15px;">
+      <div id="room-info" style="margin-top: 15px;">
         <div class="input-group">
           <input type="text" id="room-code-input" class="input-field" placeholder="Oda Kodu">
           <button id="btn-join-room" class="btn btn-accent" style="margin-top: 10px; width: 100%;">KATIL</button>
@@ -534,14 +534,18 @@
   <!-- ═══ WAITING SCREEN ═══ -->
   <div id="waiting-screen" class="screen">
     <div class="panel glass-panel">
-      <h2 class="panel-title">Rakip Bekleniyor...</h2>
-      <div class="room-code-container"
+      <h2 id="waiting-title" class="panel-title">Rakip Bekleniyor...</h2>
+      <div id="quick-waiting-info" class="hidden" style="text-align: center; margin: 20px 0;">
+        <div class="spinner-container"><div class="spinner"></div></div>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">Hızlı maça basan başka bir oyuncu aranıyor...</p>
+      </div>
+      <div id="room-code-wrap" class="room-code-container"
         style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
         <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 5px;">ODA KODU</div>
         <div id="room-code-display"
           style="font-size: 1.5rem; font-weight: 900; letter-spacing: 4px; color: var(--neon-cyan);">----</div>
       </div>
-      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <div id="room-share-actions" style="display: flex; gap: 10px; margin-bottom: 20px;">
         <button id="btn-copy-code" class="btn btn-secondary btn-small" style="flex: 1;">📋 KOPYALA</button>
         <button id="btn-copy-link" class="btn btn-secondary btn-small" style="flex: 1;">🔗 LİNK</button>
       </div>
@@ -670,19 +674,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <!-- Socket.IO -->
-  <script src="js/socket.io.min.js?v=2.3"></script>
+  <script src="js/socket.io.min.js?v=2.6"></script>
 
   <!-- Game Scripts -->
-  <script src="js/firebase-config.js?v=2.3"></script>
-  <script src="js/blocks.js?v=2.3"></script>
-  <script src="js/audio.js?v=2.3"></script>
-  <script src="js/renderer.js?v=2.3"></script>
-  <script src="js/input.js?v=2.3"></script>
-  <script src="js/network.js?v=2.3"></script>
-  <script src="js/auth.js?v=2.3"></script>
-  <script src="js/db.js?v=2.3"></script>
-  <script src="js/ad.js?v=2.3"></script>
-  <script src="js/game.js?v=2.3"></script>
+  <script src="js/firebase-config.js?v=2.6"></script>
+  <script src="js/blocks.js?v=2.6"></script>
+  <script src="js/audio.js?v=2.6"></script>
+  <script src="js/renderer.js?v=2.6"></script>
+  <script src="js/input.js?v=2.6"></script>
+  <script src="js/network.js?v=2.6"></script>
+  <script src="js/auth.js?v=2.6"></script>
+  <script src="js/db.js?v=2.6"></script>
+  <script src="js/ad.js?v=2.6"></script>
+  <script src="js/game.js?v=2.6"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => { });

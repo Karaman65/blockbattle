@@ -9,10 +9,27 @@ class NetworkManager {
     this.connected = false;
     this.roomId = null;
     this.gameMode = null; // 'score' or 'time'
+    this.connectPromise = null;
+  }
+
+  setWaitingMode(type) {
+    const quickInfo = document.getElementById('quick-waiting-info');
+    const roomCode = document.getElementById('room-code-wrap');
+    const actions = document.getElementById('room-share-actions');
+    const title = document.getElementById('waiting-title');
+    const isQuick = type === 'quick';
+    if (quickInfo) quickInfo.classList.toggle('hidden', !isQuick);
+    if (roomCode) roomCode.classList.toggle('hidden', isQuick);
+    if (actions) actions.classList.toggle('hidden', isQuick);
+    if (title) title.textContent = isQuick ? 'Rakip Bekleniyor...' : 'Oda Hazır';
   }
 
   connect() {
-    if (this.socket) return;
+    if (this.connected) return Promise.resolve();
+    if (this.socket) {
+      if (!this.socket.connected) this.socket.connect();
+      return this.waitUntilConnected();
+    }
     
     if (typeof io === 'undefined' || typeof io !== 'function') {
       console.error('Socket.IO yüklenemedi. io tip:', typeof io);
@@ -20,14 +37,12 @@ class NetworkManager {
     }
 
     try {
-      // Capacitor veya canlı web ortamı için Render sunucusunu kullan.
-      // Yerel geliştirmede sayfanın açıldığı porttaki Socket.IO sunucusuna bağlan.
-      let serverUrl = 'https://blockbattle.onrender.com';
-      const isLocal = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-      if (isLocal) {
-        serverUrl = window.location.origin;
-      }
-      this.socket = io(serverUrl, { transports: ['websocket', 'polling'] });
+      this.socket = io(this.getServerUrl(), {
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        timeout: 20000,
+      });
     } catch(err) {
       console.error('Socket bağlantı hatası:', err);
       throw new Error('Sunucuya bağlanılamadı: ' + err.message);
@@ -50,6 +65,7 @@ class NetworkManager {
 
     this.socket.on('room-created', (data) => {
       this.roomId = data.roomId;
+      this.setWaitingMode('room');
       document.getElementById('room-code-display').textContent = data.roomId;
       const copyCode = document.getElementById('btn-copy-code');
       const copyLink = document.getElementById('btn-copy-link');
@@ -90,37 +106,92 @@ class NetworkManager {
       alert(data.message || 'Bir hata oluştu');
       this.game.showScreen('online-screen');
     });
+
+    return this.waitUntilConnected();
   }
 
-  createRoom(mode) {
-    if (!this.socket) {
-      alert('Soket bağlantısı kurulamadı. Lütfen tekrar bağlanmayı deneyin.');
-      return;
+  getServerUrl() {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      return 'https://blockbattle.onrender.com';
     }
-    this.gameMode = mode;
-    this.socket.emit('create-room', { mode });
-  }
-
-  joinRoom(roomId) {
-    if (!this.socket) { alert('Soket bağlantı hatası.'); return; }
-    this.socket.emit('join-room', { roomId: roomId.toUpperCase() });
-  }
-
-  quickMatch(mode) {
-    if (!this.socket) { alert('Soket bağlantı hatası.'); return; }
-    if (!this.connected) {
-      alert('Sunucuya bağlanılıyor, lütfen 1-2 saniye sonra tekrar dene.');
-      return;
+    if (window.location.protocol === 'file:') {
+      return 'https://blockbattle.onrender.com';
     }
-    this.gameMode = mode;
-    this.socket.emit('quick-match', { mode });
-    this.game.showScreen('waiting-screen');
-    document.getElementById('room-code-display').textContent = 'HIZLI';
-    const copyCode = document.getElementById('btn-copy-code');
-    const copyLink = document.getElementById('btn-copy-link');
-    if (copyCode) copyCode.disabled = true;
-    if (copyLink) copyLink.disabled = true;
-    document.getElementById('room-info').classList.add('hidden');
+    const host = window.location.hostname;
+    const isLocal = ['localhost', '127.0.0.1', '::1'].includes(host);
+    if (isLocal) {
+      const port = window.location.port;
+      if (port === '3001' || port === '3000') return window.location.origin;
+      return 'http://localhost:3001';
+    }
+    return window.location.origin;
+  }
+
+  waitUntilConnected(timeout = 30000) {
+    if (this.connected || (this.socket && this.socket.connected)) {
+      this.connected = true;
+      return Promise.resolve();
+    }
+    if (this.connectPromise) return this.connectPromise;
+
+    this.connectPromise = new Promise((resolve, reject) => {
+      let lastError = null;
+      const cleanup = () => {
+        clearTimeout(timer);
+        this.connectPromise = null;
+        if (!this.socket) return;
+        this.socket.off('connect', onConnect);
+        this.socket.off('connect_error', onError);
+      };
+      const onConnect = () => {
+        this.connected = true;
+        cleanup();
+        resolve();
+      };
+      const onError = (err) => {
+        lastError = err;
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error('Sunucu bağlantısı zaman aşımına uğradı.'));
+      }, timeout);
+
+      this.socket.once('connect', onConnect);
+      this.socket.on('connect_error', onError);
+    });
+
+    return this.connectPromise;
+  }
+
+  async createRoom(mode) {
+    try {
+      await this.connect();
+      this.gameMode = mode;
+      this.socket.emit('create-room', { mode });
+    } catch (err) {
+      alert('Oda olusturulamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
+    }
+  }
+
+  async joinRoom(roomId) {
+    try {
+      await this.connect();
+      this.socket.emit('join-room', { roomId: roomId.toUpperCase() });
+    } catch (err) {
+      alert('Odaya katilamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
+    }
+  }
+
+  async quickMatch(mode) {
+    try {
+      await this.connect();
+      this.gameMode = mode;
+      this.socket.emit('quick-match', { mode });
+      this.setWaitingMode('quick');
+      this.game.showScreen('waiting-screen');
+    } catch (err) {
+      alert('Hizli mac baslatilamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
+    }
   }
 
   sendBoardUpdate(board, score) {
@@ -141,6 +212,7 @@ class NetworkManager {
   }
 
   getRoomLink() {
-    return `${window.location.origin}?room=${this.roomId}`;
+    const base = window.location.protocol === 'file:' ? this.getServerUrl() : window.location.origin;
+    return `${base}?room=${this.roomId}`;
   }
 }
