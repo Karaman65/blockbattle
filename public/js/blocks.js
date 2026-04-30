@@ -70,6 +70,43 @@ const THEMES = {
 
 let BLOCK_COLORS = THEMES.default;
 
+const COSMETICS = {
+  bombEffect: {
+    classic: {
+      name: 'Klasik Patlama',
+      price: 0,
+      ring: 'rgba(255, 126, 46, 0.78)',
+      core: 'rgba(255, 214, 102, 0.82)',
+      smoke: ['#3a2a22', '#5a3b2b'],
+      spark: '#ff8c42',
+    },
+    smoke: {
+      name: 'Kara Duman',
+      price: 650,
+      ring: 'rgba(18, 18, 24, 0.86)',
+      core: 'rgba(255, 126, 46, 0.82)',
+      smoke: ['#1c1d24', '#3a3b45'],
+      spark: '#ff8c42',
+    },
+    neon: {
+      name: 'Neon Şok',
+      price: 950,
+      ring: 'rgba(0, 243, 255, 0.78)',
+      core: 'rgba(157, 0, 255, 0.72)',
+      smoke: ['#082c38', '#3b1b62'],
+      spark: '#00f3ff',
+    },
+    frost: {
+      name: 'Buz Kırığı',
+      price: 1200,
+      ring: 'rgba(126, 214, 223, 0.82)',
+      core: 'rgba(199, 249, 255, 0.8)',
+      smoke: ['#163746', '#8ed6e6'],
+      spark: '#c7f9ff',
+    },
+  }
+};
+
 const BLOCK_SHAPES = [
   // === Singles & Small ===
   { shape: [[1]], name: 'dot' },

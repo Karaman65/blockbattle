@@ -61,10 +61,13 @@ class AuthManager {
 
       return { success: true };
     } catch (err) {
+      console.error('Register error:', err.code, err.message);
       let msg = err.message;
       if (err.code === 'auth/email-already-in-use') msg = 'Bu email zaten kullanılıyor!';
       if (err.code === 'auth/weak-password') msg = 'Şifre en az 6 karakter olmalı!';
       if (err.code === 'auth/invalid-email') msg = 'Geçersiz email adresi!';
+      if (err.code === 'auth/unauthorized-continue-uri') msg = 'Firebase Authorized domains ayarında bu site adresi yok.';
+      if (err.message && err.message.includes('error-code:-26')) msg = 'Firebase dönüş adresine izin vermedi. Sayfayı yenileyip tekrar dene; artık varsayılan şifre linki kullanılacak.';
       return { success: false, error: msg };
     }
   }
@@ -94,6 +97,37 @@ class AuthManager {
       if (err.code === 'auth/wrong-password') msg = 'Yanlış şifre!';
       if (err.code === 'auth/invalid-credential') msg = 'Email veya şifre hatalı!';
       if (err.code === 'auth/too-many-requests') msg = 'Çok fazla deneme! Biraz bekle.';
+      return { success: false, error: msg };
+    }
+  }
+
+  async sendPasswordReset(emailOrUsername) {
+    try {
+      let email = emailOrUsername.trim();
+      if (!email) return { success: false, error: 'Email veya kullanıcı adını yaz.' };
+
+      if (!email.includes('@')) {
+        const snap = await db.collection('users')
+          .where('username', '==', email)
+          .limit(1)
+          .get();
+
+        if (snap.empty) {
+          return { success: false, error: 'Bu kullanıcı adı bulunamadı.' };
+        }
+        email = snap.docs[0].data().email;
+      }
+
+      await auth.sendPasswordResetEmail(email);
+      return { success: true, email };
+    } catch (err) {
+      console.error('Password reset error:', err.code, err.message);
+      let msg = err.message;
+      if (err.message && err.message.includes('error-code:-26')) msg = 'Firebase dönüş adresine izin vermedi. Sayfayı yenileyip tekrar dene; artık varsayılan şifre linki kullanılacak.';
+      if (err.code === 'auth/invalid-email') msg = 'Geçersiz email adresi.';
+      if (err.code === 'auth/user-not-found') msg = 'Bu email ile hesap bulunamadı.';
+      if (err.code === 'auth/too-many-requests') msg = 'Çok fazla deneme yaptın. Biraz bekle.';
+      if (err.code === 'auth/unauthorized-continue-uri') msg = 'Firebase Authorized domains ayarında bu site adresi yok.';
       return { success: false, error: msg };
     }
   }
@@ -205,6 +239,28 @@ class AuthManager {
         this.userData.coins -= price;
         if (!this.userData.ownedThemes) this.userData.ownedThemes = ['default'];
         this.userData.ownedThemes.push(themeId);
+      }
+      return true;
+    } catch (e) { console.error(e); return false; }
+  }
+
+  async buyCosmetic(category, cosmeticId, price) {
+    if (!this.user) return false;
+    const owned = this.userData?.ownedCosmetics?.[category] || ['classic'];
+    if (owned.includes(cosmeticId)) return true;
+    if (this.getCoins() < price) return false;
+
+    try {
+      await db.collection('users').doc(this.user.uid).update({
+        coins: firebase.firestore.FieldValue.increment(-price),
+        [`ownedCosmetics.${category}`]: firebase.firestore.FieldValue.arrayUnion(cosmeticId)
+      });
+
+      if (this.userData) {
+        this.userData.coins -= price;
+        if (!this.userData.ownedCosmetics) this.userData.ownedCosmetics = {};
+        if (!this.userData.ownedCosmetics[category]) this.userData.ownedCosmetics[category] = ['classic'];
+        this.userData.ownedCosmetics[category].push(cosmeticId);
       }
       return true;
     } catch (e) { console.error(e); return false; }

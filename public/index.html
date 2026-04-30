@@ -8,7 +8,7 @@
   <title>Block Battle — Online Block Puzzle</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=2.7">
+  <link rel="stylesheet" href="css/style.css?v=3.7">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#05050f">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,25 +30,27 @@
         <h1 class="logo" style="justify-content: center;">
           <span class="logo-block">BLOCK</span><span class="logo-battle">BATTLE</span>
         </h1>
-        <p class="subtitle">Sisteme bağlanılıyor...</p>
       </div>
 
       <div id="login-error" class="auth-error hidden"></div>
       <form id="login-form" class="auth-form">
         <div class="input-group">
-          <label for="login-email">OPERATÖR KİMLİĞİ</label>
+          <label for="login-email" class="sr-only">Email veya kullanıcı adı</label>
           <input type="text" id="login-email" class="input-field auth-input" placeholder="Email veya kullanıcı adı"
             required autocomplete="username">
         </div>
         <div class="input-group">
-          <label for="login-password">ERİŞİM ANAHTARI</label>
-          <input type="password" id="login-password" class="input-field auth-input" placeholder="••••••" required
+          <label for="login-password" class="sr-only">Şifre</label>
+          <input type="password" id="login-password" class="input-field auth-input" placeholder="Şifre" required
             autocomplete="current-password">
         </div>
         <button type="submit" id="btn-login" class="btn btn-primary btn-large btn-full">🔑 GİRİŞ YAP</button>
       </form>
+      <div class="auth-switch" style="margin-top: 8px; margin-bottom: 14px;">
+        <a href="#" id="forgot-password" class="auth-link">Şifremi unuttum</a>
+      </div>
       <div class="auth-switch">
-        Yeni operatör müsün? <a href="#" id="goto-register" class="auth-link">KAYIT OL</a>
+        Yeni misin? <a href="#" id="goto-register" class="auth-link">Hesap oluştur</a>
       </div>
     </div>
   </div>
@@ -345,6 +347,36 @@
               <span style="font-size: 0.9rem; font-weight: 800; color: #fff;">Toxic Green</span>
               <button class="btn btn-buy" data-type="theme" data-id="toxic" data-price="1600"
                 style="width: 100%; margin-top: 10px; font-size: 0.7rem;">1600 coin</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="store-section" style="margin-top: 40px;">
+          <h3 class="section-title-cyber">PATLAMA EFEKTLERİ</h3>
+          <div id="store-bomb-effects" class="cosmetic-grid">
+            <div class="cyber-card cosmetic-card">
+              <div class="cosmetic-preview classic"><span></span></div>
+              <strong>Klasik Patlama</strong>
+              <small>Sıcak ve sade patlama izi.</small>
+              <button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="classic" data-price="0">Seç</button>
+            </div>
+            <div class="cyber-card cosmetic-card">
+              <div class="cosmetic-preview smoke"><span></span></div>
+              <strong>Kara Duman</strong>
+              <small>Daha koyu bomba hissi.</small>
+              <button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="smoke" data-price="650">650 coin</button>
+            </div>
+            <div class="cyber-card cosmetic-card">
+              <div class="cosmetic-preview neon"><span></span></div>
+              <strong>Neon Şok</strong>
+              <small>Cyber arena parlaması.</small>
+              <button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="neon" data-price="950">950 coin</button>
+            </div>
+            <div class="cyber-card cosmetic-card">
+              <div class="cosmetic-preview frost"><span></span></div>
+              <strong>Buz Kırığı</strong>
+              <small>Soğuk, cam gibi kırılım.</small>
+              <button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="frost" data-price="1200">1200 coin</button>
             </div>
           </div>
         </div>
@@ -673,19 +705,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <!-- Socket.IO -->
-  <script src="js/socket.io.min.js?v=2.7"></script>
+  <script src="js/socket.io.min.js?v=3.7"></script>
 
   <!-- Game Scripts -->
-  <script src="js/firebase-config.js?v=2.7"></script>
-  <script src="js/blocks.js?v=2.7"></script>
-  <script src="js/audio.js?v=2.7"></script>
-  <script src="js/renderer.js?v=2.7"></script>
-  <script src="js/input.js?v=2.7"></script>
-  <script src="js/network.js?v=2.7"></script>
-  <script src="js/auth.js?v=2.7"></script>
-  <script src="js/db.js?v=2.7"></script>
-  <script src="js/ad.js?v=2.7"></script>
-  <script src="js/game.js?v=2.7"></script>
+  <script src="js/firebase-config.js?v=3.7"></script>
+  <script src="js/blocks.js?v=3.7"></script>
+  <script src="js/audio.js?v=3.7"></script>
+  <script src="js/renderer.js?v=3.7"></script>
+  <script src="js/input.js?v=3.7"></script>
+  <script src="js/network.js?v=3.7"></script>
+  <script src="js/auth.js?v=3.7"></script>
+  <script src="js/db.js?v=3.7"></script>
+  <script src="js/ad.js?v=3.7"></script>
+  <script src="js/game.js?v=3.7"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => { });

@@ -7,6 +7,7 @@ class Renderer {
     this.game = game;
     this.particles = [];
     this.flashCells = []; // {r, c, alpha, time}
+    this.shockwaves = [];
   }
 
   drawGrid(ctx, grid, cellSize, offsetX, offsetY, ghost) {
@@ -82,6 +83,8 @@ class Renderer {
     if (this.game.bombMode) {
       this.drawBombPreview(ctx, cellSize, offsetX, offsetY);
     }
+
+    this.drawShockwaves(ctx);
   }
 
   drawBombPreview(ctx, cellSize, offsetX, offsetY) {
@@ -198,6 +201,106 @@ class Renderer {
     }
   }
 
+  addClearWave(rows, cols, cellSize, offsetX, offsetY) {
+    for (const r of rows) {
+      this.shockwaves.push({
+        kind: 'line-h',
+        x: offsetX + 4.5 * cellSize,
+        y: offsetY + (r + 0.5) * cellSize,
+        radius: cellSize,
+        maxRadius: cellSize * 4.8,
+        width: 3,
+        color: 'rgba(0, 243, 255, 0.75)',
+        alpha: 0.65,
+        life: 0.35,
+        age: 0,
+      });
+    }
+    for (const c of cols) {
+      this.shockwaves.push({
+        kind: 'line-v',
+        x: offsetX + (c + 0.5) * cellSize,
+        y: offsetY + 4.5 * cellSize,
+        radius: cellSize,
+        maxRadius: cellSize * 4.8,
+        width: 3,
+        color: 'rgba(157, 0, 255, 0.68)',
+        alpha: 0.6,
+        life: 0.35,
+        age: 0,
+      });
+    }
+  }
+
+  addBombEffect(row, col, cellSize, offsetX, offsetY) {
+    const cx = offsetX + col * cellSize + cellSize / 2;
+    const cy = offsetY + row * cellSize + cellSize / 2;
+    const style = this.game.getBombEffectStyle ? this.game.getBombEffectStyle() : COSMETICS.bombEffect.smoke;
+    this.shockwaves.push({
+      kind: 'circle',
+      x: cx,
+      y: cy,
+      radius: cellSize * 0.2,
+      maxRadius: cellSize * 2.25,
+      width: 6,
+      color: style.ring,
+      alpha: 0.82,
+      life: 0.42,
+      age: 0,
+    });
+    this.shockwaves.push({
+      kind: 'circle',
+      x: cx,
+      y: cy,
+      radius: cellSize * 0.12,
+      maxRadius: cellSize * 0.95,
+      width: 5,
+      color: style.core,
+      alpha: 0.7,
+      life: 0.22,
+      age: 0,
+    });
+
+    for (let i = 0; i < 24; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 70 + Math.random() * 135;
+      const smoke = i % 3 !== 0;
+      this.particles.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: smoke ? 4 + Math.random() * 7 : 2 + Math.random() * 3,
+        color: smoke ? style.smoke[i % style.smoke.length] : style.spark,
+        alpha: smoke ? 0.72 : 1,
+        life: smoke ? 0.55 + Math.random() * 0.28 : 0.24 + Math.random() * 0.16,
+        age: 0,
+      });
+    }
+  }
+
+  addPowerBurst(type) {
+    const tray = document.getElementById('piece-tray');
+    const canvas = document.getElementById('game-canvas');
+    if (!tray || !canvas) return;
+    const trayRect = tray.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const cx = trayRect.left - canvasRect.left + trayRect.width / 2;
+    const cy = trayRect.top - canvasRect.top + trayRect.height / 2;
+    this.shockwaves.push({
+      kind: 'circle',
+      x: cx,
+      y: cy,
+      radius: 14,
+      maxRadius: 72,
+      width: 3,
+      color: type === 'rotate' ? 'rgba(0, 243, 255, 0.72)' : 'rgba(0, 255, 157, 0.72)',
+      alpha: 0.55,
+      life: 0.38,
+      age: 0,
+    });
+  }
+
   updateParticles(dt) {
     // Update particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -223,6 +326,37 @@ class Renderer {
         this.flashCells.splice(i, 1);
       }
     }
+
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      const w = this.shockwaves[i];
+      w.age += dt;
+      const t = Math.min(1, w.age / w.life);
+      w.radius += (w.maxRadius - w.radius) * Math.min(1, dt * 9);
+      w.alpha = (1 - t) * 0.75;
+      w.width = Math.max(1, w.width * 0.985);
+      if (t >= 1) this.shockwaves.splice(i, 1);
+    }
+  }
+
+  drawShockwaves(ctx) {
+    for (const w of this.shockwaves) {
+      ctx.save();
+      ctx.globalAlpha = w.alpha;
+      ctx.strokeStyle = w.color;
+      ctx.lineWidth = w.width;
+      ctx.beginPath();
+      if (w.kind === 'line-h') {
+        ctx.moveTo(w.x - w.radius, w.y);
+        ctx.lineTo(w.x + w.radius, w.y);
+      } else if (w.kind === 'line-v') {
+        ctx.moveTo(w.x, w.y - w.radius);
+        ctx.lineTo(w.x, w.y + w.radius);
+      } else {
+        ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   drawParticles(ctx) {
@@ -235,6 +369,6 @@ class Renderer {
   }
 
   get isAnimating() {
-    return this.particles.length > 0 || this.flashCells.length > 0;
+    return this.particles.length > 0 || this.flashCells.length > 0 || this.shockwaves.length > 0;
   }
 }

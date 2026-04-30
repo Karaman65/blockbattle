@@ -63,6 +63,7 @@ class AdManager {
     try {
       await this.adMob.showBanner(options);
       this.bannerShowing = true;
+      document.body.classList.add('ad-banner-visible');
       console.log('Banner showing');
     } catch (err) {
       console.error('Show Banner Error:', err);
@@ -74,6 +75,7 @@ class AdManager {
     try {
       await this.adMob.hideBanner();
       this.bannerShowing = false;
+      document.body.classList.remove('ad-banner-visible');
     } catch (err) {
       console.error('Hide Banner Error:', err);
     }

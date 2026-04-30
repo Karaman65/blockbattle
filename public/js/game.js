@@ -169,6 +169,25 @@ class Game {
   setupAuthUI() {
     document.getElementById('goto-register').onclick = (e) => { e.preventDefault(); this.showScreen('register-screen'); };
     document.getElementById('goto-login').onclick = (e) => { e.preventDefault(); this.showScreen('login-screen'); };
+    document.getElementById('forgot-password').onclick = async (e) => {
+      e.preventDefault();
+      const emailOrUsername = document.getElementById('login-email').value.trim();
+      const errEl = document.getElementById('login-error');
+      const btn = document.getElementById('forgot-password');
+      errEl.classList.add('hidden');
+      if (!emailOrUsername) {
+        errEl.textContent = 'Önce email veya kullanıcı adını yaz, sonra Şifremi unuttum de.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      btn.textContent = 'Link gönderiliyor...';
+      const res = await this.authManager.sendPasswordReset(emailOrUsername);
+      btn.textContent = 'Şifremi unuttum';
+      errEl.textContent = res.success
+        ? `Şifre yenileme linki gönderildi: ${res.email}. Mailden yeni şifreni belirleyebilirsin.`
+        : res.error;
+      errEl.classList.remove('hidden');
+    };
 
     document.getElementById('login-form').onsubmit = async (e) => {
       e.preventDefault();
@@ -313,6 +332,20 @@ class Game {
           this.setTheme(themeId);
           this.updateCoinDisplays();
           this.updateStoreThemesUI();
+          this.audio.pickup();
+          return;
+        }
+
+        if (type === 'cosmetic') {
+          const category = btn.dataset.category;
+          const cosmeticId = btn.dataset.id;
+          if (price > 0) {
+            const success = await this.authManager.buyCosmetic(category, cosmeticId, price);
+            if (!success) { btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 500); return; }
+          }
+          this.setCosmetic(category, cosmeticId);
+          this.updateCoinDisplays();
+          this.updateStoreCosmeticsUI();
           this.audio.pickup();
           return;
         }
@@ -1039,6 +1072,7 @@ class Game {
     const arr = [];
     for (const k of cells) { const [r, c] = k.split(',').map(Number); this.renderer.addClearParticles(r, c, this.cellSize, this.gridOffset.x, this.gridOffset.y, this.grid[r][c]); arr.push({ r, c }); }
     this.renderer.addFlashCells(arr);
+    this.renderer.addClearWave(clearRows, clearCols, this.cellSize, this.gridOffset.x, this.gridOffset.y);
     const pts = cells.size + total * 18 + (this.combo > 1 ? this.combo * 15 : 0);
     this.score += pts;
     this.showScorePopup(pts);
@@ -1204,11 +1238,12 @@ class Game {
     if (storeCoins) storeCoins.textContent = coins;
     this.updatePlayerHeader();
     
-    // Keep non-theme shop buttons clickable so they can show feedback when coins are low.
+    // Keep consumable shop buttons clickable so they can show feedback when coins are low.
     document.querySelectorAll('.btn-buy').forEach(btn => {
       const price = parseInt(btn.dataset.price);
-      if (btn.dataset.type !== 'theme' && Number.isFinite(price)) btn.disabled = false;
+      if (!['theme', 'cosmetic'].includes(btn.dataset.type) && Number.isFinite(price)) btn.disabled = false;
     });
+    if (typeof this.updateStoreCosmeticsUI === 'function') this.updateStoreCosmeticsUI();
   }
 
   updatePlayerHeader() {
@@ -1231,6 +1266,7 @@ class Game {
   showStore() {
     this.updateCoinDisplays();
     this.updateStoreThemesUI();
+    this.updateStoreCosmeticsUI();
     this.showScreen('store-screen');
   }
 
@@ -1271,6 +1307,52 @@ class Game {
     });
   }
 
+  setCosmetic(category, cosmeticId) {
+    if (!COSMETICS[category] || !COSMETICS[category][cosmeticId]) return;
+    localStorage.setItem(`selectedCosmetic:${category}`, cosmeticId);
+  }
+
+  getSelectedCosmetic(category) {
+    const selected = localStorage.getItem(`selectedCosmetic:${category}`) || 'classic';
+    if (!COSMETICS[category] || !COSMETICS[category][selected]) return 'classic';
+    const owned = this.authManager.userData?.ownedCosmetics?.[category] || ['classic'];
+    const price = COSMETICS[category][selected].price || 0;
+    return owned.includes(selected) || price === 0 ? selected : 'classic';
+  }
+
+  getBombEffectStyle() {
+    return COSMETICS.bombEffect[this.getSelectedCosmetic('bombEffect')] || COSMETICS.bombEffect.classic;
+  }
+
+  updateStoreCosmeticsUI() {
+    const ownedCosmetics = this.authManager.userData?.ownedCosmetics || {};
+    document.querySelectorAll('#store-bomb-effects .btn-buy').forEach(btn => {
+      const category = btn.dataset.category;
+      const cosmeticId = btn.dataset.id;
+      const price = parseInt(btn.dataset.price || '0', 10);
+      const selected = this.getSelectedCosmetic(category);
+      const owned = ownedCosmetics[category] || ['classic'];
+      const isOwned = owned.includes(cosmeticId) || price === 0;
+
+      if (cosmeticId === selected) {
+        btn.textContent = 'Seçildi';
+        btn.disabled = true;
+        btn.style.background = 'var(--accent)';
+        btn.style.color = 'white';
+      } else if (isOwned) {
+        btn.textContent = 'Seç';
+        btn.disabled = false;
+        btn.style.background = 'var(--surface)';
+        btn.style.color = 'var(--neon-green)';
+      } else {
+        btn.textContent = `${price} coin`;
+        btn.disabled = this.authManager.getCoins() < price;
+        btn.style.background = '';
+        btn.style.color = '';
+      }
+    });
+  }
+
   updatePowerUpUI() {
     const bombEl = document.getElementById('count-bomb');
     const rotateEl = document.getElementById('count-rotate');
@@ -1299,6 +1381,7 @@ class Game {
     this.powerUps.bomb--;
     this.authManager.decrementInventory('bomb');
     this.bombMode = false;
+    this.renderer.addBombEffect(row, col, this.cellSize, this.gridOffset.x, this.gridOffset.y);
     
     // Clear 3x3 area
     for (let r = row - 1; r <= row + 1; r++) {
@@ -1324,6 +1407,8 @@ class Game {
     });
     
     this.renderPieceTray();
+    this.renderer.addPowerBurst('rotate');
+    this.pulsePieceTray();
     this.updatePowerUpUI();
     this.audio.pickup();
   }
@@ -1334,8 +1419,19 @@ class Game {
     this.authManager.decrementInventory('skip');
     
     this.generatePieces();
+    this.renderer.addPowerBurst('skip');
+    this.pulsePieceTray();
     this.updatePowerUpUI();
     this.audio.pickup();
+  }
+
+  pulsePieceTray() {
+    const tray = document.getElementById('piece-tray');
+    if (!tray) return;
+    tray.classList.remove('power-pulse');
+    void tray.offsetWidth;
+    tray.classList.add('power-pulse');
+    setTimeout(() => tray.classList.remove('power-pulse'), 360);
   }
 }
 
