@@ -8,7 +8,7 @@
   <title>Block Battle — Online Block Puzzle</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=2.6">
+  <link rel="stylesheet" href="css/style.css?v=2.7">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#05050f">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -537,7 +537,6 @@
       <h2 id="waiting-title" class="panel-title">Rakip Bekleniyor...</h2>
       <div id="quick-waiting-info" class="hidden" style="text-align: center; margin: 20px 0;">
         <div class="spinner-container"><div class="spinner"></div></div>
-        <p style="color: var(--text-secondary); font-size: 0.9rem;">Hızlı maça basan başka bir oyuncu aranıyor...</p>
       </div>
       <div id="room-code-wrap" class="room-code-container"
         style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
@@ -674,19 +673,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <!-- Socket.IO -->
-  <script src="js/socket.io.min.js?v=2.6"></script>
+  <script src="js/socket.io.min.js?v=2.7"></script>
 
   <!-- Game Scripts -->
-  <script src="js/firebase-config.js?v=2.6"></script>
-  <script src="js/blocks.js?v=2.6"></script>
-  <script src="js/audio.js?v=2.6"></script>
-  <script src="js/renderer.js?v=2.6"></script>
-  <script src="js/input.js?v=2.6"></script>
-  <script src="js/network.js?v=2.6"></script>
-  <script src="js/auth.js?v=2.6"></script>
-  <script src="js/db.js?v=2.6"></script>
-  <script src="js/ad.js?v=2.6"></script>
-  <script src="js/game.js?v=2.6"></script>
+  <script src="js/firebase-config.js?v=2.7"></script>
+  <script src="js/blocks.js?v=2.7"></script>
+  <script src="js/audio.js?v=2.7"></script>
+  <script src="js/renderer.js?v=2.7"></script>
+  <script src="js/input.js?v=2.7"></script>
+  <script src="js/network.js?v=2.7"></script>
+  <script src="js/auth.js?v=2.7"></script>
+  <script src="js/db.js?v=2.7"></script>
+  <script src="js/ad.js?v=2.7"></script>
+  <script src="js/game.js?v=2.7"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => { });

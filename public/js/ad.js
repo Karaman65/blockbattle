@@ -7,6 +7,7 @@ class AdManager {
     this.appId = 'ca-app-pub-2847518527759480~2761291675';
     this.bannerId = 'ca-app-pub-2847518527759480/5562804120';
     this.interstitialId = 'ca-app-pub-2847518527759480/4944601888';
+    this.isTesting = true;
     
     this.initialized = false;
     this.bannerShowing = false;
@@ -29,7 +30,7 @@ class AdManager {
       await this.adMob.initialize({
         requestTrackingAuthorization: true,
         testingDevices: [],
-        initializeForFamilySafeAds: false,
+        initializeForTesting: this.isTesting,
       });
 
       this.initialized = true;
@@ -56,7 +57,7 @@ class AdManager {
       adSize: 'ADAPTIVE_BANNER',
       position: 'BOTTOM_CENTER',
       margin: 0,
-      isTesting: false
+      isTesting: this.isTesting
     };
 
     try {
@@ -84,7 +85,7 @@ class AdManager {
     try {
       await this.adMob.prepareInterstitial({
         adId: this.interstitialId,
-        isTesting: false
+        isTesting: this.isTesting
       });
       this.interstitialReady = true;
       console.log('Interstitial prepared');
