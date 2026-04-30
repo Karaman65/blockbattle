@@ -167,6 +167,7 @@ io.on('connection', (socket) => {
       console.log(`Quick match: ${roomId}`);
     } else {
       queue.push(socket);
+      socket.emit('quick-queued');
       console.log(`Player queued for ${mode}: ${socket.id}`);
     }
   });

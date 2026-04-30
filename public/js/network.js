@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════
-//  BLOCK BATTLE — Network Manager (Socket.IO)
-// ═══════════════════════════════════════════
+// BLOCK BATTLE - Network Manager (Socket.IO)
 
 class NetworkManager {
   constructor(game) {
@@ -8,8 +6,9 @@ class NetworkManager {
     this.socket = null;
     this.connected = false;
     this.roomId = null;
-    this.gameMode = null; // 'score' or 'time'
+    this.gameMode = null;
     this.connectPromise = null;
+    this.actionPending = false;
   }
 
   setWaitingMode(type) {
@@ -18,34 +17,49 @@ class NetworkManager {
     const actions = document.getElementById('room-share-actions');
     const title = document.getElementById('waiting-title');
     const isQuick = type === 'quick';
+    const isConnecting = type === 'connecting';
+
     if (quickInfo) quickInfo.classList.toggle('hidden', !isQuick);
-    if (roomCode) roomCode.classList.toggle('hidden', isQuick);
-    if (actions) actions.classList.toggle('hidden', isQuick);
-    if (title) title.textContent = isQuick ? 'Rakip Bekleniyor...' : 'Oda Hazır';
+    if (roomCode) roomCode.classList.toggle('hidden', isQuick || isConnecting);
+    if (actions) actions.classList.toggle('hidden', isQuick || isConnecting);
+    if (title) title.textContent = isQuick ? 'Rakip Bekleniyor...' : isConnecting ? 'Baglaniyor...' : 'Oda Hazir';
+  }
+
+  setOnlineButtonsBusy(isBusy) {
+    this.actionPending = isBusy;
+    ['btn-quick-match', 'btn-create-room', 'btn-join-room'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.disabled = isBusy;
+    });
   }
 
   connect() {
-    if (this.connected) return Promise.resolve();
+    if (this.connected || (this.socket && this.socket.connected)) {
+      this.connected = true;
+      return Promise.resolve();
+    }
+
     if (this.socket) {
       if (!this.socket.connected) this.socket.connect();
       return this.waitUntilConnected();
     }
-    
+
     if (typeof io === 'undefined' || typeof io !== 'function') {
-      console.error('Socket.IO yüklenemedi. io tip:', typeof io);
-      throw new Error('Socket.IO kütüphanesi hazır değil.');
+      console.error('Socket.IO yuklenemedi. io tip:', typeof io);
+      throw new Error('Socket.IO kutuphanesi hazir degil.');
     }
 
     try {
       this.socket = io(this.getServerUrl(), {
-        transports: ['polling', 'websocket'],
+        transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 5,
-        timeout: 20000,
+        reconnectionAttempts: 8,
+        reconnectionDelay: 700,
+        timeout: 15000,
       });
-    } catch(err) {
-      console.error('Socket bağlantı hatası:', err);
-      throw new Error('Sunucuya bağlanılamadı: ' + err.message);
+    } catch (err) {
+      console.error('Socket baglanti hatasi:', err);
+      throw new Error('Sunucuya baglanilamadi: ' + err.message);
     }
 
     this.socket.on('connect', () => {
@@ -60,10 +74,10 @@ class NetworkManager {
 
     this.socket.on('connect_error', (err) => {
       console.error('Socket connect_error:', err);
-      // alert('Bağlantı hatası: ' + err.message); // Yorum satırına alıyoruz sürekli uyarı vermesin
     });
 
     this.socket.on('room-created', (data) => {
+      this.setOnlineButtonsBusy(false);
       this.roomId = data.roomId;
       this.setWaitingMode('room');
       document.getElementById('room-code-display').textContent = data.roomId;
@@ -74,7 +88,14 @@ class NetworkManager {
       this.game.showScreen('waiting-screen');
     });
 
+    this.socket.on('quick-queued', () => {
+      this.setOnlineButtonsBusy(false);
+      this.setWaitingMode('quick');
+      this.game.showScreen('waiting-screen');
+    });
+
     this.socket.on('match-found', (data) => {
+      this.setOnlineButtonsBusy(false);
       this.roomId = data.roomId;
       this.game.startOnlineGame(data.seed, data.mode, data.timeLimit, data.targetScore);
     });
@@ -103,7 +124,8 @@ class NetworkManager {
     });
 
     this.socket.on('error', (data) => {
-      alert(data.message || 'Bir hata oluştu');
+      this.setOnlineButtonsBusy(false);
+      alert(data.message || 'Bir hata olustu');
       this.game.showScreen('online-screen');
     });
 
@@ -127,7 +149,7 @@ class NetworkManager {
     return window.location.origin;
   }
 
-  waitUntilConnected(timeout = 30000) {
+  waitUntilConnected(timeout = 15000) {
     if (this.connected || (this.socket && this.socket.connected)) {
       this.connected = true;
       return Promise.resolve();
@@ -135,7 +157,6 @@ class NetworkManager {
     if (this.connectPromise) return this.connectPromise;
 
     this.connectPromise = new Promise((resolve, reject) => {
-      let lastError = null;
       const cleanup = () => {
         clearTimeout(timer);
         this.connectPromise = null;
@@ -149,11 +170,11 @@ class NetworkManager {
         resolve();
       };
       const onError = (err) => {
-        lastError = err;
+        console.warn('Socket connection waiting:', err.message);
       };
       const timer = setTimeout(() => {
         cleanup();
-        reject(new Error('Sunucu bağlantısı zaman aşımına uğradı.'));
+        reject(new Error('Sunucu baglantisi zaman asimina ugradi.'));
       }, timeout);
 
       this.socket.once('connect', onConnect);
@@ -164,33 +185,48 @@ class NetworkManager {
   }
 
   async createRoom(mode) {
+    if (this.actionPending) return;
     try {
+      this.setOnlineButtonsBusy(true);
+      this.setWaitingMode('connecting');
+      const roomCode = document.getElementById('room-code-display');
+      if (roomCode) roomCode.textContent = '----';
+      this.game.showScreen('waiting-screen');
       await this.connect();
       this.gameMode = mode;
       this.socket.emit('create-room', { mode });
     } catch (err) {
+      this.setOnlineButtonsBusy(false);
       alert('Oda olusturulamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
+      this.game.showScreen('online-screen');
     }
   }
 
   async joinRoom(roomId) {
+    if (this.actionPending) return;
     try {
+      this.setOnlineButtonsBusy(true);
       await this.connect();
       this.socket.emit('join-room', { roomId: roomId.toUpperCase() });
     } catch (err) {
+      this.setOnlineButtonsBusy(false);
       alert('Odaya katilamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
     }
   }
 
   async quickMatch(mode) {
+    if (this.actionPending) return;
     try {
+      this.setOnlineButtonsBusy(true);
+      this.setWaitingMode('quick');
+      this.game.showScreen('waiting-screen');
       await this.connect();
       this.gameMode = mode;
       this.socket.emit('quick-match', { mode });
-      this.setWaitingMode('quick');
-      this.game.showScreen('waiting-screen');
     } catch (err) {
+      this.setOnlineButtonsBusy(false);
       alert('Hizli mac baslatilamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
+      this.game.showScreen('online-screen');
     }
   }
 
@@ -205,10 +241,11 @@ class NetworkManager {
   }
 
   leaveRoom() {
-    if (this.socket && this.roomId) {
+    if (this.socket) {
       this.socket.emit('leave-room');
-      this.roomId = null;
     }
+    this.roomId = null;
+    this.setOnlineButtonsBusy(false);
   }
 
   getRoomLink() {

@@ -153,6 +153,48 @@ const BLOCK_SHAPES = [
 
   // === Cross / Plus ===
   { shape: [[0, 1, 0], [1, 1, 1], [0, 1, 0]], name: 'plus' },
+
+  // === Wide corners & hooks ===
+  { shape: [[1, 0, 0], [1, 0, 0], [1, 1, 1]], name: 'hook1' },
+  { shape: [[0, 0, 1], [0, 0, 1], [1, 1, 1]], name: 'hook2' },
+  { shape: [[1, 1, 1], [1, 0, 0], [1, 0, 0]], name: 'hook3' },
+  { shape: [[1, 1, 1], [0, 0, 1], [0, 0, 1]], name: 'hook4' },
+  { shape: [[1, 1, 0], [1, 0, 0], [1, 1, 1]], name: 'claw1' },
+  { shape: [[0, 1, 1], [0, 0, 1], [1, 1, 1]], name: 'claw2' },
+  { shape: [[1, 1, 1], [1, 0, 0], [1, 1, 0]], name: 'claw3' },
+  { shape: [[1, 1, 1], [0, 0, 1], [0, 1, 1]], name: 'claw4' },
+
+  // === U / cup shapes ===
+  { shape: [[1, 0, 1], [1, 1, 1]], name: 'cup1' },
+  { shape: [[1, 1, 1], [1, 0, 1]], name: 'cup2' },
+  { shape: [[1, 1], [1, 0], [1, 1]], name: 'cup3' },
+  { shape: [[1, 1], [0, 1], [1, 1]], name: 'cup4' },
+
+  // === Chunky 2x3 / 3x2 pieces ===
+  { shape: [[1, 1, 1], [1, 1, 0]], name: 'chunk1' },
+  { shape: [[1, 1, 1], [0, 1, 1]], name: 'chunk2' },
+  { shape: [[1, 1, 0], [1, 1, 1]], name: 'chunk3' },
+  { shape: [[0, 1, 1], [1, 1, 1]], name: 'chunk4' },
+  { shape: [[1, 1], [1, 1], [1, 0]], name: 'chunk5' },
+  { shape: [[1, 1], [1, 1], [0, 1]], name: 'chunk6' },
+  { shape: [[1, 0], [1, 1], [1, 1]], name: 'chunk7' },
+  { shape: [[0, 1], [1, 1], [1, 1]], name: 'chunk8' },
+
+  // === Steps and bends ===
+  { shape: [[1, 0, 0], [1, 1, 0], [0, 1, 1]], name: 'step1' },
+  { shape: [[0, 0, 1], [0, 1, 1], [1, 1, 0]], name: 'step2' },
+  { shape: [[0, 1, 1], [1, 1, 0], [1, 0, 0]], name: 'step3' },
+  { shape: [[1, 1, 0], [0, 1, 1], [0, 0, 1]], name: 'step4' },
+  { shape: [[1, 0, 1], [1, 1, 0]], name: 'bend1' },
+  { shape: [[1, 0, 1], [0, 1, 1]], name: 'bend2' },
+  { shape: [[1, 1, 0], [0, 1, 0], [0, 1, 1]], name: 'bend3' },
+  { shape: [[0, 1, 1], [0, 1, 0], [1, 1, 0]], name: 'bend4' },
+
+  // === Compact special shapes ===
+  { shape: [[1, 1, 1], [0, 1, 0], [1, 1, 1]], name: 'bridge' },
+  { shape: [[1, 0, 1], [1, 1, 1], [1, 0, 1]], name: 'ring' },
+  { shape: [[0, 1, 0], [1, 1, 1], [1, 0, 1]], name: 'gem1' },
+  { shape: [[1, 0, 1], [1, 1, 1], [0, 1, 0]], name: 'gem2' },
 ];
 
 // Seeded random number generator (LCG)

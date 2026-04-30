@@ -8,7 +8,7 @@
   <title>Block Battle — Online Block Puzzle</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=3.7">
+  <link rel="stylesheet" href="css/style.css?v=4.5">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#05050f">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -213,19 +213,6 @@
           <div style="color: var(--text-muted); font-size: 1.5rem;">›</div>
         </button>
 
-        <!-- SISTEM GUNCELLEMESI -->
-        <div class="cyber-card"
-          style="padding: 25px; background: rgba(25, 25, 55, 0.8); border: 1px solid rgba(157, 0, 255, 0.2); display: flex; flex-direction: column; gap: 15px;">
-          <div
-            style="display: flex; align-items: center; gap: 10px; color: #c471ed; font-size: 0.8rem; font-weight: 800; letter-spacing: 1px;">
-            <span>⚙️</span> SİSTEM GÜNCELLEMESİ
-          </div>
-          <p style="font-size: 0.9rem; color: #fff; line-height: 1.5;">Sezon 4: 'Neon Pulse' şimdi aktif! Yeni harita
-            'Neo-Istanbul' keşfedilmeyi bekliyor.</p>
-          <button id="btn-update-details" class="btn btn-primary"
-            style="background: linear-gradient(90deg, #6c5ce7, #00cec9); border: none; padding: 15px; border-radius: 10px; font-weight: 800; color: #fff; box-shadow: 0 5px 15px rgba(0, 243, 255, 0.2);">DETAYLARI
-            GÖRÜNTÜLE</button>
-        </div>
       </div>
 
       <div class="menu-footer-btns" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">
@@ -408,7 +395,7 @@
 
         <div id="level-map" class="level-map"></div>
         <div class="level-help">
-          <strong>10 bölüm</strong>
+          <strong>50 bölüm</strong>
           <span>Her bölümde hedef skor ve dolu blok sayısı artar. Bölümü geçmek için hedef skora ulaş.</span>
         </div>
       </div>
@@ -705,19 +692,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <!-- Socket.IO -->
-  <script src="js/socket.io.min.js?v=3.7"></script>
+  <script src="js/socket.io.min.js?v=4.5"></script>
 
   <!-- Game Scripts -->
-  <script src="js/firebase-config.js?v=3.7"></script>
-  <script src="js/blocks.js?v=3.7"></script>
-  <script src="js/audio.js?v=3.7"></script>
-  <script src="js/renderer.js?v=3.7"></script>
-  <script src="js/input.js?v=3.7"></script>
-  <script src="js/network.js?v=3.7"></script>
-  <script src="js/auth.js?v=3.7"></script>
-  <script src="js/db.js?v=3.7"></script>
-  <script src="js/ad.js?v=3.7"></script>
-  <script src="js/game.js?v=3.7"></script>
+  <script src="js/firebase-config.js?v=4.5"></script>
+  <script src="js/blocks.js?v=4.5"></script>
+  <script src="js/audio.js?v=4.5"></script>
+  <script src="js/renderer.js?v=4.5"></script>
+  <script src="js/input.js?v=4.5"></script>
+  <script src="js/network.js?v=4.5"></script>
+  <script src="js/auth.js?v=4.5"></script>
+  <script src="js/db.js?v=4.5"></script>
+  <script src="js/ad.js?v=4.5"></script>
+  <script src="js/game.js?v=4.5"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => { });

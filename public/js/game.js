@@ -272,13 +272,6 @@ class Game {
       await this.authManager.logout();
     };
 
-    const btnUpdateDetails = document.getElementById('btn-update-details');
-    if (btnUpdateDetails) {
-      btnUpdateDetails.onclick = () => {
-        alert("Sezon 4: Neon Pulse aktif. Neo-Istanbul haritasında günlük görevleri tamamla, XP kazan ve mağazadaki yeni görünümleri aç.");
-      };
-    }
-
     // Leaderboard
     document.getElementById('btn-leaderboard').onclick = () => this.showLeaderboard();
 
@@ -814,18 +807,52 @@ class Game {
 
   // ── Levels ──
   createLevels() {
-    return [
-      { id: 1, title: 'Isınma', target: 120, blockers: 0, difficulty: 'Kolay' },
-      { id: 2, title: 'Hat Temizliği', target: 220, blockers: 4, difficulty: 'Kolay' },
-      { id: 3, title: 'Köşe Baskısı', target: 340, blockers: 7, difficulty: 'Orta' },
-      { id: 4, title: 'Dar Koridor', target: 480, blockers: 10, difficulty: 'Orta' },
-      { id: 5, title: 'Çift Cephe', target: 650, blockers: 13, difficulty: 'Orta' },
-      { id: 6, title: 'Neon Kilit', target: 850, blockers: 16, difficulty: 'Zor' },
-      { id: 7, title: 'Yoğun Alan', target: 1100, blockers: 19, difficulty: 'Zor' },
-      { id: 8, title: 'Siber Kuşatma', target: 1400, blockers: 22, difficulty: 'Zor' },
-      { id: 9, title: 'Son Hat', target: 1750, blockers: 25, difficulty: 'Usta' },
-      { id: 10, title: 'Final Çekirdeği', target: 2200, blockers: 28, difficulty: 'Usta' },
+    const titles = [
+      'Isınma', 'Hat Temizliği', 'Köşe Baskısı', 'Dar Koridor', 'Çift Cephe',
+      'Neon Kilit', 'Yoğun Alan', 'Siber Kuşatma', 'Son Hat', 'Final Çekirdeği',
+      'Denge Taşı', 'Kırık Rota', 'Çapraz Baskı', 'Sıkışan Alan', 'Kristal Hat',
+      'Gölge Blok', 'Çifte Kilit', 'Keskin Dönüş', 'Dar Boğaz', 'Sert Zemin',
+      'Neon Geçit', 'Basınç Odası', 'Kapanan Yol', 'Derin Izgara', 'Kilitli Merkez',
+      'Sıfır Hata', 'Hız Koridoru', 'Parça Fırtınası', 'Ağır Alan', 'Kritik Hat',
+      'Karanlık Çekirdek', 'Yan Duvar', 'Sert Kombolar', 'Son Savunma', 'Aşırı Baskı',
+      'Yüksek Voltaj', 'Çöküş Noktası', 'Kırmızı Alarm', 'Daralan Çember', 'Usta Alanı',
+      'Siber Kapan', 'Kilit Yağmuru', 'Gölge Kuşatma', 'Keskin Final', 'Kabus Koridoru',
+      'Son Düğüm', 'Çekirdek Savaşı', 'Mutlak Baskı', 'Efsane Hat', 'Block Battle'
     ];
+    const baseLevels = [
+      { target: 120, blockers: 0 },
+      { target: 220, blockers: 4 },
+      { target: 340, blockers: 7 },
+      { target: 480, blockers: 10 },
+      { target: 650, blockers: 13 },
+      { target: 850, blockers: 16 },
+      { target: 1100, blockers: 19 },
+      { target: 1400, blockers: 22 },
+      { target: 1750, blockers: 25 },
+      { target: 2200, blockers: 28 }
+    ];
+    const difficultyFor = (id) => {
+      if (id <= 2) return 'Kolay';
+      if (id <= 5) return 'Orta';
+      if (id <= 8) return 'Zor';
+      if (id <= 14) return 'Usta';
+      if (id <= 24) return 'Elit';
+      if (id <= 36) return 'Efsane';
+      return 'Kabus';
+    };
+
+    return Array.from({ length: 50 }, (_, index) => {
+      const id = index + 1;
+      const base = baseLevels[index];
+      const extra = Math.max(0, id - 10);
+      return {
+        id,
+        title: titles[index],
+        target: base ? base.target : Math.round(2200 + extra * 170 + Math.pow(extra, 1.35) * 45),
+        blockers: base ? base.blockers : Math.min(44, 28 + Math.floor(extra * 0.4)),
+        difficulty: difficultyFor(id)
+      };
+    });
   }
 
   getLevelProgressKey() {
@@ -964,7 +991,111 @@ class Game {
   }
 
   // ── Pieces ──
-  generatePieces() { this.pieces = generatePieceSet(this.rng); this.blockSetIndex++; this.renderPieceTray(); }
+  generatePieces() {
+    this.pieces = this.shouldUseEndlessFlow()
+      ? this.generateEndlessPieceSet()
+      : generatePieceSet(this.rng);
+    this.blockSetIndex++;
+    this.renderPieceTray();
+  }
+
+  shouldUseEndlessFlow() {
+    return this.mode === 'solo' && !this.currentLevel;
+  }
+
+  getEndlessStage() {
+    const byScore = Math.floor(this.score / 450);
+    const bySets = Math.floor(this.blockSetIndex / 4);
+    return Math.min(8, Math.max(byScore, bySets));
+  }
+
+  getShapePlacementCount(shape) {
+    let count = 0;
+    for (let r = 0; r < this.GRID_SIZE; r++) {
+      for (let c = 0; c < this.GRID_SIZE; c++) {
+        if (this.canPlace(shape, r, c)) count++;
+      }
+    }
+    return count;
+  }
+
+  getEndlessPieceCandidates(stage, slotIndex, usedNames) {
+    const friendlyNames = new Set([
+      'h3', 'v3', 'h4', 'v4', 'sq2',
+      'L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7', 'L8',
+      'T1', 'T2', 'T3', 'T4',
+      'C1', 'C2', 'C3', 'C4',
+      'cup1', 'cup2', 'cup3', 'cup4',
+      'chunk1', 'chunk2', 'chunk3', 'chunk4', 'chunk5', 'chunk6', 'chunk7', 'chunk8'
+    ]);
+    const hardNames = new Set(['sq3', 'plus', 'bridge', 'ring', 'gem1', 'gem2', 'hook1', 'hook2', 'hook3', 'hook4', 'claw1', 'claw2', 'claw3', 'claw4']);
+    const maxCells = stage <= 1 ? 5 : stage <= 3 ? 6 : stage <= 5 ? 7 : 9;
+    const minCells = stage <= 1 ? 3 : stage <= 4 ? 2 : 1;
+    const minPlacements = stage <= 1 ? 10 : stage <= 3 ? 5 : 1;
+    const allowHard = stage >= 3 || (stage >= 2 && slotIndex === 2);
+
+    let candidates = BLOCK_SHAPES.map(def => ({
+      def,
+      cells: getShapeCells(def.shape).length,
+      placements: this.getShapePlacementCount(def.shape)
+    })).filter(item =>
+      item.placements >= minPlacements &&
+      item.cells >= minCells &&
+      item.cells <= maxCells &&
+      !usedNames.has(item.def.name) &&
+      (allowHard || !hardNames.has(item.def.name))
+    );
+
+    if (stage <= 1) {
+      candidates = candidates.filter(item => friendlyNames.has(item.def.name));
+    }
+
+    if (candidates.length === 0) {
+      candidates = BLOCK_SHAPES.map(def => ({
+        def,
+        cells: getShapeCells(def.shape).length,
+        placements: this.getShapePlacementCount(def.shape)
+      })).filter(item => item.placements > 0 && !usedNames.has(item.def.name));
+    }
+
+    return candidates;
+  }
+
+  pickWeightedEndlessShape(candidates, stage) {
+    const weights = candidates.map(item => {
+      const fitWeight = stage <= 2 ? item.placements * 1.4 : item.placements * 0.7;
+      const sizeWeight = stage <= 2 ? item.cells * 4 : item.cells * (2.2 + stage * 0.12);
+      const hardBoost = stage >= 4 && item.cells >= 6 ? stage * 1.4 : 0;
+      return Math.max(1, fitWeight + sizeWeight + hardBoost);
+    });
+    const total = weights.reduce((sum, weight) => sum + weight, 0);
+    let roll = this.rng.next() * total;
+    for (let i = 0; i < candidates.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) return candidates[i].def;
+    }
+    return candidates[candidates.length - 1].def;
+  }
+
+  generateEndlessPieceSet() {
+    const pieces = [];
+    const usedNames = new Set();
+    const stage = this.getEndlessStage();
+
+    for (let i = 0; i < 3; i++) {
+      const candidates = this.getEndlessPieceCandidates(stage, i, usedNames);
+      const shapeDef = this.pickWeightedEndlessShape(candidates, stage);
+      usedNames.add(shapeDef.name);
+      pieces.push({
+        shape: shapeDef.shape,
+        colorIndex: this.rng.nextInt(0, BLOCK_COLORS.length - 1),
+        placed: false,
+        name: shapeDef.name,
+      });
+    }
+
+    return pieces;
+  }
 
   renderPieceTray() {
     const tray = document.getElementById('piece-tray');
@@ -993,7 +1124,7 @@ class Game {
   resizeCanvas() {
     const ga = document.getElementById('game-area');
     let cs = Math.floor(Math.min(ga.clientWidth - 16, ga.clientHeight - 16) / this.GRID_SIZE);
-    cs = Math.min(cs, 62); cs = Math.max(cs, 28); this.cellSize = cs;
+    cs = Math.min(cs, 74); cs = Math.max(cs, 28); this.cellSize = cs;
     const gp = this.GRID_SIZE * cs;
     this.canvas.width = gp + 12; this.canvas.height = gp + 12; this.gridOffset = { x: 6, y: 6 };
     if (this.mode === 'online') {
