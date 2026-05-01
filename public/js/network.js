@@ -7,6 +7,7 @@ class NetworkManager {
     this.connected = false;
     this.roomId = null;
     this.gameMode = null;
+    this.matchType = null;
     this.connectPromise = null;
     this.actionPending = false;
   }
@@ -79,6 +80,7 @@ class NetworkManager {
     this.socket.on('room-created', (data) => {
       this.setOnlineButtonsBusy(false);
       this.roomId = data.roomId;
+      this.matchType = 'room';
       this.setWaitingMode('room');
       document.getElementById('room-code-display').textContent = data.roomId;
       const copyCode = document.getElementById('btn-copy-code');
@@ -97,7 +99,13 @@ class NetworkManager {
     this.socket.on('match-found', (data) => {
       this.setOnlineButtonsBusy(false);
       this.roomId = data.roomId;
+      this.matchType = data.matchType || this.matchType || 'room';
       this.game.startOnlineGame(data.seed, data.mode, data.timeLimit, data.targetScore);
+      this.sendPlayerInfo();
+    });
+
+    this.socket.on('opponent-info', (data) => {
+      this.game.setOnlineOpponent(data);
     });
 
     this.socket.on('opponent-update', (data) => {
@@ -194,6 +202,7 @@ class NetworkManager {
       this.game.showScreen('waiting-screen');
       await this.connect();
       this.gameMode = mode;
+      this.matchType = 'room';
       this.socket.emit('create-room', { mode });
     } catch (err) {
       this.setOnlineButtonsBusy(false);
@@ -207,6 +216,7 @@ class NetworkManager {
     try {
       this.setOnlineButtonsBusy(true);
       await this.connect();
+      this.matchType = 'room';
       this.socket.emit('join-room', { roomId: roomId.toUpperCase() });
     } catch (err) {
       this.setOnlineButtonsBusy(false);
@@ -222,6 +232,7 @@ class NetworkManager {
       this.game.showScreen('waiting-screen');
       await this.connect();
       this.gameMode = mode;
+      this.matchType = 'quick';
       this.socket.emit('quick-match', { mode });
     } catch (err) {
       this.setOnlineButtonsBusy(false);
@@ -232,7 +243,20 @@ class NetworkManager {
 
   sendBoardUpdate(board, score) {
     if (!this.socket || !this.roomId) return;
-    this.socket.emit('board-update', { board, score });
+    this.socket.emit('board-update', {
+      board,
+      score,
+      uid: this.game.authManager.user ? this.game.authManager.user.uid : null,
+      username: this.game.authManager.getUsername ? this.game.authManager.getUsername() : 'Oyuncu',
+    });
+  }
+
+  sendPlayerInfo() {
+    if (!this.socket || !this.roomId) return;
+    this.socket.emit('player-info', {
+      uid: this.game.authManager.user ? this.game.authManager.user.uid : null,
+      username: this.game.authManager.getUsername ? this.game.authManager.getUsername() : 'Oyuncu',
+    });
   }
 
   sendGameOver() {
@@ -245,6 +269,7 @@ class NetworkManager {
       this.socket.emit('leave-room');
     }
     this.roomId = null;
+    this.matchType = null;
     this.setOnlineButtonsBusy(false);
   }
 

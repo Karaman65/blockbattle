@@ -401,18 +401,21 @@ body {
   display: none;
   flex-direction: column;
   align-items: center;
-  padding: 4px 0;
-  gap: 4px;
+  justify-content: flex-start;
+  padding: 2px 0;
+  gap: 2px;
+  height: 100dvh;
 }
 #game-screen.active { display: flex; }
 
 #game-area {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 720px;
+  max-width: 780px;
+  min-height: 0;
   overflow: hidden;
 }
 #boards-container {
@@ -451,10 +454,10 @@ body {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   width: 100%;
-  max-width: 720px;
-  min-height: 90px;
+  max-width: 780px;
+  min-height: 82px;
 }
 .piece-slot {
   display: flex;
@@ -774,7 +777,7 @@ body {
   .glass-panel { padding: 24px 18px; }
   .mode-select { grid-template-columns: 1fr; }
   .piece-cell { width: 14px; height: 14px; }
-  #piece-tray { gap: 10px; padding: 8px 10px; min-height: 70px; }
+  #piece-tray { gap: 10px; padding: 6px 8px; min-height: 62px; }
   .stat-box { padding: 4px 10px; min-width: 60px; }
   .stat-value { font-size: 1.1rem; }
   .menu-buttons { width: 240px; }
@@ -786,7 +789,7 @@ body {
   #game-header { padding: 4px 12px; }
   .stat-box { padding: 3px 8px; }
   .stat-value { font-size: 1rem; }
-  #piece-tray { min-height: 60px; padding: 6px 10px; }
+  #piece-tray { min-height: 54px; padding: 4px 8px; }
   .piece-cell { width: 14px; height: 14px; }
 }
 
@@ -914,6 +917,31 @@ body {
   max-width: 440px;
   padding: 40px 30px;
 }
+
+.premium-price-card {
+  margin-top: 28px;
+  padding: 16px;
+  border: 1px solid rgba(255,204,0,0.28);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(255,204,0,0.12), rgba(255,0,122,0.10));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.premium-price-card span {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.premium-price-card strong {
+  color: #ffcc00;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
 .premium-badge-big {
   font-size: 4rem;
   margin-bottom: 16px;
@@ -1823,6 +1851,49 @@ body {
 .event-footer { display: flex; justify-content: space-between; align-items: center; }
 .event-reward { font-weight: 800; font-size: 0.9rem; color: #ffcc00; }
 
+.feedback-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.feedback-help {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.feedback-input {
+  width: 100%;
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius-sm);
+  background: rgba(5, 5, 15, 0.62);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  padding: 12px;
+  outline: none;
+}
+
+.feedback-input:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 0 2px rgba(0, 243, 255, 0.08);
+}
+
+.feedback-textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.feedback-status {
+  min-height: 18px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 /* ── Shop Grid Revamp ── */
 .shop-item-card {
   background: var(--glass);
@@ -1863,6 +1934,41 @@ body {
   font-weight: 900;
   font-size: 0.78rem;
   box-shadow: 0 0 16px rgba(0,243,255,0.12);
+}
+
+.campaign-card {
+  border-color: rgba(255, 204, 0, 0.24);
+}
+
+.campaign-ribbon {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: 1px solid rgba(255,204,0,0.42);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: rgba(255,204,0,0.12);
+  color: #ffcc00;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.campaign-price {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+
+.campaign-price s {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.campaign-price strong {
+  color: var(--accent-light);
+  font-size: 0.92rem;
 }
 
 .shop-item-details {
@@ -1922,6 +2028,62 @@ body {
   width: 100%;
   padding: 9px 8px;
   font-size: 0.72rem;
+}
+
+.coin-pack-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.coin-pack-card {
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 178px;
+  background:
+    radial-gradient(circle at 85% 15%, rgba(255, 204, 0, 0.16), transparent 34%),
+    rgba(8, 14, 32, 0.58);
+}
+
+.coin-pack-card.featured {
+  border-color: rgba(255, 204, 0, 0.42);
+  box-shadow: 0 0 22px rgba(255, 204, 0, 0.10);
+}
+
+.coin-pack-badge {
+  width: max-content;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: #ffcc00;
+  background: rgba(255, 204, 0, 0.10);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.coin-pack-card strong {
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.coin-pack-card small {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  min-height: 38px;
+}
+
+.coin-pack-card .btn-buy {
+  margin-top: auto;
+  width: 100%;
+  padding: 10px 8px;
+  font-size: 0.78rem;
 }
 
 .cosmetic-grid {
@@ -1985,6 +2147,7 @@ body {
 .cosmetic-preview.frost span { background: #c7f9ff; box-shadow: 0 0 18px #c7f9ff; }
 
 @media (max-width: 420px) {
+  .coin-pack-grid,
   .store-power-grid {
     grid-template-columns: 1fr;
   }

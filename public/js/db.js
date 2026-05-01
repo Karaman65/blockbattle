@@ -46,28 +46,29 @@ class DatabaseManager {
   async recordOnlineMatch(matchData) {
     // matchData: { player1: {uid, username, score}, player2: {uid, username, score}, mode, winnerUid }
     try {
-      await db.collection('matches').add({
+      const matchRef = matchData.roomId
+        ? db.collection('matches').doc(`quick_${matchData.roomId}`)
+        : db.collection('matches').doc();
+      await matchRef.set({
         ...matchData,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
+      }, { merge: false });
 
-      // Update winner stats
-      if (matchData.winnerUid) {
-        await db.collection('users').doc(matchData.winnerUid).update({
-          totalWins: firebase.firestore.FieldValue.increment(1),
+      const players = [matchData.player1, matchData.player2].filter(p => p && p.uid);
+      await Promise.all(players.map(player => {
+        const won = player.uid === matchData.winnerUid;
+        const lost = matchData.winnerUid && !won;
+        const update = {
           totalOnlineGames: firebase.firestore.FieldValue.increment(1),
-        });
-
-        // Update loser stats
-        const loserUid = matchData.player1.uid === matchData.winnerUid
-          ? matchData.player2.uid
-          : matchData.player1.uid;
-        if (loserUid) {
-          await db.collection('users').doc(loserUid).update({
-            totalOnlineGames: firebase.firestore.FieldValue.increment(1),
-          });
+          quickOnlineGames: firebase.firestore.FieldValue.increment(1),
+        };
+        if (won) {
+          update.totalWins = firebase.firestore.FieldValue.increment(1);
+          update.quickWins = firebase.firestore.FieldValue.increment(1);
         }
-      }
+        if (lost) update.quickLosses = firebase.firestore.FieldValue.increment(1);
+        return db.collection('users').doc(player.uid).update(update);
+      }));
     } catch (err) {
       console.error('Failed to record match:', err);
     }
@@ -101,13 +102,13 @@ class DatabaseManager {
       const snap1 = await db.collection('matches')
         .where('player1.uid', '==', uid)
         .orderBy('createdAt', 'desc')
-        .limit(limit)
+        .limit(limit * 3)
         .get();
 
       const snap2 = await db.collection('matches')
         .where('player2.uid', '==', uid)
         .orderBy('createdAt', 'desc')
-        .limit(limit)
+        .limit(limit * 3)
         .get();
 
       const matches = [];
@@ -121,7 +122,9 @@ class DatabaseManager {
         return tb - ta;
       });
 
-      return matches.slice(0, limit);
+      return matches
+        .filter(match => match.matchType === 'quick')
+        .slice(0, limit);
     } catch (err) {
       console.error('Failed to get match history:', err);
       return [];

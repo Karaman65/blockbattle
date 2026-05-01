@@ -7,8 +7,7 @@ class AdManager {
     this.appId = 'ca-app-pub-2847518527759480~2761291675';
     this.bannerId = 'ca-app-pub-2847518527759480/5562804120';
     this.interstitialId = 'ca-app-pub-2847518527759480/4944601888';
-    this.isTesting = true;
-    
+    this.isTesting = false;
     this.initialized = false;
     this.bannerShowing = false;
     this.interstitialReady = false;
@@ -47,7 +46,7 @@ class AdManager {
     if (!this.initialized || this.bannerShowing) return;
     
     // Check if user is premium (this will be passed from game)
-    if (window._game && window._game.authManager.isPremium()) {
+    if (window._game?.authManager?.isPremium()) {
       console.log('AdMob: User is premium, skipping banner.');
       return;
     }
@@ -99,7 +98,7 @@ class AdManager {
   async showInterstitial() {
     if (!this.initialized) return;
 
-    if (window._game && window._game.authManager.isPremium()) {
+    if (window._game?.authManager?.isPremium()) {
       console.log('AdMob: User is premium, skipping interstitial.');
       return;
     }

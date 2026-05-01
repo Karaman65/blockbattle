@@ -21,6 +21,9 @@ class Game {
     this.gridOffset = { x: 6, y: 6 };
     this.opponentBoard = null;
     this.opponentScore = 0;
+    this.opponentUid = null;
+    this.opponentUsername = 'Rakip';
+    this.onlineMatchRecorded = false;
     this.opponentCellSize = 18;
     this.timerRemaining = 0;
     this.targetScore = 1000;
@@ -110,6 +113,9 @@ class Game {
     });
     const el = document.getElementById(id);
     if (el) el.classList.add('active');
+    if (id === 'game-screen' && this.canvas) {
+      requestAnimationFrame(() => this.resizeCanvas());
+    }
     if (id === 'map-screen') this.renderLevelMap();
     if (id === 'quests-screen') this.renderQuests();
     if (id === 'online-screen') {
@@ -301,6 +307,15 @@ class Game {
       };
     }
 
+    if (btnBuyPremiumNew) {
+      btnBuyPremiumNew.onclick = () => {
+        const productId = btnBuyPremiumNew.dataset.productId || 'premium_lifetime';
+        const priceLabel = btnBuyPremiumNew.dataset.priceLabel || '₺79,99';
+        console.log('Premium selected:', { productId, price: priceLabel, coinBonus: 2000 });
+        alert(`Premium (${priceLabel}) Google Play ödeme entegrasyonu bağlanınca açılacak. Satın alanlara 2000 coin eklenecek.`);
+      };
+    }
+
     // Bottom Navigation Logic
     document.querySelectorAll('.nav-item').forEach(btn => {
       btn.onclick = () => {
@@ -315,6 +330,15 @@ class Game {
       btn.onclick = async () => {
         const type = btn.dataset.type;
         const price = parseInt(btn.dataset.price);
+
+        if (type === 'coinPack') {
+          const coins = parseInt(btn.dataset.coins || '0', 10);
+          const priceLabel = btn.dataset.priceLabel || btn.textContent.trim();
+          const productId = btn.dataset.productId || '';
+          console.log('Coin pack selected:', { productId, coins, price: priceLabel });
+          alert(`${coins.toLocaleString('tr-TR')} coin paketi (${priceLabel}) ödeme entegrasyonu bağlanınca açılacak.`);
+          return;
+        }
         
         if (type === 'theme') {
           const themeId = btn.dataset.id;
@@ -406,6 +430,12 @@ class Game {
       };
     }
 
+    if (btnBuyPremium) {
+      btnBuyPremium.onclick = async () => {
+        alert('Premium yalnızca Google Play ödeme doğrulamasından sonra etkinleştirilir.');
+      };
+    }
+
     // Online menu
     const modeBtns = document.querySelectorAll('.mode-btn');
     modeBtns.forEach(btn => {
@@ -457,6 +487,43 @@ class Game {
       this.mode === 'online' ? this.showScreen('online-screen') : (this.currentLevel ? this.startSoloGame(this.currentLevel.id) : this.startEndlessGame());
     };
     document.getElementById('btn-go-menu').onclick = () => { this.network.leaveRoom(); this.showScreen('menu-screen'); };
+
+    const btnSendFeedback = document.getElementById('btn-send-feedback');
+    if (btnSendFeedback) {
+      btnSendFeedback.onclick = () => this.submitFeedback();
+    }
+  }
+
+  async submitFeedback() {
+    const typeEl = document.getElementById('feedback-type');
+    const messageEl = document.getElementById('feedback-message');
+    const statusEl = document.getElementById('feedback-status');
+    const btn = document.getElementById('btn-send-feedback');
+    const message = messageEl ? messageEl.value.trim() : '';
+
+    if (message.length < 5) {
+      if (statusEl) statusEl.textContent = 'Lütfen biraz daha detay yaz.';
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'GÖNDERİLİYOR...';
+    }
+    if (statusEl) statusEl.textContent = '';
+
+    const success = await this.authManager.submitFeedback(typeEl ? typeEl.value : 'other', message);
+    if (success) {
+      if (messageEl) messageEl.value = '';
+      if (statusEl) statusEl.textContent = 'Teşekkürler, mesajın alındı.';
+    } else if (statusEl) {
+      statusEl.textContent = 'Gönderilemedi. Bağlantını kontrol edip tekrar dene.';
+    }
+
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'GÖNDER';
+    }
   }
 
   async copyText(text, btn, originalText) {
@@ -533,7 +600,7 @@ class Game {
     this.updateQuestProgress(won);
     if (!this.authManager.isLoggedIn()) return;
     try {
-      await this.dbManager.updateHighScore(this.authManager.user.uid, this.score, this.authManager.getUsername(), won);
+      await this.dbManager.updateHighScore(this.authManager.user.uid, this.score, this.authManager.getUsername(), false);
       await this.authManager.loadUserData();
       this.highScore = Math.max(this.highScore, (this.authManager.userData && this.authManager.userData.highScore) || 0);
       this.updateCoinDisplays();
@@ -541,6 +608,39 @@ class Game {
     } catch (e) {
       console.error(e);
     }
+  }
+
+  setOnlineOpponent(data) {
+    if (!data) return;
+    if (data.uid) this.opponentUid = data.uid;
+    if (data.username) this.opponentUsername = data.username;
+  }
+
+  async recordQuickMatchResult(won) {
+    if (this.onlineMatchRecorded || this.mode !== 'online' || this.network.matchType !== 'quick') return;
+    if (!this.authManager.user || !this.opponentUid) return;
+    const myUid = this.authManager.user.uid;
+    if (won === false) return;
+    if (won === null && myUid > this.opponentUid) return;
+    this.onlineMatchRecorded = true;
+    await this.dbManager.recordOnlineMatch({
+      matchType: 'quick',
+      mode: this.onlineMode || this.network.gameMode || 'score',
+      roomId: this.network.roomId || '',
+      player1: {
+        uid: myUid,
+        username: this.authManager.getUsername(),
+        score: this.score,
+      },
+      player2: {
+        uid: this.opponentUid,
+        username: this.opponentUsername || 'Rakip',
+        score: this.opponentScore || 0,
+      },
+      winnerUid: won === true ? myUid : won === false ? this.opponentUid : null,
+    });
+    await this.authManager.loadUserData();
+    this.updatePlayerHeader();
   }
 
   buildQuests() {
@@ -780,7 +880,7 @@ class Game {
     document.getElementById('profile-email').textContent = this.authManager.user ? this.authManager.user.email : '';
     document.getElementById('p-high-score').textContent = d.highScore || 0;
     document.getElementById('p-total-games').textContent = d.totalGames || 0;
-    document.getElementById('p-total-wins').textContent = d.totalWins || 0;
+    document.getElementById('p-total-wins').textContent = d.quickWins || 0;
     // Load match history
     const hist = document.getElementById('match-history');
     if (!this.authManager.user) { hist.innerHTML = '<p class="text-muted">Giriş yapılmadı</p>'; return; }
@@ -980,6 +1080,7 @@ class Game {
     this.seed = seed; this.rng = new SeededRandom(seed); this.blockSetIndex = 0;
     this.timerRemaining = timeLimit || 90; this.targetScore = targetScore || 1000;
     this.opponentBoard = null; this.opponentScore = 0;
+    this.opponentUid = null; this.opponentUsername = 'Rakip'; this.onlineMatchRecorded = false;
     this.resetGrid(); this.generatePieces(); this.resizeCanvas();
     this.resetPowerUps();
     document.getElementById('opponent-board-wrap').classList.remove('hidden');
@@ -1123,8 +1224,12 @@ class Game {
   // ── Canvas ──
   resizeCanvas() {
     const ga = document.getElementById('game-area');
-    let cs = Math.floor(Math.min(ga.clientWidth - 16, ga.clientHeight - 16) / this.GRID_SIZE);
-    cs = Math.min(cs, 74); cs = Math.max(cs, 28); this.cellSize = cs;
+    const availableWidth = ga.clientWidth - 4;
+    const availableHeight = ga.clientHeight - 4;
+    let cs = Math.floor(Math.min(availableWidth, availableHeight) / this.GRID_SIZE);
+    cs = Math.min(cs, this.mode === 'online' ? 68 : 82);
+    cs = Math.max(cs, 30);
+    this.cellSize = cs;
     const gp = this.GRID_SIZE * cs;
     this.canvas.width = gp + 12; this.canvas.height = gp + 12; this.gridOffset = { x: 6, y: 6 };
     if (this.mode === 'online') {
@@ -1237,6 +1342,7 @@ class Game {
   async onGameOver() {
     this.state = 'gameover'; this.audio.gameOver();
     if (this.mode === 'online') this.network.sendGameOver();
+    if (this.mode === 'online') this.recordQuickMatchResult(false);
     
     // Show interstitial ad
     this.ad.showInterstitial();
@@ -1257,6 +1363,7 @@ class Game {
     this.state = 'gameover';
     this.audio.win();
     this.recordCompletedGame(true);
+    this.recordQuickMatchResult(true);
     this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
     this.showGameOverScreen(true, 'Rakip kaybetti! Kazandın!');
   }
@@ -1265,6 +1372,7 @@ class Game {
     if (this.state === 'playing') {
       this.state = 'gameover';
       this.recordCompletedGame(true);
+      this.recordQuickMatchResult(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(true, 'Rakip ayrıldı. Kazandın!');
     }
@@ -1277,17 +1385,20 @@ class Game {
     if (won) { 
       this.audio.win(); 
       this.recordCompletedGame(true);
+      this.recordQuickMatchResult(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(true, `Kazandın! ${this.score} - ${this.opponentScore}`); 
     }
     else if (tied) { 
       this.recordCompletedGame(false);
+      this.recordQuickMatchResult(null);
       this.authManager.addCoins(50).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Berabere! ${this.score} - ${this.opponentScore}`); 
     }
     else { 
       this.audio.gameOver(); 
       this.recordCompletedGame(false);
+      this.recordQuickMatchResult(false);
       this.authManager.addCoins(25).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Kaybettin! ${this.score} - ${this.opponentScore}`); 
     }

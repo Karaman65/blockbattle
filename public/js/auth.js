@@ -308,6 +308,50 @@ class AuthManager {
     }
   }
 
+  async completePremiumPurchase(coinBonus = 2000) {
+    if (!this.user) return false;
+    try {
+      await db.collection('users').doc(this.user.uid).update({
+        isPremium: true,
+        coins: firebase.firestore.FieldValue.increment(coinBonus)
+      });
+
+      await db.collection('leaderboard').doc(this.user.uid).set({
+        isPremium: true
+      }, { merge: true });
+
+      if (this.userData) {
+        this.userData.isPremium = true;
+        this.userData.coins = (this.userData.coins || 0) + coinBonus;
+      }
+      return true;
+    } catch (err) {
+      console.error('Premium satin alma tamamlama hatasi:', err);
+      return false;
+    }
+  }
+
+  async submitFeedback(type, message) {
+    if (!this.user) return false;
+    const cleanMessage = (message || '').trim();
+    if (cleanMessage.length < 5) return false;
+    try {
+      await db.collection('feedback').add({
+        uid: this.user.uid,
+        email: this.user.email || '',
+        username: this.getUsername(),
+        type: type || 'other',
+        message: cleanMessage.slice(0, 800),
+        appVersion: '1.0',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      return true;
+    } catch (err) {
+      console.error('Feedback submit error:', err);
+      return false;
+    }
+  }
+
   isLoggedIn() {
     return !!this.user;
   }

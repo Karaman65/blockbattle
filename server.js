@@ -30,9 +30,10 @@ function generateRoomId() {
 }
 
 class GameRoom {
-  constructor(id, mode) {
+  constructor(id, mode, matchType = 'room') {
     this.id = id;
     this.mode = mode; // 'score' or 'time'
+    this.matchType = matchType; // 'room' or 'quick'
     this.players = [];
     this.state = 'waiting'; // waiting, playing, finished
     this.seed = Math.floor(Math.random() * 2147483646) + 1;
@@ -46,6 +47,8 @@ class GameRoom {
     this.players.push({
       socket,
       id: socket.id,
+      uid: null,
+      username: 'Oyuncu',
       score: 0,
       board: null,
       gameOver: false,
@@ -69,6 +72,7 @@ class GameRoom {
     const data = {
       seed: this.seed,
       mode: this.mode,
+      matchType: this.matchType,
       timeLimit: this.timeLimit,
       targetScore: this.targetScore,
     };
@@ -112,7 +116,7 @@ io.on('connection', (socket) => {
     removeFromQueues(socket);
     handleDisconnect(socket);
     const roomId = generateRoomId();
-    const room = new GameRoom(roomId, data.mode || 'score');
+    const room = new GameRoom(roomId, data.mode || 'score', 'room');
     room.addPlayer(socket);
     rooms.set(roomId, room);
     socket.emit('room-created', { roomId });
@@ -159,7 +163,7 @@ io.on('connection', (socket) => {
     if (queue.length > 0) {
       const opponent = queue.shift();
       const roomId = generateRoomId();
-      const room = new GameRoom(roomId, mode);
+      const room = new GameRoom(roomId, mode, 'quick');
       room.addPlayer(opponent);
       room.addPlayer(socket);
       rooms.set(roomId, room);
@@ -182,6 +186,8 @@ io.on('connection', (socket) => {
     if (player) {
       player.score = data.score;
       player.board = data.board;
+      if (data.uid) player.uid = data.uid;
+      if (data.username) player.username = data.username;
     }
 
     const opponent = room.getOpponent(socket.id);
@@ -189,7 +195,36 @@ io.on('connection', (socket) => {
       opponent.socket.emit('opponent-update', {
         board: data.board,
         score: data.score,
+        uid: data.uid,
+        username: data.username,
       });
+    }
+  });
+
+  socket.on('player-info', (data) => {
+    const roomId = socket._roomId;
+    if (!roomId) return;
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (player) {
+      player.uid = data.uid || player.uid;
+      player.username = data.username || player.username;
+    }
+
+    const opponent = room.getOpponent(socket.id);
+    if (opponent) {
+      opponent.socket.emit('opponent-info', {
+        uid: player ? player.uid : null,
+        username: player ? player.username : 'Oyuncu',
+      });
+      if (opponent.uid) {
+        socket.emit('opponent-info', {
+          uid: opponent.uid,
+          username: opponent.username || 'Oyuncu',
+        });
+      }
     }
   });
 
