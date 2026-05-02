@@ -128,7 +128,7 @@ class NetworkManager {
 
     this.socket.on('timer-sync', (data) => {
       this.game.timerRemaining = data.remaining;
-      this.game.updateTimerDisplay();
+      if (this.game.onlineMode === 'time') this.game.updateTimerDisplay();
     });
 
     this.socket.on('game-time-up', () => {

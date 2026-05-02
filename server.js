@@ -37,8 +37,8 @@ class GameRoom {
     this.players = [];
     this.state = 'waiting'; // waiting, playing, finished
     this.seed = Math.floor(Math.random() * 2147483646) + 1;
-    this.timeLimit = mode === 'score' ? 90 : 0;
-    this.targetScore = mode === 'time' ? 1000 : 0;
+    this.timeLimit = mode === 'time' ? 90 : 0;
+    this.targetScore = mode === 'score' ? 1000 : 0;
     this.timer = null;
     this.startTime = null;
   }
@@ -81,9 +81,10 @@ class GameRoom {
       p.socket.emit('match-found', { roomId: this.id, ...data });
     }
 
-    // Start timer for score mode
-    if (this.mode === 'score') {
+    // Start timer for timed mode
+    if (this.mode === 'time') {
       let remaining = this.timeLimit;
+      io.to(this.id).emit('timer-sync', { remaining });
       this.timer = setInterval(() => {
         remaining--;
         io.to(this.id).emit('timer-sync', { remaining });
@@ -245,6 +246,21 @@ io.on('connection', (socket) => {
     // Check if both game over
     if (room.players.every(p => p.gameOver)) {
       room.cleanup();
+    }
+  });
+
+  socket.on('player-locked', () => {
+    const roomId = socket._roomId;
+    if (!roomId) return;
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (player) player.gameOver = true;
+
+    if (room.players.length >= 2 && room.players.every(p => p.gameOver)) {
+      room.cleanup();
+      io.to(room.id).emit('game-time-up');
     }
   });
 

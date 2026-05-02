@@ -28,6 +28,7 @@ class Game {
     this.timerRemaining = 0;
     this.targetScore = 1000;
     this.onlineLocked = false;
+    this.onlineTimer = null;
     this.levels = this.createLevels();
     this.currentLevel = null;
     this.levelProgressKey = 'blockBattleUnlockedLevel';
@@ -1108,9 +1109,38 @@ class Game {
     document.getElementById('opponent-board-wrap').classList.remove('hidden');
     document.getElementById('opponent-score-box').classList.remove('hidden');
     document.getElementById('opponent-score-value').textContent = '0';
-    if (mode === 'time') { document.getElementById('timer-box').classList.remove('hidden'); this.updateTimerDisplay(); }
-    else { document.getElementById('timer-box').classList.add('hidden'); }
+    this.stopOnlineTimer();
+    if (mode === 'time') {
+      document.getElementById('timer-box').classList.remove('hidden');
+      this.updateTimerDisplay();
+      this.startOnlineTimer();
+    } else {
+      document.getElementById('timer-box').classList.add('hidden');
+    }
     this.updateScoreDisplay(); this.showScreen('game-screen');
+  }
+
+  startOnlineTimer() {
+    this.stopOnlineTimer();
+    this.onlineTimer = setInterval(() => {
+      if (this.mode !== 'online' || this.onlineMode !== 'time' || this.state !== 'playing') {
+        this.stopOnlineTimer();
+        return;
+      }
+      this.timerRemaining = Math.max(0, this.timerRemaining - 1);
+      this.updateTimerDisplay();
+      if (this.timerRemaining <= 0) {
+        this.stopOnlineTimer();
+        this.onTimeUp();
+      }
+    }, 1000);
+  }
+
+  stopOnlineTimer() {
+    if (this.onlineTimer) {
+      clearInterval(this.onlineTimer);
+      this.onlineTimer = null;
+    }
   }
 
   // ── Pieces ──
@@ -1387,6 +1417,7 @@ class Game {
   }
 
   async onGameOver() {
+    this.stopOnlineTimer();
     this.state = 'gameover'; this.audio.gameOver();
     if (this.mode === 'online') this.network.sendGameOver();
     if (this.mode === 'online') this.recordOnlineMatchResult(false);
@@ -1407,6 +1438,7 @@ class Game {
   }
 
   onOpponentGameOver() {
+    this.stopOnlineTimer();
     if (this.onlineMode === 'score' && this.opponentScore >= this.targetScore) {
       this.state = 'gameover';
       this.audio.gameOver();
@@ -1426,6 +1458,7 @@ class Game {
 
   onOpponentLeft() {
     if (this.state === 'playing') {
+      this.stopOnlineTimer();
       this.state = 'gameover';
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
@@ -1436,6 +1469,7 @@ class Game {
 
   onTimeUp() {
     if (this.state !== 'playing') return;
+    this.stopOnlineTimer();
     this.state = 'gameover';
     const won = this.score > this.opponentScore; const tied = this.score === this.opponentScore;
     if (won) { 
@@ -1509,6 +1543,7 @@ class Game {
       }
       if (this.mode === 'online' && this.onlineMode === 'time' && this.timerRemaining > 0) this.updateTimerDisplay();
       if (this.mode === 'online' && this.onlineMode === 'score' && this.score >= this.targetScore) {
+        this.stopOnlineTimer();
         this.state = 'gameover'; this.audio.win(); this.network.sendGameOver();
         this.recordCompletedGame(true);
         this.recordOnlineMatchResult(true);
