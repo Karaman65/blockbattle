@@ -1,4 +1,4 @@
-const CACHE_NAME = 'block-battle-v37';
+const CACHE_NAME = 'block-battle-v38';
 const ASSETS = [
   '/',
   '/index.html',
@@ -34,22 +34,39 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Network first for API/socket calls, cache first for static assets
-  if (e.request.url.includes('firebaseapp') || 
+  if (e.request.method !== 'GET') return;
+  if (e.request.url.includes('firebaseapp') ||
       e.request.url.includes('googleapis') ||
       e.request.url.includes('socket.io') ||
       e.request.url.includes('gstatic.com')) {
-    return; // Let these pass through to network
+    return;
+  }
+
+  const req = e.request;
+  const isHtmlRequest = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
+  if (isHtmlRequest) {
+    e.respondWith(
+      fetch(req)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put('/index.html', copy)).catch(() => {});
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
   }
 
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      return cached || fetch(e.request).then(response => {
+    caches.match(req).then(cached => {
+      if (cached) return cached;
+      return fetch(req).then(response => {
+        if (!response || response.status !== 200 || response.type !== 'basic') return response;
         return caches.open(CACHE_NAME).then(cache => {
-          cache.put(e.request, response.clone());
+          cache.put(req, response.clone());
           return response;
         });
       });
-    }).catch(() => caches.match('/'))
+    }).catch(() => caches.match('/index.html'))
   );
 });

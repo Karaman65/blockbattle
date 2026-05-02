@@ -7,10 +7,23 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(v => v.trim())
+  .filter(Boolean);
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('CORS blocked'));
+    }
+  }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -19,10 +32,26 @@ app.get(['/privacy', '/privacy.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    ok: true,
+    uptime: Math.floor(process.uptime()),
+    timestamp: Date.now(),
+  });
+});
+
 // ── Room Management ──
 
 const rooms = new Map();
 const waitingQueues = { score: [], time: [] };
+
+const RATE_LIMITS = {
+  'board-update': { windowMs: 1000, limit: 25 },
+  'player-info': { windowMs: 5000, limit: 12 },
+  'quick-match': { windowMs: 10000, limit: 8 },
+  'join-room': { windowMs: 10000, limit: 12 },
+  'create-room': { windowMs: 10000, limit: 6 },
+};
 
 function generateRoomId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -31,6 +60,56 @@ function generateRoomId() {
     id += chars[Math.floor(Math.random() * chars.length)];
   }
   return rooms.has(id) ? generateRoomId() : id;
+}
+
+function createRateLimiter() {
+  return new Map();
+}
+
+function isRateLimited(socket, eventName) {
+  const cfg = RATE_LIMITS[eventName];
+  if (!cfg) return false;
+  if (!socket._rateLimitState) socket._rateLimitState = createRateLimiter();
+  const now = Date.now();
+  const state = socket._rateLimitState.get(eventName) || { count: 0, resetAt: now + cfg.windowMs };
+  if (now > state.resetAt) {
+    state.count = 0;
+    state.resetAt = now + cfg.windowMs;
+  }
+  state.count++;
+  socket._rateLimitState.set(eventName, state);
+  return state.count > cfg.limit;
+}
+
+function sanitizeBoard(board) {
+  if (!Array.isArray(board) || board.length !== 9) return null;
+  const safe = [];
+  for (let r = 0; r < 9; r++) {
+    const row = board[r];
+    if (!Array.isArray(row) || row.length !== 9) return null;
+    const safeRow = [];
+    for (let c = 0; c < 9; c++) {
+      const v = Number(row[c]);
+      if (!Number.isFinite(v)) return null;
+      const intVal = Math.trunc(v);
+      safeRow.push(intVal >= 0 && intVal <= 9 ? intVal : 0);
+    }
+    safe.push(safeRow);
+  }
+  return safe;
+}
+
+function validateScoreTransition(previous, next, mode) {
+  const nextScore = Number(next);
+  if (!Number.isFinite(nextScore)) return false;
+  const normalized = Math.trunc(nextScore);
+  if (normalized < 0) return false;
+  const maxAllowed = mode === 'time' ? 40000 : 25000;
+  if (normalized > maxAllowed) return false;
+  if (typeof previous !== 'number') return true;
+  if (normalized < previous) return false;
+  const delta = normalized - previous;
+  return delta <= 500;
 }
 
 class GameRoom {
@@ -118,6 +197,7 @@ io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
   socket.on('create-room', (data) => {
+    if (isRateLimited(socket, 'create-room')) return;
     removeFromQueues(socket);
     handleDisconnect(socket);
     const roomId = generateRoomId();
@@ -129,7 +209,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join-room', (data) => {
+    if (isRateLimited(socket, 'join-room')) return;
     removeFromQueues(socket);
+    if (!data || typeof data.roomId !== 'string' || data.roomId.trim().length < 4) {
+      socket.emit('error', { message: 'Gecersiz oda kodu.' });
+      return;
+    }
     const roomId = data.roomId.toUpperCase();
     if (socket._roomId && socket._roomId !== roomId) handleDisconnect(socket);
     const room = rooms.get(roomId);
@@ -156,6 +241,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('quick-match', (data) => {
+    if (isRateLimited(socket, 'quick-match')) return;
     if (socket._roomId) handleDisconnect(socket);
     const mode = data.mode || 'score';
     const queue = waitingQueues[mode];
@@ -182,6 +268,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('board-update', (data) => {
+    if (isRateLimited(socket, 'board-update')) return;
     const roomId = socket._roomId;
     if (!roomId) return;
     const room = rooms.get(roomId);
@@ -189,8 +276,15 @@ io.on('connection', (socket) => {
 
     const player = room.players.find(p => p.id === socket.id);
     if (player) {
-      player.score = data.score;
-      player.board = data.board;
+      const safeBoard = sanitizeBoard(data.board);
+      if (!safeBoard) return;
+      if (!validateScoreTransition(player.score, data.score, room.mode)) {
+        console.warn(`Suspicious score from ${socket.id} in room ${room.id}`);
+        socket.emit('error', { message: 'Gecersiz skor guncellemesi algilandi.' });
+        return;
+      }
+      player.score = Math.trunc(Number(data.score));
+      player.board = safeBoard;
       if (data.uid) player.uid = data.uid;
       if (data.username) player.username = data.username;
     }
@@ -198,8 +292,8 @@ io.on('connection', (socket) => {
     const opponent = room.getOpponent(socket.id);
     if (opponent) {
       opponent.socket.emit('opponent-update', {
-        board: data.board,
-        score: data.score,
+        board: player ? player.board : null,
+        score: player ? player.score : 0,
         uid: data.uid,
         username: data.username,
       });
@@ -207,6 +301,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('player-info', (data) => {
+    if (isRateLimited(socket, 'player-info')) return;
     const roomId = socket._roomId;
     if (!roomId) return;
     const room = rooms.get(roomId);
@@ -264,6 +359,7 @@ io.on('connection', (socket) => {
 
     if (room.players.length >= 2 && room.players.every(p => p.gameOver)) {
       room.cleanup();
+      io.to(room.id).emit('game-finished');
       io.to(room.id).emit('game-time-up');
     }
   });

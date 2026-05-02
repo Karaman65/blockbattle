@@ -12,6 +12,7 @@ class NetworkManager {
     this.actionPending = false;
     this.connectToken = 0;
     this.roomCreateTimer = null;
+    this.lastConnectError = null;
   }
 
   setWaitingMode(type) {
@@ -67,9 +68,11 @@ class NetworkManager {
       this.socket = io(this.getServerUrl(), {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 3,
-        reconnectionDelay: 600,
-        timeout: 8000,
+        reconnectionAttempts: 8,
+        reconnectionDelay: 900,
+        reconnectionDelayMax: 3000,
+        randomizationFactor: 0.4,
+        timeout: 20000,
       });
     } catch (err) {
       console.error('Socket baglanti hatasi:', err);
@@ -78,6 +81,7 @@ class NetworkManager {
 
     this.socket.on('connect', () => {
       this.connected = true;
+      this.lastConnectError = null;
       console.log('Connected to server');
     });
 
@@ -87,6 +91,7 @@ class NetworkManager {
     });
 
     this.socket.on('connect_error', (err) => {
+      this.lastConnectError = err && err.message ? err.message : 'unknown';
       console.error('Socket connect_error:', err);
     });
 
@@ -145,6 +150,9 @@ class NetworkManager {
     this.socket.on('game-time-up', () => {
       this.game.onTimeUp();
     });
+    this.socket.on('game-finished', () => {
+      if (this.game.onlineMode === 'time') this.game.onTimeUp();
+    });
 
     this.socket.on('error', (data) => {
       this.setOnlineButtonsBusy(false);
@@ -152,7 +160,7 @@ class NetworkManager {
       this.game.showScreen('online-screen');
     });
 
-    return this.waitUntilConnected(10000);
+    return this.waitUntilConnected(25000);
   }
 
   getServerUrl() {
@@ -172,7 +180,7 @@ class NetworkManager {
     return window.location.origin;
   }
 
-  waitUntilConnected(timeout = 10000) {
+  waitUntilConnected(timeout = 25000) {
     if (this.connected || (this.socket && this.socket.connected)) {
       this.connected = true;
       return Promise.resolve();
@@ -206,7 +214,8 @@ class NetworkManager {
           this.socket = null;
           this.connected = false;
         }
-        reject(new Error('Sunucu baglantisi zaman asimina ugradi.'));
+        const reason = this.lastConnectError ? ` (${this.lastConnectError})` : '';
+        reject(new Error(`Sunucu baglantisi zaman asimina ugradi${reason}.`));
       }, timeout);
 
       this.socket.once('connect', onConnect);
@@ -225,13 +234,15 @@ class NetworkManager {
       const roomCode = document.getElementById('room-code-display');
       if (roomCode) roomCode.textContent = '----';
       this.game.showScreen('waiting-screen');
+      const health = await this.checkServerHealth();
+      if (!health.ok) throw new Error(health.message || 'Sunucu su an ulasilamiyor.');
       await this.connect();
       this.matchType = 'room';
       this.socket.emit('create-room', { mode });
       this.startRoomCreateTimeout();
     } catch (err) {
       this.setOnlineButtonsBusy(false);
-      alert('Oda olusturulamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
+      alert('Oda olusturulamadi: ' + (err.message || 'Sunucuya baglanilamadi. Birazdan tekrar dene.'));
       this.game.showScreen('online-screen');
     }
   }
@@ -242,21 +253,23 @@ class NetworkManager {
       if (!this.actionPending || this.roomId) return;
       this.setOnlineButtonsBusy(false);
       this.leaveRoom();
-      alert('Oda olusturulamadi: Sunucu cevap vermedi. Tekrar dene.');
+      alert('Oda olusturulamadi: Sunucu gec cevap verdi. Birkac saniye sonra tekrar dene.');
       this.game.showScreen('online-screen');
-    }, 10000);
+    }, 25000);
   }
 
   async joinRoom(roomId) {
     if (this.actionPending) return;
     try {
       this.setOnlineButtonsBusy(true);
+      const health = await this.checkServerHealth();
+      if (!health.ok) throw new Error(health.message || 'Sunucu su an ulasilamiyor.');
       await this.connect();
       this.matchType = 'room';
       this.socket.emit('join-room', { roomId: roomId.toUpperCase() });
     } catch (err) {
       this.setOnlineButtonsBusy(false);
-      alert('Odaya katilamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
+      alert('Odaya katilamadi: ' + (err.message || 'Sunucuya baglanilamadi. Birazdan tekrar dene.'));
     }
   }
 
@@ -267,23 +280,40 @@ class NetworkManager {
       this.gameMode = mode;
       this.setWaitingMode('quick');
       this.game.showScreen('waiting-screen');
+      const health = await this.checkServerHealth();
+      if (!health.ok) throw new Error(health.message || 'Sunucu su an ulasilamiyor.');
       await this.connect();
       this.matchType = 'quick';
       this.socket.emit('quick-match', { mode });
     } catch (err) {
       this.setOnlineButtonsBusy(false);
-      alert('Hizli mac baslatilamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
+      alert('Hizli mac baslatilamadi: ' + (err.message || 'Sunucuya baglanilamadi. Birazdan tekrar dene.'));
       this.game.showScreen('online-screen');
     }
   }
 
   sendBoardUpdate(board, score) {
     if (!this.socket || !this.roomId) return;
+    const safeBoard = this.toCompactBoard(board);
+    if (!safeBoard) return;
     this.socket.emit('board-update', {
-      board,
+      board: safeBoard,
       score,
       uid: this.game.authManager.user ? this.game.authManager.user.uid : null,
       username: this.game.authManager.getUsername ? this.game.authManager.getUsername() : 'Oyuncu',
+    });
+  }
+
+  toCompactBoard(board) {
+    if (!Array.isArray(board) || board.length !== 9) return null;
+    return board.map(row => {
+      if (!Array.isArray(row) || row.length !== 9) return new Array(9).fill(0);
+      return row.map(v => {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return 0;
+        const iv = Math.trunc(n);
+        return iv >= 0 && iv <= 9 ? iv : 0;
+      });
     });
   }
 
@@ -325,5 +355,26 @@ class NetworkManager {
   getRoomLink() {
     const base = window.location.protocol === 'file:' ? this.getServerUrl() : window.location.origin;
     return `${base}?room=${this.roomId}`;
+  }
+
+  async checkServerHealth() {
+    const base = this.getServerUrl().replace(/\/+$/, '');
+    const healthUrl = `${base}/health?t=${Date.now()}`;
+    try {
+      const response = await fetch(healthUrl, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        return { ok: false, message: `Sunucu hata dondu (${response.status}).` };
+      }
+      const json = await response.json().catch(() => null);
+      if (!json || json.ok !== true) {
+        return { ok: false, message: 'Sunucu hazir degil.' };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: 'Sunucuya erisilemedi. Baglantini kontrol et.' };
+    }
   }
 }

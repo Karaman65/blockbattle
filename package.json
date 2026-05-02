@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "check:syntax": "node --check server.js && node --check public/js/network.js && node --check public/js/game.js && node --check public/sw.js",
+    "health:local": "node -e \"fetch('http://localhost:3001/health').then(r=>r.text()).then(console.log).catch(e=>{console.error(e.message);process.exit(1);})\""
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",

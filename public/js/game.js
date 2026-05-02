@@ -304,14 +304,6 @@ class Game {
     const btnBuyPremiumNew = document.getElementById('btn-buy-premium-new');
     if (btnBuyPremiumNew) {
       btnBuyPremiumNew.onclick = () => {
-        btnBuyPremiumNew.disabled = true;
-        btnBuyPremiumNew.textContent = '⏳ İşlem yapılıyor...';
-        document.getElementById('btn-buy-premium').click(); // Trigger the actual logic
-      };
-    }
-
-    if (btnBuyPremiumNew) {
-      btnBuyPremiumNew.onclick = () => {
         const productId = btnBuyPremiumNew.dataset.productId || 'premium_lifetime';
         const priceLabel = btnBuyPremiumNew.dataset.priceLabel || '₺79,99';
         console.log('Premium selected:', { productId, price: priceLabel, coinBonus: 2000 });
@@ -405,34 +397,6 @@ class Game {
     });
 
     const btnBuyPremium = document.getElementById('btn-buy-premium');
-    if (btnBuyPremium) {
-      btnBuyPremium.onclick = async () => {
-        btnBuyPremium.disabled = true;
-        btnBuyPremium.textContent = '⌛ İşlem yapılıyor...';
-        const success = await this.authManager.setPremium();
-        if (success) {
-          btnBuyPremium.textContent = '✅ Artık Premium Üyesiniz!';
-          btnBuyPremium.style.background = '#2ed573';
-          if (btnBuyPremiumNew) {
-            btnBuyPremiumNew.textContent = '✅ PREMIUM AKTİF';
-            btnBuyPremiumNew.style.background = '#2ed573';
-          }
-          this.ad.hideBanner();
-          const btnPremiumMenu = document.getElementById('btn-premium-menu');
-          if (btnPremiumMenu) btnPremiumMenu.classList.add('hidden');
-          setTimeout(() => this.showScreen('menu-screen'), 2000);
-        } else {
-          btnBuyPremium.disabled = false;
-          btnBuyPremium.textContent = '❌ Hata oluştu!';
-          if (btnBuyPremiumNew) {
-            btnBuyPremiumNew.disabled = false;
-            btnBuyPremiumNew.textContent = 'ŞİMDİ YÜKSELT';
-          }
-          setTimeout(() => btnBuyPremium.textContent = '💎 Hemen Satın Al', 2000);
-        }
-      };
-    }
-
     if (btnBuyPremium) {
       btnBuyPremium.onclick = async () => {
         alert('Premium yalnızca Google Play ödeme doğrulamasından sonra etkinleştirilir.');
@@ -1456,7 +1420,7 @@ class Game {
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(false);
       this.authManager.addCoins(25).then(() => this.updateCoinDisplays());
-      this.showGameOverScreen(false, `Rakip 1000 puana ulaştı. ${this.score} - ${this.opponentScore}`);
+      this.showGameOverScreen(false, `Rakip ${this.targetScore} puana ulaştı. ${this.score} - ${this.opponentScore}`);
       return;
     }
     this.state = 'gameover';
@@ -1584,7 +1548,7 @@ class Game {
         this.recordCompletedGame(true);
         this.recordOnlineMatchResult(true);
         this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
-        this.showGameOverScreen(true, '1000 puana ilk sen ulaştın!');
+        this.showGameOverScreen(true, `${this.targetScore} puana ilk sen ulaştın!`);
       }
     }
     requestAnimationFrame((t) => this.gameLoop(t));
