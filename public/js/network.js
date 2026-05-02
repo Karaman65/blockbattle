@@ -164,18 +164,20 @@ class NetworkManager {
   }
 
   getServerUrl() {
+    const productionServer = 'https://blockbattle.onrender.com';
+    const overrideServer = window.localStorage ? window.localStorage.getItem('blockBattleServerUrl') : '';
+    if (overrideServer) return overrideServer;
     if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-      return 'https://blockbattle.onrender.com';
+      return productionServer;
     }
     if (window.location.protocol === 'file:') {
-      return 'https://blockbattle.onrender.com';
+      return productionServer;
     }
     const host = window.location.hostname;
     const isLocal = ['localhost', '127.0.0.1', '::1'].includes(host);
     if (isLocal) {
-      const port = window.location.port;
-      if (port === '3001' || port === '3000') return window.location.origin;
-      return 'http://localhost:3001';
+      const useLocalServer = new URLSearchParams(window.location.search).get('server') === 'local';
+      return useLocalServer ? 'http://localhost:3001' : productionServer;
     }
     return window.location.origin;
   }
