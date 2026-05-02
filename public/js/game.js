@@ -604,13 +604,15 @@ class Game {
     if (!this.authManager.user || !this.opponentUid) return;
     const myUid = this.authManager.user.uid;
     const matchType = this.network.matchType === 'quick' ? 'quick' : 'room';
-    if (won === false) return;
-    if (won === null && myUid > this.opponentUid) return;
+    if (matchType !== 'quick') return;
+    const shouldWriteMatch = won === true || (won === null && myUid < this.opponentUid);
     this.onlineMatchRecorded = true;
     await this.dbManager.recordOnlineMatch({
       matchType,
       mode: this.onlineMode || this.network.gameMode || 'score',
       roomId: this.network.roomId || '',
+      currentUid: myUid,
+      writeMatch: shouldWriteMatch,
       player1: {
         uid: myUid,
         username: this.authManager.getUsername(),

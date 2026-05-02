@@ -13,6 +13,14 @@ service cloud.firestore {
       return data.keys().hasOnly(allowedKeys);
     }
 
+    function keepsPremiumUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isPremium']);
+    }
+
+    function keepsIdentityUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['email', 'createdAt']);
+    }
+
     match /users/{uid} {
       allow read: if isOwner(uid);
       allow create: if isOwner(uid)
@@ -21,7 +29,9 @@ service cloud.firestore {
           'inventory', 'totalGames', 'totalWins', 'totalOnlineGames',
           'createdAt'
         ]);
-      allow update: if isOwner(uid);
+      allow update: if isOwner(uid)
+        && keepsPremiumUnchanged()
+        && keepsIdentityUnchanged();
       allow delete: if false;
     }
 

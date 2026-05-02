@@ -358,9 +358,9 @@ io.on('connection', (socket) => {
     if (player) player.gameOver = true;
 
     if (room.players.length >= 2 && room.players.every(p => p.gameOver)) {
-      room.cleanup();
       io.to(room.id).emit('game-finished');
       io.to(room.id).emit('game-time-up');
+      room.cleanup();
     }
   });
 
