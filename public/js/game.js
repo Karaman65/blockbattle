@@ -886,7 +886,7 @@ class Game {
     document.getElementById('profile-username').textContent = d.username || 'Oyuncu';
     document.getElementById('profile-email').textContent = this.authManager.user ? this.authManager.user.email : '';
     document.getElementById('p-high-score').textContent = d.highScore || 0;
-    document.getElementById('p-total-games').textContent = d.totalGames || 0;
+    document.getElementById('p-total-games').textContent = d.totalOnlineGames || 0;
     document.getElementById('p-total-wins').textContent = d.quickWins || 0;
     // Load match history
     const hist = document.getElementById('match-history');
