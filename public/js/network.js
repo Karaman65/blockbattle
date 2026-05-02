@@ -128,6 +128,7 @@ class NetworkManager {
 
     this.socket.on('timer-sync', (data) => {
       this.game.timerRemaining = data.remaining;
+      this.game.updateTimerDisplay();
     });
 
     this.socket.on('game-time-up', () => {
@@ -286,6 +287,11 @@ class NetworkManager {
   sendGameOver() {
     if (!this.socket || !this.roomId) return;
     this.socket.emit('player-gameover');
+  }
+
+  sendPlayerLocked() {
+    if (!this.socket || !this.roomId) return;
+    this.socket.emit('player-locked');
   }
 
   leaveRoom() {
