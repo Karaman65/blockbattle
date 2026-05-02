@@ -674,6 +674,7 @@
   <div id="waiting-screen" class="screen">
     <div class="panel glass-panel">
       <h2 id="waiting-title" class="panel-title">Rakip Bekleniyor...</h2>
+      <p id="waiting-subtitle" class="waiting-subtitle">Online maç hazırlanıyor.</p>
       <div id="quick-waiting-info" class="hidden" style="text-align: center; margin: 20px 0;">
         <div class="spinner-container"><div class="spinner"></div></div>
       </div>
@@ -733,20 +734,33 @@
       <button id="btn-bomb" class="power-up-btn" title="Bomba: 3x3 Alanı Patlat">
         <span class="pu-icon">💣</span>
         <span class="pu-count" id="count-bomb">1</span>
+        <span class="pu-plus">+</span>
       </button>
       <button id="btn-rotate" class="power-up-btn" title="Döndür: Parçaları Döndür">
         <span class="pu-icon">🔄</span>
         <span class="pu-count" id="count-rotate">2</span>
+        <span class="pu-plus">+</span>
       </button>
       <button id="btn-skip" class="power-up-btn" title="Pas Geç: Yeni Parçalar Al">
         <span class="pu-icon">⏭️</span>
         <span class="pu-count" id="count-skip">1</span>
+        <span class="pu-plus">+</span>
       </button>
     </div>
 
     <div id="piece-tray"></div>
 
     <div id="score-popup-container"></div>
+
+    <div id="quick-shop-modal" class="quick-shop-modal hidden">
+      <div class="quick-shop-panel">
+        <button id="quick-shop-close" class="quick-shop-close">×</button>
+        <div class="quick-shop-title">Güçlendirici Al</div>
+        <div id="quick-shop-balance" class="quick-shop-balance">0 coin</div>
+        <div id="quick-shop-items" class="quick-shop-items"></div>
+        <div id="quick-shop-status" class="quick-shop-status"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ GAME OVER ═══ -->
@@ -764,6 +778,7 @@
         </div>
       </div>
       <div id="gameover-result" class="gameover-result hidden"></div>
+      <div id="gameover-detail" class="gameover-detail hidden"></div>
       <div class="gameover-buttons">
         <button id="btn-play-again" class="btn btn-primary btn-large">🔄 Tekrar Oyna</button>
         <button id="btn-go-menu" class="btn btn-ghost">Ana Menü</button>
@@ -777,6 +792,19 @@
       <h2 id="pause-title" class="panel-title">Duraklatıldı</h2>
       <button id="btn-resume" class="btn btn-primary">▶ Devam Et</button>
       <button id="btn-quit" class="btn btn-ghost">🚪 Çık</button>
+    </div>
+  </div>
+
+  <div id="tutorial-overlay" class="screen overlay hidden">
+    <div class="panel glass-panel tutorial-panel">
+      <h2 class="panel-title">Nasıl Oynanır?</h2>
+      <div class="tutorial-steps">
+        <div class="tutorial-step"><span>1</span><p>Blokları 9x9 alana sürükle ve yerleştir.</p></div>
+        <div class="tutorial-step"><span>2</span><p>Satır veya sütunu tamamen doldurunca temizlenir ve puan kazanırsın.</p></div>
+        <div class="tutorial-step"><span>3</span><p>Skor Yarışı 1000 puanda, Zamana Karşı 90 saniyede biter.</p></div>
+        <div class="tutorial-step"><span>4</span><p>Güçlendiricin biterse + ile oyundan çıkmadan satın alabilirsin.</p></div>
+      </div>
+      <button id="btn-tutorial-ok" class="btn btn-primary btn-full">ANLADIM</button>
     </div>
   </div>
 
