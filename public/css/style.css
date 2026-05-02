@@ -1050,8 +1050,96 @@ body {
   justify-content: center;
   border: 2px solid var(--bg-primary);
 }
+.pu-plus {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 22px;
+  height: 22px;
+  display: none;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--success), var(--neon-cyan));
+  color: #06111f;
+  font-size: 1rem;
+  font-weight: 900;
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 0 14px rgba(0, 255, 157, 0.35);
+}
+.power-up-btn.empty .pu-plus { display: grid; }
+.power-up-btn.empty {
+  opacity: 1;
+  border-color: rgba(0, 255, 157, 0.28);
+}
 
 /* â”€â”€ Coin Badge â”€â”€ */
+.quick-shop-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+}
+.quick-shop-panel {
+  width: min(420px, 100%);
+  position: relative;
+  padding: 18px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(0, 243, 255, 0.08), rgba(255, 0, 122, 0.08)), rgba(12, 12, 30, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.48);
+}
+.quick-shop-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+.quick-shop-title { font-size: 1rem; font-weight: 900; letter-spacing: 1.6px; text-transform: uppercase; }
+.quick-shop-balance { margin-top: 4px; color: var(--warning); font-size: 0.85rem; font-weight: 800; }
+.quick-shop-items { display: grid; gap: 10px; margin-top: 16px; }
+.quick-shop-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.quick-shop-icon { font-size: 1.5rem; text-align: center; }
+.quick-shop-name { font-weight: 900; color: var(--text-primary); }
+.quick-shop-desc { display: block; margin-top: 2px; color: var(--text-muted); font-size: 0.72rem; font-weight: 700; }
+.quick-shop-buy {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--neon-purple));
+  color: #fff;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.quick-shop-buy:disabled { opacity: 0.45; }
+.quick-shop-status {
+  min-height: 20px;
+  margin-top: 12px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .coin-badge {
   display: flex;
   align-items: center;

@@ -480,9 +480,17 @@ class Game {
     };
 
     // Power-ups
-    document.getElementById('btn-bomb').onclick = () => this.toggleBombMode();
-    document.getElementById('btn-rotate').onclick = () => this.useRotate();
-    document.getElementById('btn-skip').onclick = () => this.useSkip();
+    document.getElementById('btn-bomb').onclick = () => this.powerUps.bomb <= 0 ? this.openQuickShop('bomb') : this.toggleBombMode();
+    document.getElementById('btn-rotate').onclick = () => this.powerUps.rotate <= 0 ? this.openQuickShop('rotate') : this.useRotate();
+    document.getElementById('btn-skip').onclick = () => this.powerUps.skip <= 0 ? this.openQuickShop('skip') : this.useSkip();
+    const quickShopClose = document.getElementById('quick-shop-close');
+    if (quickShopClose) quickShopClose.onclick = () => this.closeQuickShop();
+    const quickShopModal = document.getElementById('quick-shop-modal');
+    if (quickShopModal) {
+      quickShopModal.onclick = (e) => {
+        if (e.target === quickShopModal) this.closeQuickShop();
+      };
+    }
 
     // Game over
     document.getElementById('btn-play-again').onclick = () => {
@@ -1697,13 +1705,72 @@ class Game {
     if (bombEl) bombEl.textContent = this.powerUps.bomb;
     if (rotateEl) rotateEl.textContent = this.powerUps.rotate;
     if (skipEl) skipEl.textContent = this.powerUps.skip;
-    
-    document.getElementById('btn-bomb').disabled = this.powerUps.bomb <= 0;
-    document.getElementById('btn-rotate').disabled = this.powerUps.rotate <= 0;
-    document.getElementById('btn-skip').disabled = this.powerUps.skip <= 0;
+
+    const bombBtn = document.getElementById('btn-bomb');
+    const rotateBtn = document.getElementById('btn-rotate');
+    const skipBtn = document.getElementById('btn-skip');
+    if (bombBtn) bombBtn.classList.toggle('empty', this.powerUps.bomb <= 0);
+    if (rotateBtn) rotateBtn.classList.toggle('empty', this.powerUps.rotate <= 0);
+    if (skipBtn) skipBtn.classList.toggle('empty', this.powerUps.skip <= 0);
     
     if (this.bombMode) document.getElementById('btn-bomb').classList.add('active');
     else document.getElementById('btn-bomb').classList.remove('active');
+  }
+
+  openQuickShop(focusType = 'bomb') {
+    const modal = document.getElementById('quick-shop-modal');
+    const itemsEl = document.getElementById('quick-shop-items');
+    const balanceEl = document.getElementById('quick-shop-balance');
+    const statusEl = document.getElementById('quick-shop-status');
+    if (!modal || !itemsEl) return;
+
+    const items = [
+      { type: 'bomb', icon: '💣', name: 'Bomba', desc: '3x3 alanı temizler.', price: 240 },
+      { type: 'rotate', icon: '🔄', name: 'Döndür', desc: 'Parçaları çevirir.', price: 125 },
+      { type: 'skip', icon: '⏭️', name: 'Pas Geç', desc: 'Yeni parçalar getirir.', price: 190 },
+    ];
+    const ordered = [...items].sort((a, b) => (a.type === focusType ? -1 : 0) + (b.type === focusType ? 1 : 0));
+    if (balanceEl) balanceEl.textContent = `${this.authManager.getCoins().toLocaleString('tr-TR')} coin`;
+    if (statusEl) statusEl.textContent = '';
+    itemsEl.innerHTML = ordered.map(item => `
+      <div class="quick-shop-item ${item.type === focusType ? 'focused' : ''}">
+        <div class="quick-shop-icon">${item.icon}</div>
+        <div>
+          <div class="quick-shop-name">${item.name}</div>
+          <span class="quick-shop-desc">${item.desc}</span>
+        </div>
+        <button class="quick-shop-buy" data-type="${item.type}" data-price="${item.price}">${item.price} coin</button>
+      </div>
+    `).join('');
+
+    itemsEl.querySelectorAll('.quick-shop-buy').forEach(btn => {
+      btn.onclick = async () => {
+        const type = btn.dataset.type;
+        const price = parseInt(btn.dataset.price, 10);
+        btn.disabled = true;
+        const success = await this.authManager.buyPowerUp(type, price);
+        if (success) {
+          this.powerUps[type] = (this.powerUps[type] || 0) + 1;
+          this.updateCoinDisplays();
+          this.updatePowerUpUI();
+          if (balanceEl) balanceEl.textContent = `${this.authManager.getCoins().toLocaleString('tr-TR')} coin`;
+          if (statusEl) statusEl.textContent = 'Alındı. Oyuna devam edebilirsin.';
+          this.audio.pickup();
+        } else if (statusEl) {
+          statusEl.textContent = 'Coin yetersiz.';
+          btn.classList.add('shake');
+          setTimeout(() => btn.classList.remove('shake'), 500);
+        }
+        btn.disabled = false;
+      };
+    });
+
+    modal.classList.remove('hidden');
+  }
+
+  closeQuickShop() {
+    const modal = document.getElementById('quick-shop-modal');
+    if (modal) modal.classList.add('hidden');
   }
 
   toggleBombMode() {
