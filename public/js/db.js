@@ -46,11 +46,13 @@ class DatabaseManager {
   async recordOnlineMatch(matchData) {
     // matchData: { player1: {uid, username, score}, player2: {uid, username, score}, mode, winnerUid }
     try {
+      const matchType = matchData.matchType === 'quick' ? 'quick' : 'room';
       const matchRef = matchData.roomId
-        ? db.collection('matches').doc(`quick_${matchData.roomId}`)
+        ? db.collection('matches').doc(`${matchType}_${matchData.roomId}`)
         : db.collection('matches').doc();
       await matchRef.set({
         ...matchData,
+        matchType,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       }, { merge: false });
 
@@ -60,13 +62,18 @@ class DatabaseManager {
         const lost = matchData.winnerUid && !won;
         const update = {
           totalOnlineGames: firebase.firestore.FieldValue.increment(1),
-          quickOnlineGames: firebase.firestore.FieldValue.increment(1),
         };
+        if (matchType === 'quick') update.quickOnlineGames = firebase.firestore.FieldValue.increment(1);
+        if (matchType === 'room') update.roomOnlineGames = firebase.firestore.FieldValue.increment(1);
         if (won) {
           update.totalWins = firebase.firestore.FieldValue.increment(1);
-          update.quickWins = firebase.firestore.FieldValue.increment(1);
+          if (matchType === 'quick') update.quickWins = firebase.firestore.FieldValue.increment(1);
+          if (matchType === 'room') update.roomWins = firebase.firestore.FieldValue.increment(1);
         }
-        if (lost) update.quickLosses = firebase.firestore.FieldValue.increment(1);
+        if (lost) {
+          if (matchType === 'quick') update.quickLosses = firebase.firestore.FieldValue.increment(1);
+          if (matchType === 'room') update.roomLosses = firebase.firestore.FieldValue.increment(1);
+        }
         return db.collection('users').doc(player.uid).update(update);
       }));
     } catch (err) {
@@ -101,13 +108,11 @@ class DatabaseManager {
       // Get matches where user is player1 or player2
       const snap1 = await db.collection('matches')
         .where('player1.uid', '==', uid)
-        .orderBy('createdAt', 'desc')
         .limit(limit * 3)
         .get();
 
       const snap2 = await db.collection('matches')
         .where('player2.uid', '==', uid)
-        .orderBy('createdAt', 'desc')
         .limit(limit * 3)
         .get();
 
@@ -123,7 +128,7 @@ class DatabaseManager {
       });
 
       return matches
-        .filter(match => match.matchType === 'quick')
+        .filter(match => match.matchType === 'quick' || match.matchType === 'room')
         .slice(0, limit);
     } catch (err) {
       console.error('Failed to get match history:', err);

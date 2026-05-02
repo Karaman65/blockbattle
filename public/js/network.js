@@ -10,6 +10,8 @@ class NetworkManager {
     this.matchType = null;
     this.connectPromise = null;
     this.actionPending = false;
+    this.connectToken = 0;
+    this.roomCreateTimer = null;
   }
 
   setWaitingMode(type) {
@@ -42,7 +44,7 @@ class NetworkManager {
 
     if (this.socket) {
       if (!this.socket.connected) this.socket.connect();
-      return this.waitUntilConnected();
+      return this.waitUntilConnected(10000);
     }
 
     if (typeof io === 'undefined' || typeof io !== 'function') {
@@ -54,9 +56,9 @@ class NetworkManager {
       this.socket = io(this.getServerUrl(), {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 8,
-        reconnectionDelay: 700,
-        timeout: 15000,
+        reconnectionAttempts: 3,
+        reconnectionDelay: 600,
+        timeout: 8000,
       });
     } catch (err) {
       console.error('Socket baglanti hatasi:', err);
@@ -78,6 +80,7 @@ class NetworkManager {
     });
 
     this.socket.on('room-created', (data) => {
+      clearTimeout(this.roomCreateTimer);
       this.setOnlineButtonsBusy(false);
       this.roomId = data.roomId;
       this.matchType = 'room';
@@ -137,7 +140,7 @@ class NetworkManager {
       this.game.showScreen('online-screen');
     });
 
-    return this.waitUntilConnected();
+    return this.waitUntilConnected(10000);
   }
 
   getServerUrl() {
@@ -157,13 +160,14 @@ class NetworkManager {
     return window.location.origin;
   }
 
-  waitUntilConnected(timeout = 15000) {
+  waitUntilConnected(timeout = 10000) {
     if (this.connected || (this.socket && this.socket.connected)) {
       this.connected = true;
       return Promise.resolve();
     }
     if (this.connectPromise) return this.connectPromise;
 
+    const token = ++this.connectToken;
     this.connectPromise = new Promise((resolve, reject) => {
       const cleanup = () => {
         clearTimeout(timer);
@@ -173,15 +177,23 @@ class NetworkManager {
         this.socket.off('connect_error', onError);
       };
       const onConnect = () => {
+        if (token !== this.connectToken) return;
         this.connected = true;
         cleanup();
         resolve();
       };
       const onError = (err) => {
+        if (token !== this.connectToken) return;
         console.warn('Socket connection waiting:', err.message);
       };
       const timer = setTimeout(() => {
+        if (token !== this.connectToken) return;
         cleanup();
+        if (this.socket && !this.socket.connected) {
+          this.socket.disconnect();
+          this.socket = null;
+          this.connected = false;
+        }
         reject(new Error('Sunucu baglantisi zaman asimina ugradi.'));
       }, timeout);
 
@@ -204,11 +216,23 @@ class NetworkManager {
       this.gameMode = mode;
       this.matchType = 'room';
       this.socket.emit('create-room', { mode });
+      this.startRoomCreateTimeout();
     } catch (err) {
       this.setOnlineButtonsBusy(false);
       alert('Oda olusturulamadi: ' + (err.message || 'Sunucuya baglanilamadi.'));
       this.game.showScreen('online-screen');
     }
+  }
+
+  startRoomCreateTimeout() {
+    clearTimeout(this.roomCreateTimer);
+    this.roomCreateTimer = setTimeout(() => {
+      if (!this.actionPending || this.roomId) return;
+      this.setOnlineButtonsBusy(false);
+      this.leaveRoom();
+      alert('Oda olusturulamadi: Sunucu cevap vermedi. Tekrar dene.');
+      this.game.showScreen('online-screen');
+    }, 10000);
   }
 
   async joinRoom(roomId) {
@@ -265,9 +289,17 @@ class NetworkManager {
   }
 
   leaveRoom() {
+    clearTimeout(this.roomCreateTimer);
     if (this.socket) {
       this.socket.emit('leave-room');
+      if (!this.socket.connected) {
+        this.socket.disconnect();
+        this.socket = null;
+      }
     }
+    this.connectToken++;
+    this.connectPromise = null;
+    this.connected = !!(this.socket && this.socket.connected);
     this.roomId = null;
     this.matchType = null;
     this.setOnlineButtonsBusy(false);

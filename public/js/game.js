@@ -512,12 +512,18 @@ class Game {
     }
     if (statusEl) statusEl.textContent = '';
 
-    const success = await this.authManager.submitFeedback(typeEl ? typeEl.value : 'other', message);
-    if (success) {
+    const result = await this.authManager.submitFeedback(typeEl ? typeEl.value : 'other', message);
+    if (result && result.ok) {
       if (messageEl) messageEl.value = '';
       if (statusEl) statusEl.textContent = 'Teşekkürler, mesajın alındı.';
     } else if (statusEl) {
-      statusEl.textContent = 'Gönderilemedi. Bağlantını kontrol edip tekrar dene.';
+      if (result && result.reason === 'auth') {
+        statusEl.textContent = 'Göndermek için giriş yapmalısın.';
+      } else if (result && result.reason === 'permission-denied') {
+        statusEl.textContent = 'Feedback izni kapalı. Firebase Rules ayarı gerekiyor.';
+      } else {
+        statusEl.textContent = 'Gönderilemedi. Bağlantını kontrol edip tekrar dene.';
+      }
     }
 
     if (btn) {
@@ -616,15 +622,16 @@ class Game {
     if (data.username) this.opponentUsername = data.username;
   }
 
-  async recordQuickMatchResult(won) {
-    if (this.onlineMatchRecorded || this.mode !== 'online' || this.network.matchType !== 'quick') return;
+  async recordOnlineMatchResult(won) {
+    if (this.onlineMatchRecorded || this.mode !== 'online') return;
     if (!this.authManager.user || !this.opponentUid) return;
     const myUid = this.authManager.user.uid;
+    const matchType = this.network.matchType === 'quick' ? 'quick' : 'room';
     if (won === false) return;
     if (won === null && myUid > this.opponentUid) return;
     this.onlineMatchRecorded = true;
     await this.dbManager.recordOnlineMatch({
-      matchType: 'quick',
+      matchType,
       mode: this.onlineMode || this.network.gameMode || 'score',
       roomId: this.network.roomId || '',
       player1: {
@@ -894,13 +901,24 @@ class Game {
       const oppName = isP1 ? (m.player2 ? m.player2.username : '?') : (m.player1 ? m.player1.username : '?');
       const oppScore = isP1 ? (m.player2 ? m.player2.score : 0) : (m.player1 ? m.player1.score : 0);
       const won = m.winnerUid === uid;
+      const typeLabel = m.matchType === 'quick' ? 'Hizli Mac' : 'Oda Maci';
+      const resultLabel = won ? 'Zafer' : 'Maglubiyet';
+      const icon = won ? 'WIN' : 'LOSE';
       return `
         <div class="match-history-item ${won ? 'win' : 'lose'}">
-          <div class="player-info">
-            <span class="player-name">vs ${oppName}</span>
-            <span class="p-email">${won ? 'ZAFER' : 'MAĞLUBİYET'}</span>
+          <div class="match-result-badge">${icon}</div>
+          <div class="match-main">
+            <div class="match-topline">
+              <span class="match-opponent">vs ${oppName}</span>
+              <span class="match-type">${typeLabel}</span>
+            </div>
+            <span class="match-result-text">${resultLabel}</span>
           </div>
-          <span class="player-score">${myScore} - ${oppScore}</span>
+          <div class="match-score-pill">
+            <span>${myScore}</span>
+            <small>-</small>
+            <span>${oppScore}</span>
+          </div>
         </div>`;
     }).join('');
   }
@@ -1342,7 +1360,7 @@ class Game {
   async onGameOver() {
     this.state = 'gameover'; this.audio.gameOver();
     if (this.mode === 'online') this.network.sendGameOver();
-    if (this.mode === 'online') this.recordQuickMatchResult(false);
+    if (this.mode === 'online') this.recordOnlineMatchResult(false);
     
     // Show interstitial ad
     this.ad.showInterstitial();
@@ -1363,7 +1381,7 @@ class Game {
     this.state = 'gameover';
     this.audio.win();
     this.recordCompletedGame(true);
-    this.recordQuickMatchResult(true);
+    this.recordOnlineMatchResult(true);
     this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
     this.showGameOverScreen(true, 'Rakip kaybetti! Kazandın!');
   }
@@ -1372,7 +1390,7 @@ class Game {
     if (this.state === 'playing') {
       this.state = 'gameover';
       this.recordCompletedGame(true);
-      this.recordQuickMatchResult(true);
+      this.recordOnlineMatchResult(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(true, 'Rakip ayrıldı. Kazandın!');
     }
@@ -1385,20 +1403,20 @@ class Game {
     if (won) { 
       this.audio.win(); 
       this.recordCompletedGame(true);
-      this.recordQuickMatchResult(true);
+      this.recordOnlineMatchResult(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(true, `Kazandın! ${this.score} - ${this.opponentScore}`); 
     }
     else if (tied) { 
       this.recordCompletedGame(false);
-      this.recordQuickMatchResult(null);
+      this.recordOnlineMatchResult(null);
       this.authManager.addCoins(50).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Berabere! ${this.score} - ${this.opponentScore}`); 
     }
     else { 
       this.audio.gameOver(); 
       this.recordCompletedGame(false);
-      this.recordQuickMatchResult(false);
+      this.recordOnlineMatchResult(false);
       this.authManager.addCoins(25).then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Kaybettin! ${this.score} - ${this.opponentScore}`); 
     }

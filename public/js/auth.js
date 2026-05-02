@@ -332,9 +332,9 @@ class AuthManager {
   }
 
   async submitFeedback(type, message) {
-    if (!this.user) return false;
+    if (!this.user) return { ok: false, reason: 'auth' };
     const cleanMessage = (message || '').trim();
-    if (cleanMessage.length < 5) return false;
+    if (cleanMessage.length < 5) return { ok: false, reason: 'short' };
     try {
       await db.collection('feedback').add({
         uid: this.user.uid,
@@ -345,10 +345,10 @@ class AuthManager {
         appVersion: '1.0',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      return true;
+      return { ok: true };
     } catch (err) {
       console.error('Feedback submit error:', err);
-      return false;
+      return { ok: false, reason: err && err.code ? err.code : 'unknown' };
     }
   }
 
