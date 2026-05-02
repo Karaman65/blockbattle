@@ -95,6 +95,7 @@ class Game {
         this.updateCoinDisplays();
         this.updatePlayerHeader();
         this.showScreen('menu-screen'); // Default to main menu after login
+        this.maybeShowTutorial();
       } else {
         this.showScreen('login-screen');
       }
@@ -491,6 +492,8 @@ class Game {
         if (e.target === quickShopModal) this.closeQuickShop();
       };
     }
+    const tutorialOk = document.getElementById('btn-tutorial-ok');
+    if (tutorialOk) tutorialOk.onclick = () => this.closeTutorial();
 
     // Game over
     document.getElementById('btn-play-again').onclick = () => {
@@ -1509,19 +1512,44 @@ class Game {
     const scoreEl = document.getElementById('gameover-score');
     const highEl = document.getElementById('gameover-high');
     const resultEl = document.getElementById('gameover-result');
+    const detailEl = document.getElementById('gameover-detail');
     if (resultMsg) {
       title.textContent = won ? '🎉 Zafer!' : '💥 Oyun Bitti!';
       title.className = 'gameover-title ' + (won ? 'win' : 'lose');
       resultEl.textContent = resultMsg; resultEl.className = 'gameover-result ' + (won ? 'win' : 'lose');
       document.getElementById('go-high-score-wrap').classList.toggle('hidden', this.mode === 'online');
       if (this.mode !== 'online') highEl.textContent = this.highScore;
+      if (detailEl) this.renderGameOverDetail(detailEl);
     } else {
       title.textContent = 'Oyun Bitti!'; title.className = 'gameover-title';
       resultEl.className = 'gameover-result hidden';
+      if (detailEl) detailEl.className = 'gameover-detail hidden';
       document.getElementById('go-high-score-wrap').classList.remove('hidden');
       highEl.textContent = this.highScore;
     }
     scoreEl.textContent = this.score; this.showScreen('gameover-screen');
+  }
+
+  renderGameOverDetail(detailEl) {
+    const isOnline = this.mode === 'online';
+    const modeLabel = !isOnline
+      ? (this.currentLevel ? `Level ${this.currentLevel.id}` : 'Sonsuz')
+      : this.onlineMode === 'time'
+        ? 'Zamana Karşı'
+        : 'Skor Yarışı';
+    const targetLabel = !isOnline
+      ? (this.currentLevel ? `${this.currentLevel.target} hedef` : 'En yüksek skor')
+      : this.onlineMode === 'time'
+        ? '90 saniye'
+        : '1000 puan';
+    const thirdLabel = isOnline ? 'Skor' : 'Bakiye';
+    const thirdValue = isOnline ? `${this.score} - ${this.opponentScore}` : `${this.authManager.getCoins().toLocaleString('tr-TR')} coin`;
+    detailEl.innerHTML = `
+      <div class="gameover-detail-item"><span>Mod</span><strong>${modeLabel}</strong></div>
+      <div class="gameover-detail-item"><span>Hedef</span><strong>${targetLabel}</strong></div>
+      <div class="gameover-detail-item"><span>${thirdLabel}</span><strong>${thirdValue}</strong></div>
+    `;
+    detailEl.className = 'gameover-detail';
   }
 
   updateScoreDisplay() {
@@ -1771,6 +1799,25 @@ class Game {
   closeQuickShop() {
     const modal = document.getElementById('quick-shop-modal');
     if (modal) modal.classList.add('hidden');
+  }
+
+  maybeShowTutorial() {
+    if (localStorage.getItem('blockBattleTutorialSeen') === '1') return;
+    setTimeout(() => {
+      const overlay = document.getElementById('tutorial-overlay');
+      if (!overlay || this.state === 'playing') return;
+      overlay.classList.remove('hidden');
+      overlay.classList.add('active');
+    }, 450);
+  }
+
+  closeTutorial() {
+    localStorage.setItem('blockBattleTutorialSeen', '1');
+    const overlay = document.getElementById('tutorial-overlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      overlay.classList.remove('active');
+    }
   }
 
   toggleBombMode() {

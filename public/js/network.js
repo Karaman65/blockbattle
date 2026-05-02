@@ -19,13 +19,24 @@ class NetworkManager {
     const roomCode = document.getElementById('room-code-wrap');
     const actions = document.getElementById('room-share-actions');
     const title = document.getElementById('waiting-title');
+    const subtitle = document.getElementById('waiting-subtitle');
     const isQuick = type === 'quick';
     const isConnecting = type === 'connecting';
+    const modeLabel = this.gameMode === 'time'
+      ? 'Zamana Karşı: 90 saniye sonunda yüksek skor kazanır.'
+      : 'Skor Yarışı: 1000 puana ilk ulaşan kazanır.';
 
     if (quickInfo) quickInfo.classList.toggle('hidden', !isQuick);
     if (roomCode) roomCode.classList.toggle('hidden', isQuick || isConnecting);
     if (actions) actions.classList.toggle('hidden', isQuick || isConnecting);
-    if (title) title.textContent = isQuick ? 'Rakip Bekleniyor...' : isConnecting ? 'Baglaniyor...' : 'Oda Hazir';
+    if (title) title.textContent = isQuick ? 'Rakip Bekleniyor...' : isConnecting ? 'Bağlanıyor...' : 'Oda Hazır';
+    if (subtitle) {
+      subtitle.textContent = isConnecting
+        ? 'Sunucuya bağlanılıyor. Lütfen bekle.'
+        : isQuick
+          ? `${modeLabel} Uygun rakip aranıyor.`
+          : `${modeLabel} Oda kodunu arkadaşınla paylaş.`;
+    }
   }
 
   setOnlineButtonsBusy(isBusy) {
@@ -209,12 +220,12 @@ class NetworkManager {
     if (this.actionPending) return;
     try {
       this.setOnlineButtonsBusy(true);
+      this.gameMode = mode;
       this.setWaitingMode('connecting');
       const roomCode = document.getElementById('room-code-display');
       if (roomCode) roomCode.textContent = '----';
       this.game.showScreen('waiting-screen');
       await this.connect();
-      this.gameMode = mode;
       this.matchType = 'room';
       this.socket.emit('create-room', { mode });
       this.startRoomCreateTimeout();
@@ -253,10 +264,10 @@ class NetworkManager {
     if (this.actionPending) return;
     try {
       this.setOnlineButtonsBusy(true);
+      this.gameMode = mode;
       this.setWaitingMode('quick');
       this.game.showScreen('waiting-screen');
       await this.connect();
-      this.gameMode = mode;
       this.matchType = 'quick';
       this.socket.emit('quick-match', { mode });
     } catch (err) {

@@ -340,6 +340,14 @@ body {
   margin-bottom: 16px;
 }
 .room-share-btns { display: flex; gap: 8px; justify-content: center; }
+.waiting-subtitle {
+  margin: -8px 0 16px;
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
 
 /* â”€â”€ Game Header â”€â”€ */
 #game-header {
@@ -560,6 +568,34 @@ body {
 }
 .go-stat { text-align: center; }
 .go-stat-label { display: block; font-size: 0.75rem; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 4px; }
+.gameover-detail {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 12px 0 20px;
+}
+.gameover-detail-item {
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+.gameover-detail-item span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.gameover-detail-item strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
 .go-stat-value { display: block; font-size: 2rem; font-weight: 900; }
 .gameover-result {
   font-size: 1.1rem;
@@ -752,6 +788,40 @@ body {
 
 /* â”€â”€ Utilities â”€â”€ */
 .hidden { display: none !important; }
+.tutorial-panel {
+  width: min(430px, calc(100vw - 28px));
+}
+.tutorial-steps {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+.tutorial-step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.tutorial-step span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--neon-purple));
+  font-weight: 900;
+}
+.tutorial-step p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
 
 .global-back {
   position: fixed;
