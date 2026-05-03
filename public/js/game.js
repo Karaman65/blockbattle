@@ -47,6 +47,8 @@ class Game {
     this.ad = new AdManager();
     this.lastTime = 0;
     this.nativeBackHandlerRegistered = false;
+    this.rewardContinueUsed = false;
+    this.rewardBombs = 0;
 
     // Power-ups
     this.powerUps = {
@@ -81,14 +83,7 @@ class Game {
     this.authManager.init((user) => {
       if (user) {
         this.highScore = (this.authManager.userData && this.authManager.userData.highScore) || 0;
-        // Premium checks
         let displayName = this.authManager.getUsername();
-        if (this.authManager.isPremium()) {
-          const premiumMenuBtn = document.getElementById('btn-premium-menu');
-          if (premiumMenuBtn) premiumMenuBtn.classList.add('hidden');
-          this.ad.hideBanner();
-          displayName += ' VIP';
-        }
         document.getElementById('menu-username').textContent = displayName;
         
         const savedTheme = localStorage.getItem('selectedTheme') || 'default';
@@ -482,6 +477,7 @@ class Game {
       this.mode === 'online' ? this.showScreen('online-screen') : (this.currentLevel ? this.startSoloGame(this.currentLevel.id) : this.startEndlessGame());
     };
     document.getElementById('btn-next-level').onclick = () => this.startNextLevel();
+    document.getElementById('btn-reward-continue').onclick = () => this.continueAfterRewardAd();
     document.getElementById('btn-go-menu').onclick = () => { this.network.leaveRoom(); this.showScreen('menu-screen'); };
 
     const btnSendFeedback = document.getElementById('btn-send-feedback');
@@ -1068,6 +1064,7 @@ class Game {
     this.currentLevel = requestedLevel.id <= highestPlayable ? requestedLevel : this.levels[highestPlayable - 1];
     this.targetScore = this.currentLevel.target;
     this.mode = 'solo'; this.state = 'playing'; this.score = 0; this.combo = 0; this.animatingClear = false;
+    this.rewardContinueUsed = false; this.rewardBombs = 0;
     this.seed = Date.now(); this.rng = new SeededRandom(this.seed); this.blockSetIndex = 0;
     this.resetGrid(); this.applyLevelSetup(this.currentLevel); this.generatePieces(); this.resizeCanvas();
     this.resetPowerUps();
@@ -1086,6 +1083,8 @@ class Game {
     this.score = 0;
     this.combo = 0;
     this.animatingClear = false;
+    this.rewardContinueUsed = false;
+    this.rewardBombs = 0;
     this.seed = Date.now();
     this.rng = new SeededRandom(this.seed);
     this.blockSetIndex = 0;
@@ -1103,6 +1102,7 @@ class Game {
   startOnlineGame(seed, mode, timeLimit, targetScore) {
     this.audio.init(); this.audio.resume();
     this.mode = 'online'; this.onlineMode = mode; this.state = 'playing'; this.score = 0; this.combo = 0; this.animatingClear = false;
+    this.rewardContinueUsed = false; this.rewardBombs = 0;
     this.seed = seed; this.rng = new SeededRandom(seed); this.blockSetIndex = 0;
     this.timerRemaining = timeLimit || 90; this.targetScore = targetScore || 1000;
     this.opponentBoard = null; this.opponentScore = 0;
@@ -1338,11 +1338,17 @@ class Game {
     piece.placed = true; this.audio.place();
     const slot = document.querySelector(`.piece-slot[data-index="${pieceIndex}"]`);
     if (slot) slot.classList.add('placed');
-    this.checkAndClearLines();
+    const clearedLines = this.checkAndClearLines();
     if (this.pieces.every(p => p.placed)) this.generatePieces();
     if (this.mode === 'solo' && this.currentLevel && this.score >= this.currentLevel.target) {
       this.updateScoreDisplay();
       this.completeCurrentLevel();
+      return true;
+    }
+    if (clearedLines) {
+      if (this.mode === 'online') this.network.sendBoardUpdate(this.grid, this.score);
+      this.updateScoreDisplay();
+      setTimeout(() => this.checkGameOverAfterClear(), 320);
       return true;
     }
     if (this.checkGameOver()) {
@@ -1366,7 +1372,7 @@ class Game {
     for (let r = 0; r < this.GRID_SIZE; r++) if (this.grid[r].every(c => c !== 0)) clearRows.push(r);
     for (let c = 0; c < this.GRID_SIZE; c++) { let full = true; for (let r = 0; r < this.GRID_SIZE; r++) if (this.grid[r][c] === 0) { full = false; break; } if (full) clearCols.push(c); }
     const total = clearRows.length + clearCols.length;
-    if (total === 0) { this.combo = 0; return; }
+    if (total === 0) { this.combo = 0; return false; }
 
     // Award coins: 10 per line, 20 bonus for each combo level
     const coinsEarned = (total * 10) + (this.combo > 1 ? (this.combo - 1) * 20 : 0);
@@ -1387,6 +1393,23 @@ class Game {
     this.audio.clear(total);
     for (const k of cells) { const [r, c] = k.split(',').map(Number); this.grid[r][c] = 0; }
     this.animatingClear = true; setTimeout(() => { this.animatingClear = false; }, 300);
+    return true;
+  }
+
+  checkGameOverAfterClear() {
+    if (this.state !== 'playing') return;
+    if (this.mode === 'solo' && this.currentLevel && this.score >= this.currentLevel.target) {
+      this.completeCurrentLevel();
+      return;
+    }
+    if (!this.checkGameOver()) return;
+    if (this.mode === 'online') {
+      this.onOnlineLocked();
+      this.network.sendBoardUpdate(this.grid, this.score);
+      this.updateScoreDisplay();
+      return;
+    }
+    this.onGameOver();
   }
 
   showScorePopup(pts) {
@@ -1509,8 +1532,15 @@ class Game {
     const resultEl = document.getElementById('gameover-result');
     const detailEl = document.getElementById('gameover-detail');
     const nextLevelBtn = document.getElementById('btn-next-level');
+    const rewardContinueBtn = document.getElementById('btn-reward-continue');
     const canPlayNextLevel = won && this.mode === 'solo' && this.currentLevel && this.currentLevel.id < this.levels.length;
+    const canRewardContinue = !won && this.mode === 'solo' && !this.rewardContinueUsed;
     if (nextLevelBtn) nextLevelBtn.classList.toggle('hidden', !canPlayNextLevel);
+    if (rewardContinueBtn) {
+      rewardContinueBtn.classList.toggle('hidden', !canRewardContinue);
+      rewardContinueBtn.disabled = false;
+      rewardContinueBtn.textContent = 'Reklam izle, +1 bomba ile devam et';
+    }
     if (resultMsg) {
       title.textContent = won ? 'Zafer!' : 'Oyun Bitti!';
       title.className = 'gameover-title ' + (won ? 'win' : 'lose');
@@ -1526,6 +1556,37 @@ class Game {
       highEl.textContent = this.highScore;
     }
     scoreEl.textContent = this.score; this.showScreen('gameover-screen');
+  }
+
+  async continueAfterRewardAd() {
+    if (this.mode !== 'solo' || this.rewardContinueUsed) return;
+    const btn = document.getElementById('btn-reward-continue');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Reklam hazirlaniyor...';
+    }
+
+    const rewarded = await this.ad.showRewarded();
+    if (!rewarded) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Reklam hazir degil';
+        setTimeout(() => {
+          if (!btn.classList.contains('hidden')) btn.textContent = 'Reklam izle, +1 bomba ile devam et';
+        }, 1400);
+      }
+      return;
+    }
+
+    this.rewardContinueUsed = true;
+    this.rewardBombs++;
+    this.powerUps.bomb = (this.powerUps.bomb || 0) + 1;
+    this.bombMode = false;
+    this.state = 'playing';
+    this.updatePowerUpUI();
+    this.updateScoreDisplay();
+    this.showScreen('game-screen');
+    requestAnimationFrame(() => this.resizeCanvas());
   }
 
   renderGameOverDetail(detailEl) {
@@ -1827,7 +1888,8 @@ class Game {
   useBombAt(row, col) {
     if (this.powerUps.bomb <= 0) return;
     this.powerUps.bomb--;
-    this.authManager.decrementInventory('bomb');
+    if (this.rewardBombs > 0) this.rewardBombs--;
+    else this.authManager.decrementInventory('bomb');
     this.bombMode = false;
     this.renderer.addBombEffect(row, col, this.cellSize, this.gridOffset.x, this.gridOffset.y);
     
