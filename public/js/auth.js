@@ -355,7 +355,7 @@ class AuthManager {
       }
       return true;
     } catch (err) {
-      console.error('Premium satin alma tamamlama hatasi:', err);
+      console.error('Premium satın alma tamamlama hatası:', err);
       return false;
     }
   }

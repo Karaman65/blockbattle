@@ -60,8 +60,8 @@ class NetworkManager {
     }
 
     if (typeof io === 'undefined' || typeof io !== 'function') {
-      console.error('Socket.IO yuklenemedi. io tip:', typeof io);
-      throw new Error('Socket.IO kutuphanesi hazir degil.');
+      console.error('Socket.IO yüklenemedi. io tip:', typeof io);
+      throw new Error('Socket.IO kütüphanesi hazır değil.');
     }
 
     try {
@@ -75,8 +75,8 @@ class NetworkManager {
         timeout: 20000,
       });
     } catch (err) {
-      console.error('Socket baglanti hatasi:', err);
-      throw new Error('Sunucuya baglanilamadi: ' + err.message);
+      console.error('Socket bağlantı hatası:', err);
+      throw new Error('Sunucuya bağlanılamadı: ' + err.message);
     }
 
     this.socket.on('connect', () => {
@@ -217,7 +217,7 @@ class NetworkManager {
           this.connected = false;
         }
         const reason = this.lastConnectError ? ` (${this.lastConnectError})` : '';
-        reject(new Error(`Sunucu baglantisi zaman asimina ugradi${reason}.`));
+        reject(new Error(`Sunucu bağlantısı zaman aşımına uğradı${reason}.`));
       }, timeout);
 
       this.socket.once('connect', onConnect);
@@ -237,14 +237,14 @@ class NetworkManager {
       if (roomCode) roomCode.textContent = '----';
       this.game.showScreen('waiting-screen');
       const health = await this.checkServerHealth();
-      if (!health.ok) throw new Error(health.message || 'Sunucu su an ulasilamiyor.');
+      if (!health.ok) throw new Error(health.message || 'Sunucu şu an ulaşılamıyor.');
       await this.connect();
       this.matchType = 'room';
       this.socket.emit('create-room', { mode });
       this.startRoomCreateTimeout();
     } catch (err) {
       this.setOnlineButtonsBusy(false);
-      alert('Oda olusturulamadi: ' + (err.message || 'Sunucuya baglanilamadi. Birazdan tekrar dene.'));
+      alert('Oda oluşturulamadı: ' + (err.message || 'Sunucuya bağlanılamadı. Birazdan tekrar dene.'));
       this.game.showScreen('online-screen');
     }
   }
@@ -255,7 +255,7 @@ class NetworkManager {
       if (!this.actionPending || this.roomId) return;
       this.setOnlineButtonsBusy(false);
       this.leaveRoom();
-      alert('Oda olusturulamadi: Sunucu gec cevap verdi. Birkac saniye sonra tekrar dene.');
+      alert('Oda oluşturulamadı: Sunucu geç cevap verdi. Birkaç saniye sonra tekrar dene.');
       this.game.showScreen('online-screen');
     }, 25000);
   }
@@ -265,13 +265,13 @@ class NetworkManager {
     try {
       this.setOnlineButtonsBusy(true);
       const health = await this.checkServerHealth();
-      if (!health.ok) throw new Error(health.message || 'Sunucu su an ulasilamiyor.');
+      if (!health.ok) throw new Error(health.message || 'Sunucu şu an ulaşılamaz.');
       await this.connect();
       this.matchType = 'room';
       this.socket.emit('join-room', { roomId: roomId.toUpperCase() });
     } catch (err) {
       this.setOnlineButtonsBusy(false);
-      alert('Odaya katilamadi: ' + (err.message || 'Sunucuya baglanilamadi. Birazdan tekrar dene.'));
+      alert('Odaya katılamadı: ' + (err.message || 'Sunucuya bağlanılamadı. Birazdan tekrar dene.'));
     }
   }
 
@@ -283,13 +283,13 @@ class NetworkManager {
       this.setWaitingMode('quick');
       this.game.showScreen('waiting-screen');
       const health = await this.checkServerHealth();
-      if (!health.ok) throw new Error(health.message || 'Sunucu su an ulasilamiyor.');
+      if (!health.ok) throw new Error(health.message || 'Sunucu şu an ulaşılamaz.');
       await this.connect();
       this.matchType = 'quick';
       this.socket.emit('quick-match', { mode });
     } catch (err) {
       this.setOnlineButtonsBusy(false);
-      alert('Hizli mac baslatilamadi: ' + (err.message || 'Sunucuya baglanilamadi. Birazdan tekrar dene.'));
+      alert('Hızlı maç başlatılamadı: ' + (err.message || 'Sunucuya bağlanılamadı. Birazdan tekrar dene.'));
       this.game.showScreen('online-screen');
     }
   }
@@ -371,15 +371,15 @@ class NetworkManager {
         cache: 'no-store',
       });
       if (!response.ok) {
-        return { ok: false, message: `Sunucu hata dondu (${response.status}).` };
+        return { ok: false, message: `Sunucu hata döndü (${response.status}).` };
       }
       const json = await response.json().catch(() => null);
       if (!json || json.ok !== true) {
-        return { ok: false, message: 'Sunucu hazir degil.' };
+        return { ok: false, message: 'Sunucu hazır değil.' };
       }
       return { ok: true };
     } catch (err) {
-      return { ok: false, message: 'Sunucuya erisilemedi. Baglantini kontrol et.' };
+      return { ok: false, message: 'Sunucuya erişilemedi. Bağlantını kontrol et.' };
     }
   }
 }

@@ -1,11 +1,11 @@
 # Block Battle - Deploy Checklist
 
-Bu dosya, projeyi production ortamina sorunsuz almak icin son kontrol listesidir.
+Bu dosya, projeyi production ortamına sorunsuz almak için son kontrol listesidir.
 
 ## 1) Sunucu Environment
 
-- `PORT` tanimli (opsiyonel, varsayilan `3001`)
-- `ALLOWED_ORIGINS` production domainleri ile tanimli
+- `PORT` tanımlı (opsiyonel, varsayilan `3001`)
+- `ALLOWED_ORIGINS` production domainleri ile tanımlı
   - Ornek: `https://your-domain.com,https://www.your-domain.com`
 
 ## 2) Firestore Rules
@@ -17,7 +17,7 @@ Bu dosya, projeyi production ortamina sorunsuz almak icin son kontrol listesidir
 firebase deploy --only firestore:rules
 ```
 
-## 3) Uygulama Saglik Kontrolu
+## 3) Uygulama Sağlık Kontrolü
 
 - Sunucu ayakta iken:
 
@@ -35,23 +35,23 @@ npm run health:local
 npm run check:syntax
 ```
 
-- Hata olmadan tamamlanmali
+- Hata olmadan tamamlanmalı
 
 ## 5) Online Oyun Smoke Test
 
-- Oda olustur
-- Odaya ikinci oyuncu ile katil
+- Oda oluştur
+- Odaya ikinci oyuncu ile katıl
 - Hizli mac baslat
-- Rakip ayrilinca sonuc ekrani geliyor mu kontrol et
-- Zaman modunda sure bitisinde sonuc dogru mu kontrol et
+- Rakip ayrılınca sonuç ekranı geliyor mu kontrol et
+- Zaman modunda süre bitişinde sonuç doğru mu kontrol et
 
 ## 6) PWA/Cache Testi
 
 - Yeni deploydan sonra sert yenileme (`Ctrl+F5`) ile guncel dosyalar geliyor mu
-- Uygulama acilisinda eski UI veya eski JS kalmiyor mu
+- Uygulama açılışında eski UI veya eski JS kalmıyor mu
 
 ## 7) Son Kontrol
 
 - CORS hatasi yok
-- Socket baglanti hatasi yok
-- Oda kurma gecikmesi makul (sunucu soguk acilisinda bile bekleme mesaji dogru)
+- Socket bağlantı hatası yok
+- Oda kurma gecikmesi makul (sunucu soğuk açılışında bile bekleme mesajı doğru)
