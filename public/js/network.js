@@ -360,6 +360,9 @@ class NetworkManager {
   }
 
   async checkServerHealth() {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      return { ok: true };
+    }
     const base = this.getServerUrl().replace(/\/+$/, '');
     const healthUrl = `${base}/health?t=${Date.now()}`;
     try {
