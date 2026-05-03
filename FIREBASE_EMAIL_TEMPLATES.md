@@ -8,6 +8,8 @@ Action URL:
 https://blockbattle.onrender.com/reset-password.html
 ```
 
+Not: Firebase varsayılan gönderici adresinde `noreply` görünebilir. Bunu tamamen kaldırmak için Firebase Console'da Password reset template içindeki customize domain ayarından doğrulanmış özel gönderici domaini bağlamak gerekir. Koddan tek başına değişmez.
+
 ## Password Reset
 
 Sender name:
@@ -25,23 +27,23 @@ blockbattle.help@gmail.com
 Subject:
 
 ```text
-Block Battle Şifre Sıfırlama Talebi
+Block Battle hesabın için şifre yenileme bağlantısı
 ```
 
 Message:
 
 ```text
-Merhaba %DISPLAY_NAME%,
+Merhaba,
 
-Block Battle hesabın için bir şifre sıfırlama talebi aldık.
+Block Battle hesabın için şifre yenileme talebi aldık.
 
-Şifreni yenilemek için aşağıdaki bağlantıyı kullanabilirsin:
+Aşağıdaki güvenli bağlantıya tıklayarak yeni şifreni belirleyebilirsin:
 
 %LINK%
 
-Bu talebi sen oluşturmadıysan bu e-postayı dikkate almayabilirsin. Hesabında herhangi bir değişiklik yapılmayacaktır.
+Bu talebi sen oluşturmadıysan bu e-postayı dikkate almayabilirsin. Şifren değiştirilmeyecek ve hesabında herhangi bir işlem yapılmayacaktır.
 
-Güvenliğin için bu bağlantı kısa süre sonra geçerliliğini yitirebilir.
+Güvenliğin için bağlantı kısa süre sonra geçerliliğini yitirir.
 
 Block Battle Ekibi
 ```

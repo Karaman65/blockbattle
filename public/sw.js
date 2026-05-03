@@ -1,4 +1,4 @@
-const CACHE_NAME = 'block-battle-v50';
+const CACHE_NAME = 'block-battle-v58';
 const ASSETS = [
   '/',
   '/index.html',

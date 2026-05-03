@@ -47,7 +47,6 @@ class DatabaseManager {
     // matchData: { player1: {uid, username, score}, player2: {uid, username, score}, mode, winnerUid }
     try {
       const matchType = matchData.matchType === 'quick' ? 'quick' : 'room';
-      if (matchType !== 'quick') return;
       const currentUid = matchData.currentUid;
 
       if (matchData.writeMatch) {
@@ -65,11 +64,14 @@ class DatabaseManager {
         }, { merge: false });
       }
 
+      if (matchType !== 'quick') return;
+
       const player = [matchData.player1, matchData.player2].find(p => p && p.uid === currentUid);
       if (!player) return;
 
       const won = currentUid === matchData.winnerUid;
       const lost = matchData.winnerUid && !won;
+      const draw = !matchData.winnerUid;
       const update = {
         totalOnlineGames: firebase.firestore.FieldValue.increment(1),
         quickOnlineGames: firebase.firestore.FieldValue.increment(1),
@@ -80,6 +82,9 @@ class DatabaseManager {
       }
       if (lost) {
         update.quickLosses = firebase.firestore.FieldValue.increment(1);
+      }
+      if (draw) {
+        update.quickDraws = firebase.firestore.FieldValue.increment(1);
       }
       await db.collection('users').doc(currentUid).update(update);
     } catch (err) {
@@ -133,9 +138,7 @@ class DatabaseManager {
         return tb - ta;
       });
 
-      return matches
-        .filter(match => match.matchType === 'quick')
-        .slice(0, limit);
+      return matches.slice(0, limit);
     } catch (err) {
       console.error('Failed to get match history:', err);
       return [];

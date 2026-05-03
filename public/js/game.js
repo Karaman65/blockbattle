@@ -232,25 +232,20 @@ class Game {
   setupAuthUI() {
     document.getElementById('goto-register').onclick = (e) => { e.preventDefault(); this.showScreen('register-screen'); };
     document.getElementById('goto-login').onclick = (e) => { e.preventDefault(); this.showScreen('login-screen'); };
-    document.getElementById('forgot-password').onclick = async (e) => {
+    document.getElementById('forgot-password').onclick = (e) => {
       e.preventDefault();
-      const emailOrUsername = document.getElementById('login-email').value.trim();
-      const errEl = document.getElementById('login-error');
-      const btn = document.getElementById('forgot-password');
-      errEl.classList.add('hidden');
-      if (!emailOrUsername) {
-        errEl.textContent = 'Önce email veya kullanıcı adını yaz, sonra Şifremi unuttum de.';
-        errEl.classList.remove('hidden');
-        return;
-      }
-      btn.textContent = 'Link gönderiliyor...';
-      const res = await this.authManager.sendPasswordReset(emailOrUsername);
-      btn.textContent = 'Şifremi unuttum';
-      errEl.textContent = res.success
-        ? `Şifre yenileme linki gönderildi: ${res.email}. Mailden yeni şifreni belirleyebilirsin.`
-        : res.error;
-      errEl.classList.remove('hidden');
+      this.openPasswordResetModal();
     };
+    const passwordResetClose = document.getElementById('password-reset-close');
+    if (passwordResetClose) passwordResetClose.onclick = () => this.closePasswordResetModal();
+    const passwordResetModal = document.getElementById('password-reset-modal');
+    if (passwordResetModal) {
+      passwordResetModal.onclick = (e) => {
+        if (e.target === passwordResetModal) this.closePasswordResetModal();
+      };
+    }
+    const passwordResetSend = document.getElementById('btn-password-reset-send');
+    if (passwordResetSend) passwordResetSend.onclick = () => this.sendPasswordResetFromModal();
 
     document.getElementById('login-form').onsubmit = async (e) => {
       e.preventDefault();
@@ -281,6 +276,50 @@ class Game {
       document.getElementById('btn-register').textContent = 'KAYIT OL';
       if (!res.success) { errEl.textContent = res.error; errEl.classList.remove('hidden'); }
     };
+  }
+
+  openPasswordResetModal() {
+    const modal = document.getElementById('password-reset-modal');
+    const input = document.getElementById('password-reset-email');
+    const status = document.getElementById('password-reset-status');
+    if (!modal || !input || !status) return;
+    input.value = '';
+    status.classList.add('hidden');
+    status.classList.remove('success');
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => input.focus());
+  }
+
+  closePasswordResetModal() {
+    const modal = document.getElementById('password-reset-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async sendPasswordResetFromModal() {
+    const input = document.getElementById('password-reset-email');
+    const status = document.getElementById('password-reset-status');
+    const btn = document.getElementById('btn-password-reset-send');
+    if (!input || !status || !btn) return;
+
+    const emailOrUsername = input.value.trim();
+    status.classList.add('hidden');
+    status.classList.remove('success');
+    if (!emailOrUsername) {
+      status.textContent = 'Email veya kullanıcı adını yaz.';
+      status.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Link gönderiliyor...';
+    const res = await this.authManager.sendPasswordReset(emailOrUsername);
+    btn.disabled = false;
+    btn.textContent = 'Link Gönder';
+    status.textContent = res.success
+      ? `Şifre yenileme linki gönderildi: ${res.email}. Mailden yeni şifreni belirleyebilirsin.`
+      : res.error;
+    if (res.success) status.classList.add('success');
+    status.classList.remove('hidden');
   }
 
   setupUI() {
@@ -619,7 +658,6 @@ class Game {
     if (!this.authManager.user || !this.opponentUid) return;
     const myUid = this.authManager.user.uid;
     const matchType = this.network.matchType === 'quick' ? 'quick' : 'room';
-    if (matchType !== 'quick') return;
     const shouldWriteMatch = won === true || (won === null && myUid < this.opponentUid);
     this.onlineMatchRecorded = true;
     await this.dbManager.recordOnlineMatch({
@@ -880,8 +918,16 @@ class Game {
     document.getElementById('profile-username').textContent = d.username || 'Oyuncu';
     document.getElementById('profile-email').textContent = this.authManager.user ? this.authManager.user.email : '';
     document.getElementById('p-high-score').textContent = d.highScore || 0;
-    document.getElementById('p-total-games').textContent = d.totalOnlineGames || 0;
-    document.getElementById('p-total-wins').textContent = d.quickWins || 0;
+    const onlineWins = d.quickWins || 0;
+    const onlineLosses = d.quickLosses || 0;
+    const onlineDraws = d.quickDraws || 0;
+    const totalOnlineGames = d.quickOnlineGames || d.totalOnlineGames || onlineWins + onlineLosses + onlineDraws;
+    document.getElementById('p-total-games').textContent = totalOnlineGames;
+    document.getElementById('p-total-wins').textContent = onlineWins;
+    const drawsEl = document.getElementById('p-total-draws');
+    if (drawsEl) drawsEl.textContent = onlineDraws;
+    const lossesEl = document.getElementById('p-total-losses');
+    if (lossesEl) lossesEl.textContent = onlineLosses;
     // Load match history
     const hist = document.getElementById('match-history');
     if (!this.authManager.user) { hist.innerHTML = '<p class="text-muted">Giriş yapılmadı</p>'; return; }
@@ -894,12 +940,13 @@ class Game {
       const myScore = isP1 ? m.player1.score : m.player2.score;
       const oppName = isP1 ? (m.player2 ? m.player2.username : '?') : (m.player1 ? m.player1.username : '?');
       const oppScore = isP1 ? (m.player2 ? m.player2.score : 0) : (m.player1 ? m.player1.score : 0);
-      const won = m.winnerUid === uid;
+      const draw = !m.winnerUid;
+      const won = !draw && m.winnerUid === uid;
       const typeLabel = m.matchType === 'quick' ? 'Hizli Mac' : 'Oda Maci';
-      const resultLabel = won ? 'Zafer' : 'Maglubiyet';
-      const icon = won ? 'WIN' : 'LOSE';
+      const resultLabel = draw ? 'Berabere' : won ? 'Zafer' : 'Maglubiyet';
+      const icon = draw ? 'DRAW' : won ? 'WIN' : 'LOSE';
       return `
-        <div class="match-history-item ${won ? 'win' : 'lose'}">
+        <div class="match-history-item ${draw ? 'draw' : won ? 'win' : 'lose'}">
           <div class="match-result-badge">${icon}</div>
           <div class="match-main">
             <div class="match-topline">
@@ -1071,6 +1118,7 @@ class Game {
     document.getElementById('opponent-board-wrap').classList.add('hidden');
     document.getElementById('opponent-score-box').classList.add('hidden');
     document.getElementById('timer-box').classList.add('hidden');
+    this.updateLevelBadge();
     this.updateScoreDisplay(); this.showScreen('game-screen');
   }
 
@@ -1095,6 +1143,7 @@ class Game {
     document.getElementById('opponent-board-wrap').classList.add('hidden');
     document.getElementById('opponent-score-box').classList.add('hidden');
     document.getElementById('timer-box').classList.add('hidden');
+    this.updateLevelBadge();
     this.updateScoreDisplay();
     this.showScreen('game-screen');
   }
@@ -1123,6 +1172,7 @@ class Game {
     } else {
       document.getElementById('timer-box').classList.add('hidden');
     }
+    this.updateLevelBadge();
     this.updateScoreDisplay(); this.showScreen('game-screen');
   }
 
@@ -1618,6 +1668,17 @@ class Game {
         ? `${this.score}/${this.targetScore}`
       : this.score;
     document.getElementById('score-value').textContent = scoreText;
+    this.updateLevelBadge();
+  }
+
+  updateLevelBadge() {
+    const badge = document.getElementById('level-badge');
+    if (!badge) return;
+    const show = this.mode === 'solo' && this.currentLevel;
+    badge.classList.toggle('hidden', !show);
+    if (!show) return;
+    const title = document.getElementById('level-badge-title');
+    if (title) title.textContent = `LEVEL ${this.currentLevel.id}`;
   }
   updateTimerDisplay() {
     const m = Math.floor(this.timerRemaining / 60); const s = Math.floor(this.timerRemaining % 60);

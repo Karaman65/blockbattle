@@ -53,6 +53,21 @@
         Yeni misin? <a href="#" id="goto-register" class="auth-link">Hesap oluştur</a>
       </div>
     </div>
+
+    <div id="password-reset-modal" class="quick-shop-modal hidden">
+      <div class="quick-shop-panel password-reset-panel">
+        <button id="password-reset-close" class="quick-shop-close">×</button>
+        <div class="quick-shop-title">Şifre Yenile</div>
+        <p class="password-reset-copy">Email adresini veya kullanıcı adını yaz. Şifre yenileme bağlantısını mailine gönderelim.</p>
+        <div id="password-reset-status" class="auth-error hidden"></div>
+        <div class="input-group">
+          <label for="password-reset-email">Email veya kullanıcı adı</label>
+          <input type="text" id="password-reset-email" class="input-field auth-input" placeholder="ornek@email.com"
+            autocomplete="username">
+        </div>
+        <button id="btn-password-reset-send" class="btn btn-primary btn-large btn-full">Link Gönder</button>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ AUTH: REGISTER SCREEN ═══ -->
@@ -504,7 +519,7 @@
           <h2 id="profile-username" style="font-size: 1.5rem; font-weight: 900; color: #fff;">Oyuncu</h2>
           <p id="profile-email" style="font-size: 0.8rem; color: var(--text-muted);"></p>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px;">
+        <div class="profile-stats-grid">
           <div class="cyber-card" style="text-align: center;">
             <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">EN YÜKSEK</span>
             <span id="p-high-score" style="font-size: 1.2rem; font-weight: 900; color: var(--neon-cyan);">0</span>
@@ -514,8 +529,16 @@
             <span id="p-total-games" style="font-size: 1.2rem; font-weight: 900; color: var(--neon-purple);">0</span>
           </div>
           <div class="cyber-card" style="text-align: center;">
-            <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">HIZLI GALİBİYET</span>
+            <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">GALİBİYET</span>
             <span id="p-total-wins" style="font-size: 1.2rem; font-weight: 900; color: var(--success);">0</span>
+          </div>
+          <div class="cyber-card" style="text-align: center;">
+            <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">BERABERE</span>
+            <span id="p-total-draws" style="font-size: 1.2rem; font-weight: 900; color: var(--warning);">0</span>
+          </div>
+          <div class="cyber-card" style="text-align: center;">
+            <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">MAĞLUBİYET</span>
+            <span id="p-total-losses" style="font-size: 1.2rem; font-weight: 900; color: var(--danger);">0</span>
           </div>
         </div>
         <div class="cyber-card feedback-card">
@@ -591,6 +614,9 @@
         </div>
       </div>
       <div class="header-center">
+        <div class="level-badge hidden" id="level-badge">
+          <span id="level-badge-title">LEVEL 1</span>
+        </div>
         <div class="stat-box timer-box hidden" id="timer-box">
           <span class="stat-value timer-value" id="timer-value">3:00</span>
         </div>

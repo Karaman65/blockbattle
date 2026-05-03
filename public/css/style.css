@@ -362,6 +362,24 @@ body {
 .header-left, .header-right { display: flex; align-items: center; gap: 8px; }
 .header-center { display: flex; align-items: center; gap: 12px; }
 
+.level-badge {
+  display: grid;
+  place-items: center;
+  min-width: 124px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(0, 243, 255, 0.14), rgba(255, 0, 122, 0.12)), var(--surface);
+  border: 1px solid rgba(0, 243, 255, 0.22);
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+}
+.level-badge.hidden { display: none; }
+.level-badge span {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+}
+
 .stat-box {
   background: var(--surface);
   border: 1px solid var(--bg-card-border);
@@ -871,6 +889,10 @@ body {
   #game-screen { padding-bottom: calc(34px + env(safe-area-inset-bottom)); }
   #power-ups { margin: 0 0 2px; }
   #piece-tray { gap: 10px; padding: 4px 8px 8px; min-height: 60px; margin-bottom: 10px; }
+  #game-header { padding: 6px 10px; }
+  .header-center { gap: 8px; }
+  .level-badge { min-width: 98px; padding: 5px 9px; }
+  .level-badge span { font-size: 0.72rem; }
   .stat-box { padding: 4px 10px; min-width: 60px; }
   .stat-value { font-size: 1.1rem; }
   .menu-buttons { width: 240px; }
@@ -1223,6 +1245,32 @@ body {
   color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 800;
+}
+.password-reset-panel {
+  display: grid;
+  gap: 12px;
+}
+.password-reset-copy {
+  margin: 6px 0 2px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+#password-reset-status.success {
+  color: var(--success);
+  background: rgba(0, 255, 157, 0.12);
+  border-color: rgba(0, 255, 157, 0.28);
+}
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+@media (max-width: 640px) {
+  .profile-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .coin-badge {
@@ -1675,7 +1723,7 @@ body {
 
 .profile-stats-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 .p-stat-card {
