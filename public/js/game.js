@@ -1,6 +1,6 @@
-// ═══════════════════════════════════════════
-//  BLOCK BATTLE — Main Game Controller
-// ═══════════════════════════════════════════
+﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  BLOCK BATTLE â€” Main Game Controller
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class Game {
   constructor() {
@@ -74,7 +74,7 @@ class Game {
       if (this.state === 'playing') this.resizeCanvas();
     });
 
-    // Init auth — show loading, then route based on auth state
+    // Init auth â€” show loading, then route based on auth state
     this.showScreen('loading-screen');
     this.authManager.init((user) => {
       if (user) {
@@ -85,7 +85,7 @@ class Game {
           const premiumMenuBtn = document.getElementById('btn-premium-menu');
           if (premiumMenuBtn) premiumMenuBtn.classList.add('hidden');
           this.ad.hideBanner();
-          displayName += ' 👑';
+          displayName += ' ğŸ‘‘';
         }
         document.getElementById('menu-username').textContent = displayName;
         
@@ -130,7 +130,7 @@ class Game {
     // Bottom Nav Visibility
     const bottomNav = document.getElementById('bottom-nav');
     if (bottomNav) {
-      const showNavScreens = ['menu-screen', 'store-screen', 'quests-screen', 'premium-screen', 'profile-screen', 'leaderboard-screen', 'map-screen'];
+      const showNavScreens = ['menu-screen', 'store-screen', 'quests-screen', 'profile-screen', 'leaderboard-screen', 'map-screen'];
       if (showNavScreens.includes(id) && this.authManager && this.authManager.user) {
         bottomNav.classList.remove('hidden');
         // Update active state
@@ -150,7 +150,6 @@ class Game {
       'map-screen',
       'quests-screen',
       'store-screen',
-      'premium-screen',
       'leaderboard-screen',
       'profile-screen',
       'online-screen',
@@ -174,7 +173,7 @@ class Game {
     return this.showScreen('menu-screen');
   }
 
-  // ── Auth UI ──
+  // â”€â”€ Auth UI â”€â”€
   setupAuthUI() {
     document.getElementById('goto-register').onclick = (e) => { e.preventDefault(); this.showScreen('register-screen'); };
     document.getElementById('goto-login').onclick = (e) => { e.preventDefault(); this.showScreen('login-screen'); };
@@ -185,15 +184,15 @@ class Game {
       const btn = document.getElementById('forgot-password');
       errEl.classList.add('hidden');
       if (!emailOrUsername) {
-        errEl.textContent = 'Önce email veya kullanıcı adını yaz, sonra Şifremi unuttum de.';
+        errEl.textContent = 'Ã–nce email veya kullanÄ±cÄ± adÄ±nÄ± yaz, sonra Åifremi unuttum de.';
         errEl.classList.remove('hidden');
         return;
       }
-      btn.textContent = 'Link gönderiliyor...';
+      btn.textContent = 'Link gÃ¶nderiliyor...';
       const res = await this.authManager.sendPasswordReset(emailOrUsername);
-      btn.textContent = 'Şifremi unuttum';
+      btn.textContent = 'Åifremi unuttum';
       errEl.textContent = res.success
-        ? `Şifre yenileme linki gönderildi: ${res.email}. Mailden yeni şifreni belirleyebilirsin.`
+        ? `Åifre yenileme linki gÃ¶nderildi: ${res.email}. Mailden yeni ÅŸifreni belirleyebilirsin.`
         : res.error;
       errEl.classList.remove('hidden');
     };
@@ -205,10 +204,10 @@ class Game {
       const errEl = document.getElementById('login-error');
       errEl.classList.add('hidden');
       document.getElementById('btn-login').disabled = true;
-      document.getElementById('btn-login').textContent = '⏳ Giriş yapılıyor...';
+      document.getElementById('btn-login').textContent = 'â³ GiriÅŸ yapÄ±lÄ±yor...';
       const res = await this.authManager.login(email, pw);
       document.getElementById('btn-login').disabled = false;
-      document.getElementById('btn-login').innerHTML = '🔑 Giriş Yap';
+      document.getElementById('btn-login').innerHTML = 'ğŸ”‘ GiriÅŸ Yap';
       if (!res.success) { errEl.textContent = res.error; errEl.classList.remove('hidden'); }
     };
 
@@ -219,12 +218,12 @@ class Game {
       const pw = document.getElementById('reg-password').value;
       const errEl = document.getElementById('register-error');
       errEl.classList.add('hidden');
-      if (username.length < 3) { errEl.textContent = 'Kullanıcı adı en az 3 karakter!'; errEl.classList.remove('hidden'); return; }
+      if (username.length < 3) { errEl.textContent = 'KullanÄ±cÄ± adÄ± en az 3 karakter!'; errEl.classList.remove('hidden'); return; }
       document.getElementById('btn-register').disabled = true;
-      document.getElementById('btn-register').textContent = '⏳ Kayıt olunuyor...';
+      document.getElementById('btn-register').textContent = 'â³ KayÄ±t olunuyor...';
       const res = await this.authManager.register(username, email, pw);
       document.getElementById('btn-register').disabled = false;
-      document.getElementById('btn-register').innerHTML = '🚀 Kayıt Ol';
+      document.getElementById('btn-register').innerHTML = 'ğŸš€ KayÄ±t Ol';
       if (!res.success) { errEl.textContent = res.error; errEl.classList.remove('hidden'); }
     };
   }
@@ -275,7 +274,7 @@ class Game {
     document.getElementById('btn-sound-toggle').onclick = () => {
       this.audio.init();
       const on = this.audio.toggle();
-      document.getElementById('btn-sound-toggle').textContent = on ? '🔊' : '🔇';
+      document.getElementById('btn-sound-toggle').textContent = on ? 'ğŸ”Š' : 'ğŸ”‡';
     };
     document.getElementById('btn-logout').onclick = async () => {
       await this.authManager.logout();
@@ -286,30 +285,6 @@ class Game {
 
     // Profile
     document.getElementById('btn-profile').onclick = () => this.showProfile();
-
-    // Premium Plans
-    const planMonthly = document.getElementById('plan-monthly');
-    const planAnnual = document.getElementById('plan-annual');
-    if (planMonthly && planAnnual) {
-      planMonthly.onclick = () => {
-        planMonthly.classList.add('active');
-        planAnnual.classList.remove('active');
-      };
-      planAnnual.onclick = () => {
-        planAnnual.classList.add('active');
-        planMonthly.classList.remove('active');
-      };
-    }
-
-    const btnBuyPremiumNew = document.getElementById('btn-buy-premium-new');
-    if (btnBuyPremiumNew) {
-      btnBuyPremiumNew.onclick = () => {
-        const productId = btnBuyPremiumNew.dataset.productId || 'premium_lifetime';
-        const priceLabel = btnBuyPremiumNew.dataset.priceLabel || '₺79,99';
-        console.log('Premium selected:', { productId, price: priceLabel, coinBonus: 2000 });
-        alert(`Premium (${priceLabel}) Google Play ödeme entegrasyonu bağlanınca açılacak. Satın alanlara 2000 coin eklenecek.`);
-      };
-    }
 
     // Bottom Navigation Logic
     document.querySelectorAll('.nav-item').forEach(btn => {
@@ -326,15 +301,6 @@ class Game {
         const type = btn.dataset.type;
         const price = parseInt(btn.dataset.price);
 
-        if (type === 'coinPack') {
-          const coins = parseInt(btn.dataset.coins || '0', 10);
-          const priceLabel = btn.dataset.priceLabel || btn.textContent.trim();
-          const productId = btn.dataset.productId || '';
-          console.log('Coin pack selected:', { productId, coins, price: priceLabel });
-          alert(`${coins.toLocaleString('tr-TR')} coin paketi (${priceLabel}) ödeme entegrasyonu bağlanınca açılacak.`);
-          return;
-        }
-        
         if (type === 'theme') {
           const themeId = btn.dataset.id;
           if (price > 0) {
@@ -386,7 +352,7 @@ class Game {
           this.updatePowerUpUI();
           this.audio.pickup();
           const originalText = btn.textContent;
-          btn.textContent = '✅';
+          btn.textContent = 'âœ…';
           btn.style.background = '#27ae60';
           setTimeout(() => { btn.textContent = originalText; btn.style.background = ''; }, 1000);
         } else {
@@ -395,13 +361,6 @@ class Game {
         }
       };
     });
-
-    const btnBuyPremium = document.getElementById('btn-buy-premium');
-    if (btnBuyPremium) {
-      btnBuyPremium.onclick = async () => {
-        alert('Premium yalnızca Google Play ödeme doğrulamasından sonra etkinleştirilir.');
-      };
-    }
 
     // Online menu
     const modeBtns = document.querySelectorAll('.mode-btn');
@@ -417,17 +376,17 @@ class Game {
     document.getElementById('waiting-back').onclick = () => { this.network.leaveRoom(); this.showScreen('online-screen'); };
     document.getElementById('btn-copy-code').onclick = () => {
       const btn = document.getElementById('btn-copy-code');
-      this.copyText(document.getElementById('room-code-display').textContent, btn, '📋 KOPYALA');
+      this.copyText(document.getElementById('room-code-display').textContent, btn, 'ğŸ“‹ KOPYALA');
     };
     document.getElementById('btn-copy-link').onclick = () => {
       const btn = document.getElementById('btn-copy-link');
-      this.copyText(this.network.getRoomLink(), btn, '🔗 LİNK');
+      this.copyText(this.network.getRoomLink(), btn, 'ğŸ”— LÄ°NK');
     };
 
     // Game screen
     document.getElementById('btn-game-menu').onclick = () => {
       const pauseTitle = document.getElementById('pause-title');
-      if (pauseTitle) pauseTitle.textContent = this.mode === 'online' ? 'Maç Menüsü' : 'Duraklatıldı';
+      if (pauseTitle) pauseTitle.textContent = this.mode === 'online' ? 'MaÃ§ MenÃ¼sÃ¼' : 'DuraklatÄ±ldÄ±';
       document.getElementById('pause-overlay').classList.remove('hidden');
       document.getElementById('pause-overlay').classList.add('active');
     };
@@ -463,6 +422,7 @@ class Game {
     document.getElementById('btn-play-again').onclick = () => {
       this.mode === 'online' ? this.showScreen('online-screen') : (this.currentLevel ? this.startSoloGame(this.currentLevel.id) : this.startEndlessGame());
     };
+    document.getElementById('btn-next-level').onclick = () => this.startNextLevel();
     document.getElementById('btn-go-menu').onclick = () => { this.network.leaveRoom(); this.showScreen('menu-screen'); };
 
     const btnSendFeedback = document.getElementById('btn-send-feedback');
@@ -479,33 +439,33 @@ class Game {
     const message = messageEl ? messageEl.value.trim() : '';
 
     if (message.length < 5) {
-      if (statusEl) statusEl.textContent = 'Lütfen biraz daha detay yaz.';
+      if (statusEl) statusEl.textContent = 'LÃ¼tfen biraz daha detay yaz.';
       return;
     }
 
     if (btn) {
       btn.disabled = true;
-      btn.textContent = 'GÖNDERİLİYOR...';
+      btn.textContent = 'GÃ–NDERÄ°LÄ°YOR...';
     }
     if (statusEl) statusEl.textContent = '';
 
     const result = await this.authManager.submitFeedback(typeEl ? typeEl.value : 'other', message);
     if (result && result.ok) {
       if (messageEl) messageEl.value = '';
-      if (statusEl) statusEl.textContent = 'Teşekkürler, mesajın alındı.';
+      if (statusEl) statusEl.textContent = 'TeÅŸekkÃ¼rler, mesajÄ±n alÄ±ndÄ±.';
     } else if (statusEl) {
       if (result && result.reason === 'auth') {
-        statusEl.textContent = 'Göndermek için giriş yapmalısın.';
+        statusEl.textContent = 'GÃ¶ndermek iÃ§in giriÅŸ yapmalÄ±sÄ±n.';
       } else if (result && result.reason === 'permission-denied') {
-        statusEl.textContent = 'Feedback izni kapalı. Firebase Rules ayarı gerekiyor.';
+        statusEl.textContent = 'Feedback izni kapalÄ±. Firebase Rules ayarÄ± gerekiyor.';
       } else {
-        statusEl.textContent = 'Gönderilemedi. Bağlantını kontrol edip tekrar dene.';
+        statusEl.textContent = 'GÃ¶nderilemedi. BaÄŸlantÄ±nÄ± kontrol edip tekrar dene.';
       }
     }
 
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'GÖNDER';
+      btn.textContent = 'GÃ–NDER';
     }
   }
 
@@ -525,7 +485,7 @@ class Game {
         input.remove();
       }
       if (btn) {
-        btn.textContent = '✅ KOPYALANDI';
+        btn.textContent = 'âœ… KOPYALANDI';
         setTimeout(() => { btn.textContent = originalText; }, 1500);
       }
     } catch (err) {
@@ -636,39 +596,39 @@ class Game {
     const by = (stats, metric) => Math.max(0, stats[metric] || 0);
     return {
       daily: [
-        ['d1', 'Skor 150 yap', 'Bugün tek oyunda 150 skora ulaş.', by(dailyStats, 'highScore'), 150, 80],
-        ['d2', 'Skor 300 yap', 'Bugün tek oyunda 300 skora ulaş.', by(dailyStats, 'highScore'), 300, 120],
-        ['d3', '2 maç oyna', 'Bugün 2 maç tamamla.', by(dailyStats, 'totalGames'), 2, 100],
-        ['d4', '5 maç oyna', 'Bugün 5 maç tamamla.', by(dailyStats, 'totalGames'), 5, 160],
-        ['d5', '1 galibiyet al', 'Bugün 1 galibiyet al.', by(dailyStats, 'totalWins'), 1, 140],
-        ['d6', 'Level 2 aç', 'Level haritasında 2. bölüme ulaş.', by(dailyStats, 'unlockedLevel'), 2, 130],
-        ['d7', '500 coin biriktir', 'Hesabında 500 coin bulunsun.', by(dailyStats, 'coins'), 500, 90],
-        ['d8', '3 güçlendirici taşı', 'Envanterinde toplam 3 güçlendirici olsun.', by(dailyStats, 'powerUps'), 3, 110],
-        ['d9', 'Skor 500 yap', 'Bugün tek oyunda 500 skora ulaş.', by(dailyStats, 'highScore'), 500, 180],
-        ['d10', 'Level 3 aç', 'Level haritasında 3. bölüme ulaş.', by(dailyStats, 'unlockedLevel'), 3, 200],
+        ['d1', 'Skor 150 yap', 'BugÃ¼n tek oyunda 150 skora ulaÅŸ.', by(dailyStats, 'highScore'), 150, 80],
+        ['d2', 'Skor 300 yap', 'BugÃ¼n tek oyunda 300 skora ulaÅŸ.', by(dailyStats, 'highScore'), 300, 120],
+        ['d3', '2 maÃ§ oyna', 'BugÃ¼n 2 maÃ§ tamamla.', by(dailyStats, 'totalGames'), 2, 100],
+        ['d4', '5 maÃ§ oyna', 'BugÃ¼n 5 maÃ§ tamamla.', by(dailyStats, 'totalGames'), 5, 160],
+        ['d5', '1 galibiyet al', 'BugÃ¼n 1 galibiyet al.', by(dailyStats, 'totalWins'), 1, 140],
+        ['d6', 'Level 2 aÃ§', 'Level haritasÄ±nda 2. bÃ¶lÃ¼me ulaÅŸ.', by(dailyStats, 'unlockedLevel'), 2, 130],
+        ['d7', '500 coin biriktir', 'HesabÄ±nda 500 coin bulunsun.', by(dailyStats, 'coins'), 500, 90],
+        ['d8', '3 gÃ¼Ã§lendirici taÅŸÄ±', 'Envanterinde toplam 3 gÃ¼Ã§lendirici olsun.', by(dailyStats, 'powerUps'), 3, 110],
+        ['d9', 'Skor 500 yap', 'BugÃ¼n tek oyunda 500 skora ulaÅŸ.', by(dailyStats, 'highScore'), 500, 180],
+        ['d10', 'Level 3 aÃ§', 'Level haritasÄ±nda 3. bÃ¶lÃ¼me ulaÅŸ.', by(dailyStats, 'unlockedLevel'), 3, 200],
       ],
       weekly: [
-        ['w1', '10 maç oyna', 'Bu hafta 10 maç tamamla.', by(weeklyStats, 'totalGames'), 10, 350],
+        ['w1', '10 maÃ§ oyna', 'Bu hafta 10 maÃ§ tamamla.', by(weeklyStats, 'totalGames'), 10, 350],
         ['w2', '3 galibiyet al', 'Bu hafta 3 galibiyet al.', by(weeklyStats, 'totalWins'), 3, 420],
-        ['w3', 'Skor 1000 yap', 'Bu hafta tek oyunda 1000 skora ulaş.', by(weeklyStats, 'highScore'), 1000, 450],
-        ['w4', 'Level 4 aç', 'Level haritasında 4. bölüme ulaş.', by(weeklyStats, 'unlockedLevel'), 4, 480],
-        ['w5', '1500 coin biriktir', 'Hesabında 1500 coin bulunsun.', by(weeklyStats, 'coins'), 1500, 500],
-        ['w6', '8 güçlendirici taşı', 'Envanterinde toplam 8 güçlendirici olsun.', by(weeklyStats, 'powerUps'), 8, 520],
-        ['w7', '15 maç oyna', 'Bu hafta 15 maç tamamla.', by(weeklyStats, 'totalGames'), 15, 560],
-        ['w8', 'Skor 1500 yap', 'Bu hafta tek oyunda 1500 skora ulaş.', by(weeklyStats, 'highScore'), 1500, 620],
-        ['w9', 'Level 6 aç', 'Level haritasında 6. bölüme ulaş.', by(weeklyStats, 'unlockedLevel'), 6, 700],
+        ['w3', 'Skor 1000 yap', 'Bu hafta tek oyunda 1000 skora ulaÅŸ.', by(weeklyStats, 'highScore'), 1000, 450],
+        ['w4', 'Level 4 aÃ§', 'Level haritasÄ±nda 4. bÃ¶lÃ¼me ulaÅŸ.', by(weeklyStats, 'unlockedLevel'), 4, 480],
+        ['w5', '1500 coin biriktir', 'HesabÄ±nda 1500 coin bulunsun.', by(weeklyStats, 'coins'), 1500, 500],
+        ['w6', '8 gÃ¼Ã§lendirici taÅŸÄ±', 'Envanterinde toplam 8 gÃ¼Ã§lendirici olsun.', by(weeklyStats, 'powerUps'), 8, 520],
+        ['w7', '15 maÃ§ oyna', 'Bu hafta 15 maÃ§ tamamla.', by(weeklyStats, 'totalGames'), 15, 560],
+        ['w8', 'Skor 1500 yap', 'Bu hafta tek oyunda 1500 skora ulaÅŸ.', by(weeklyStats, 'highScore'), 1500, 620],
+        ['w9', 'Level 6 aÃ§', 'Level haritasÄ±nda 6. bÃ¶lÃ¼me ulaÅŸ.', by(weeklyStats, 'unlockedLevel'), 6, 700],
         ['w10', '6 galibiyet al', 'Bu hafta 6 galibiyet al.', by(weeklyStats, 'totalWins'), 6, 760],
       ],
       monthly: [
-        ['m1', '30 maç oyna', 'Bu ay 30 maç tamamla.', by(monthlyStats, 'totalGames'), 30, 1000],
+        ['m1', '30 maÃ§ oyna', 'Bu ay 30 maÃ§ tamamla.', by(monthlyStats, 'totalGames'), 30, 1000],
         ['m2', '10 galibiyet al', 'Bu ay 10 galibiyet al.', by(monthlyStats, 'totalWins'), 10, 1200],
-        ['m3', 'Skor 2500 yap', 'Bu ay tek oyunda 2500 skora ulaş.', by(monthlyStats, 'highScore'), 2500, 1400],
-        ['m4', 'Level 8 aç', 'Level haritasında 8. bölüme ulaş.', by(monthlyStats, 'unlockedLevel'), 8, 1500],
-        ['m5', '4000 coin biriktir', 'Hesabında 4000 coin bulunsun.', by(monthlyStats, 'coins'), 4000, 1600],
-        ['m6', '20 güçlendirici taşı', 'Envanterinde toplam 20 güçlendirici olsun.', by(monthlyStats, 'powerUps'), 20, 1700],
-        ['m7', '50 maç oyna', 'Bu ay 50 maç tamamla.', by(monthlyStats, 'totalGames'), 50, 1900],
-        ['m8', 'Skor 4000 yap', 'Bu ay tek oyunda 4000 skora ulaş.', by(monthlyStats, 'highScore'), 4000, 2200],
-        ['m9', 'Level 10 aç', 'Final bölümüne ulaş.', by(monthlyStats, 'unlockedLevel'), 10, 2500],
+        ['m3', 'Skor 2500 yap', 'Bu ay tek oyunda 2500 skora ulaÅŸ.', by(monthlyStats, 'highScore'), 2500, 1400],
+        ['m4', 'Level 8 aÃ§', 'Level haritasÄ±nda 8. bÃ¶lÃ¼me ulaÅŸ.', by(monthlyStats, 'unlockedLevel'), 8, 1500],
+        ['m5', '4000 coin biriktir', 'HesabÄ±nda 4000 coin bulunsun.', by(monthlyStats, 'coins'), 4000, 1600],
+        ['m6', '20 gÃ¼Ã§lendirici taÅŸÄ±', 'Envanterinde toplam 20 gÃ¼Ã§lendirici olsun.', by(monthlyStats, 'powerUps'), 20, 1700],
+        ['m7', '50 maÃ§ oyna', 'Bu ay 50 maÃ§ tamamla.', by(monthlyStats, 'totalGames'), 50, 1900],
+        ['m8', 'Skor 4000 yap', 'Bu ay tek oyunda 4000 skora ulaÅŸ.', by(monthlyStats, 'highScore'), 4000, 2200],
+        ['m9', 'Level 10 aÃ§', 'Final bÃ¶lÃ¼mÃ¼ne ulaÅŸ.', by(monthlyStats, 'unlockedLevel'), 10, 2500],
         ['m10', '25 galibiyet al', 'Bu ay 25 galibiyet al.', by(monthlyStats, 'totalWins'), 25, 3000],
       ],
     };
@@ -767,7 +727,7 @@ class Game {
       list.appendChild(section);
       return;
     }
-    const labels = { daily: 'GÜNLÜK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
+    const labels = { daily: 'GÃœNLÃœK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
     const claimed = {};
     let doneCount = 0;
     let totalCount = 0;
@@ -778,7 +738,7 @@ class Game {
       claimed[type] = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
       const section = document.createElement('section');
       section.className = `quest-section quest-${type}`;
-      section.innerHTML = `<h3 class="section-title-cyber">${labels[type]} GÖREVLER</h3>`;
+      section.innerHTML = `<h3 class="section-title-cyber">${labels[type]} GÃ–REVLER</h3>`;
       quests.forEach(([id, title, desc, value, target, reward]) => {
         totalCount++;
         const ready = value >= target;
@@ -817,8 +777,8 @@ class Game {
     });
 
     summary.innerHTML = `
-      <h3>Görev Merkezi</h3>
-      <p>${doneCount}/${totalCount} ödül alındı. Günlük görevler kolay, haftalıklar daha güçlü, aylık görevler en zor ve en yüksek ödüllü.</p>`;
+      <h3>GÃ¶rev Merkezi</h3>
+      <p>${doneCount}/${totalCount} Ã¶dÃ¼l alÄ±ndÄ±. GÃ¼nlÃ¼k gÃ¶revler kolay, haftalÄ±klar daha gÃ¼Ã§lÃ¼, aylÄ±k gÃ¶revler en zor ve en yÃ¼ksek Ã¶dÃ¼llÃ¼.</p>`;
   }
 
   applyUiTheme(theme) {
@@ -827,25 +787,25 @@ class Game {
     localStorage.setItem('uiTheme', selected);
     const btn = document.getElementById('btn-theme-toggle');
     if (btn) {
-      btn.textContent = selected === 'light' ? '☾' : '◐';
-      btn.title = selected === 'light' ? 'Koyu Temaya Geç' : 'Açık Temaya Geç';
+      btn.textContent = selected === 'light' ? 'â˜¾' : 'â—';
+      btn.title = selected === 'light' ? 'Koyu Temaya GeÃ§' : 'AÃ§Ä±k Temaya GeÃ§';
     }
   }
 
-  // ── Leaderboard ──
+  // â”€â”€ Leaderboard â”€â”€
   async showLeaderboard() {
     this.showScreen('leaderboard-screen');
     const list = document.getElementById('leaderboard-list');
     list.innerHTML = '<div class="leaderboard-loading"><div class="spinner-container"><div class="spinner spinner-sm"></div></div></div>';
     const data = await this.dbManager.getLeaderboard(20);
-    if (data.length === 0) { list.innerHTML = '<p class="text-muted">Henüz skor yok</p>'; return; }
+    if (data.length === 0) { list.innerHTML = '<p class="text-muted">HenÃ¼z skor yok</p>'; return; }
     const uid = this.authManager.user ? this.authManager.user.uid : '';
     list.innerHTML = data.map((entry, i) => {
       const rankVal = i + 1;
       const rankClass = rankVal <= 3 ? ` rank-${rankVal}` : '';
-      const medal = rankVal === 1 ? '🥇' : rankVal === 2 ? '🥈' : rankVal === 3 ? '🥉' : `${rankVal}`;
+      const medal = rankVal === 1 ? 'ğŸ¥‡' : rankVal === 2 ? 'ğŸ¥ˆ' : rankVal === 3 ? 'ğŸ¥‰' : `${rankVal}`;
       const meClass = entry.uid === uid ? ' me' : '';
-      const crown = entry.isPremium ? ' <span class="premium-icon" title="Premium">👑</span>' : '';
+      const crown = entry.isPremium ? ' <span class="premium-icon" title="Premium">ğŸ‘‘</span>' : '';
       return `
         <div class="leaderboard-item${meClass}">
           <span class="rank${rankClass}">${medal}</span>
@@ -857,7 +817,7 @@ class Game {
     }).join('');
   }
 
-  // ── Profile ──
+  // â”€â”€ Profile â”€â”€
   async showProfile() {
     this.showScreen('profile-screen');
     await this.authManager.loadUserData();
@@ -869,10 +829,10 @@ class Game {
     document.getElementById('p-total-wins').textContent = d.quickWins || 0;
     // Load match history
     const hist = document.getElementById('match-history');
-    if (!this.authManager.user) { hist.innerHTML = '<p class="text-muted">Giriş yapılmadı</p>'; return; }
+    if (!this.authManager.user) { hist.innerHTML = '<p class="text-muted">GiriÅŸ yapÄ±lmadÄ±</p>'; return; }
     hist.innerHTML = '<div class="spinner-container"><div class="spinner spinner-sm"></div></div>';
     const matches = await this.dbManager.getMatchHistory(this.authManager.user.uid, 10);
-    if (matches.length === 0) { hist.innerHTML = '<p class="text-muted">Henüz online maç yok</p>'; return; }
+    if (matches.length === 0) { hist.innerHTML = '<p class="text-muted">HenÃ¼z online maÃ§ yok</p>'; return; }
     const uid = this.authManager.user.uid;
     hist.innerHTML = matches.map(m => {
       const isP1 = m.player1 && m.player1.uid === uid;
@@ -902,19 +862,19 @@ class Game {
     }).join('');
   }
 
-  // ── Levels ──
+  // â”€â”€ Levels â”€â”€
   createLevels() {
     const titles = [
-      'Isınma', 'Hat Temizliği', 'Köşe Baskısı', 'Dar Koridor', 'Çift Cephe',
-      'Neon Kilit', 'Yoğun Alan', 'Siber Kuşatma', 'Son Hat', 'Final Çekirdeği',
-      'Denge Taşı', 'Kırık Rota', 'Çapraz Baskı', 'Sıkışan Alan', 'Kristal Hat',
-      'Gölge Blok', 'Çifte Kilit', 'Keskin Dönüş', 'Dar Boğaz', 'Sert Zemin',
-      'Neon Geçit', 'Basınç Odası', 'Kapanan Yol', 'Derin Izgara', 'Kilitli Merkez',
-      'Sıfır Hata', 'Hız Koridoru', 'Parça Fırtınası', 'Ağır Alan', 'Kritik Hat',
-      'Karanlık Çekirdek', 'Yan Duvar', 'Sert Kombolar', 'Son Savunma', 'Aşırı Baskı',
-      'Yüksek Voltaj', 'Çöküş Noktası', 'Kırmızı Alarm', 'Daralan Çember', 'Usta Alanı',
-      'Siber Kapan', 'Kilit Yağmuru', 'Gölge Kuşatma', 'Keskin Final', 'Kabus Koridoru',
-      'Son Düğüm', 'Çekirdek Savaşı', 'Mutlak Baskı', 'Efsane Hat', 'Block Battle'
+      'IsÄ±nma', 'Hat TemizliÄŸi', 'KÃ¶ÅŸe BaskÄ±sÄ±', 'Dar Koridor', 'Ã‡ift Cephe',
+      'Neon Kilit', 'YoÄŸun Alan', 'Siber KuÅŸatma', 'Son Hat', 'Final Ã‡ekirdeÄŸi',
+      'Denge TaÅŸÄ±', 'KÄ±rÄ±k Rota', 'Ã‡apraz BaskÄ±', 'SÄ±kÄ±ÅŸan Alan', 'Kristal Hat',
+      'GÃ¶lge Blok', 'Ã‡ifte Kilit', 'Keskin DÃ¶nÃ¼ÅŸ', 'Dar BoÄŸaz', 'Sert Zemin',
+      'Neon GeÃ§it', 'BasÄ±nÃ§ OdasÄ±', 'Kapanan Yol', 'Derin Izgara', 'Kilitli Merkez',
+      'SÄ±fÄ±r Hata', 'HÄ±z Koridoru', 'ParÃ§a FÄ±rtÄ±nasÄ±', 'AÄŸÄ±r Alan', 'Kritik Hat',
+      'KaranlÄ±k Ã‡ekirdek', 'Yan Duvar', 'Sert Kombolar', 'Son Savunma', 'AÅŸÄ±rÄ± BaskÄ±',
+      'YÃ¼ksek Voltaj', 'Ã‡Ã¶kÃ¼ÅŸ NoktasÄ±', 'KÄ±rmÄ±zÄ± Alarm', 'Daralan Ã‡ember', 'Usta AlanÄ±',
+      'Siber Kapan', 'Kilit YaÄŸmuru', 'GÃ¶lge KuÅŸatma', 'Keskin Final', 'Kabus Koridoru',
+      'Son DÃ¼ÄŸÃ¼m', 'Ã‡ekirdek SavaÅŸÄ±', 'Mutlak BaskÄ±', 'Efsane Hat', 'Block Battle'
     ];
     const baseLevels = [
       { target: 120, blockers: 0 },
@@ -1026,10 +986,20 @@ class Game {
     this.recordCompletedGame(true);
     this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
     this.updatePlayerHeader();
-    this.showGameOverScreen(true, `${this.currentLevel.id}. bölüm tamamlandı!`);
+    this.showGameOverScreen(true, `${this.currentLevel.id}. bÃ¶lÃ¼m tamamlandÄ±!`);
   }
 
-  // ── Game Start ──
+  startNextLevel() {
+    if (!this.currentLevel) return;
+    const nextLevelId = this.currentLevel.id + 1;
+    if (nextLevelId > this.levels.length) {
+      this.showScreen('map-screen');
+      return;
+    }
+    this.startSoloGame(nextLevelId);
+  }
+
+  // â”€â”€ Game Start â”€â”€
   resetGrid() { this.grid = []; for (let r = 0; r < this.GRID_SIZE; r++) this.grid.push(new Array(this.GRID_SIZE).fill(0)); }
 
   startSoloGame(levelId = 1) {
@@ -1120,7 +1090,7 @@ class Game {
     }
   }
 
-  // ── Pieces ──
+  // â”€â”€ Pieces â”€â”€
   generatePieces() {
     this.pieces = this.shouldUseEndlessFlow()
       ? this.generateEndlessPieceSet()
@@ -1250,7 +1220,7 @@ class Game {
     });
   }
 
-  // ── Canvas ──
+  // â”€â”€ Canvas â”€â”€
   resizeCanvas() {
     const ga = document.getElementById('game-area');
     const availableWidth = ga.clientWidth - 4;
@@ -1268,7 +1238,7 @@ class Game {
     }
   }
 
-  // ── Ghost & Placement ──
+  // â”€â”€ Ghost & Placement â”€â”€
   updateGhost(screenX, screenY, pieceIndex) {
     const piece = this.pieces[pieceIndex];
     if (!piece || piece.placed) { this.ghost = null; return; }
@@ -1331,7 +1301,7 @@ class Game {
     return true;
   }
 
-  // ── Line Clearing ──
+  // â”€â”€ Line Clearing â”€â”€
   checkAndClearLines() {
     const clearRows = [], clearCols = [];
     for (let r = 0; r < this.GRID_SIZE; r++) if (this.grid[r].every(c => c !== 0)) clearRows.push(r);
@@ -1369,11 +1339,11 @@ class Game {
 
   showCombo(level) {
     const d = document.getElementById('combo-display'); const t = document.getElementById('combo-text');
-    t.textContent = `COMBO ×${level}`; d.className = 'combo-display show';
+    t.textContent = `COMBO Ã—${level}`; d.className = 'combo-display show';
     setTimeout(() => { d.className = 'combo-display hidden'; }, 900);
   }
 
-  // ── Game Over ──
+  // â”€â”€ Game Over â”€â”€
   checkGameOver() {
     const rem = this.pieces.filter(p => !p.placed);
     if (rem.length === 0) return false;
@@ -1388,8 +1358,8 @@ class Game {
     const tray = document.getElementById('piece-tray');
     if (tray) tray.classList.add('locked');
     const status = this.onlineMode === 'time'
-      ? 'Hamlen kalmadı. Süre bitince sonuç açıklanacak.'
-      : 'Hamlen kalmadı. Rakip de kilitlenirse veya 1000 puana ulaşılırsa maç bitecek.';
+      ? 'Hamlen kalmadÄ±. SÃ¼re bitince sonuÃ§ aÃ§Ä±klanacak.'
+      : 'Hamlen kalmadÄ±. Rakip de kilitlenirse veya 1000 puana ulaÅŸÄ±lÄ±rsa maÃ§ bitecek.';
     this.showCombo(status);
   }
 
@@ -1422,7 +1392,7 @@ class Game {
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(false);
       this.authManager.addCoins(25).then(() => this.updateCoinDisplays());
-      this.showGameOverScreen(false, `Rakip ${this.targetScore} puana ulaştı. ${this.score} - ${this.opponentScore}`);
+      this.showGameOverScreen(false, `Rakip ${this.targetScore} puana ulaÅŸtÄ±. ${this.score} - ${this.opponentScore}`);
       return;
     }
     this.state = 'gameover';
@@ -1430,7 +1400,7 @@ class Game {
     this.recordCompletedGame(true);
     this.recordOnlineMatchResult(true);
     this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
-    this.showGameOverScreen(true, 'Rakip kaybetti! Kazandın!');
+    this.showGameOverScreen(true, 'Rakip kaybetti! KazandÄ±n!');
   }
 
   onOpponentLeft() {
@@ -1440,7 +1410,7 @@ class Game {
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
-      this.showGameOverScreen(true, 'Rakip ayrıldı. Kazandın!');
+      this.showGameOverScreen(true, 'Rakip ayrÄ±ldÄ±. KazandÄ±n!');
     }
   }
 
@@ -1454,7 +1424,7 @@ class Game {
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
-      this.showGameOverScreen(true, `Kazandın! ${this.score} - ${this.opponentScore}`); 
+      this.showGameOverScreen(true, `KazandÄ±n! ${this.score} - ${this.opponentScore}`); 
     }
     else if (tied) { 
       this.recordCompletedGame(false);
@@ -1479,8 +1449,11 @@ class Game {
     const highEl = document.getElementById('gameover-high');
     const resultEl = document.getElementById('gameover-result');
     const detailEl = document.getElementById('gameover-detail');
+    const nextLevelBtn = document.getElementById('btn-next-level');
+    const canPlayNextLevel = won && this.mode === 'solo' && this.currentLevel && this.currentLevel.id < this.levels.length;
+    if (nextLevelBtn) nextLevelBtn.classList.toggle('hidden', !canPlayNextLevel);
     if (resultMsg) {
-      title.textContent = won ? '🎉 Zafer!' : '💥 Oyun Bitti!';
+      title.textContent = won ? 'ğŸ‰ Zafer!' : 'ğŸ’¥ Oyun Bitti!';
       title.className = 'gameover-title ' + (won ? 'win' : 'lose');
       resultEl.textContent = resultMsg; resultEl.className = 'gameover-result ' + (won ? 'win' : 'lose');
       document.getElementById('go-high-score-wrap').classList.toggle('hidden', this.mode === 'online');
@@ -1501,10 +1474,10 @@ class Game {
     const modeLabel = !isOnline
       ? (this.currentLevel ? `Level ${this.currentLevel.id}` : 'Sonsuz')
       : this.onlineMode === 'time'
-        ? 'Zamana Karşı'
-        : 'Skor Yarışı';
+        ? 'Zamana KarÅŸÄ±'
+        : 'Skor YarÄ±ÅŸÄ±';
     const targetLabel = !isOnline
-      ? (this.currentLevel ? `${this.currentLevel.target} hedef` : 'En yüksek skor')
+      ? (this.currentLevel ? `${this.currentLevel.target} hedef` : 'En yÃ¼ksek skor')
       : this.onlineMode === 'time'
         ? '90 saniye'
         : '1000 puan';
@@ -1531,7 +1504,7 @@ class Game {
     document.getElementById('timer-value').textContent = `${m}:${s.toString().padStart(2, '0')}`;
   }
 
-  // ── Game Loop ──
+  // â”€â”€ Game Loop â”€â”€
   gameLoop(timestamp) {
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1); this.lastTime = timestamp;
     if (this.state === 'playing') {
@@ -1550,13 +1523,13 @@ class Game {
         this.recordCompletedGame(true);
         this.recordOnlineMatchResult(true);
         this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
-        this.showGameOverScreen(true, `${this.targetScore} puana ilk sen ulaştın!`);
+        this.showGameOverScreen(true, `${this.targetScore} puana ilk sen ulaÅŸtÄ±n!`);
       }
     }
     requestAnimationFrame((t) => this.gameLoop(t));
   }
 
-  // ── Power-ups Logic ──
+  // â”€â”€ Power-ups Logic â”€â”€
   resetPowerUps() {
     const inv = this.authManager.getInventory();
     this.powerUps = { 
@@ -1627,17 +1600,17 @@ class Game {
       const price = parseInt(btn.dataset.price);
       
       if (themeId === selected) {
-        btn.textContent = 'Seçildi';
+        btn.textContent = 'SeÃ§ildi';
         btn.disabled = true;
         btn.style.background = 'var(--accent)';
         btn.style.color = 'white';
       } else if (owned.includes(themeId) || price === 0) {
-        btn.textContent = 'Seç';
+        btn.textContent = 'SeÃ§';
         btn.disabled = false;
         btn.style.background = 'var(--surface)';
         btn.style.color = 'var(--neon-green)';
       } else {
-        btn.textContent = `${price} 💰`;
+        btn.textContent = `${price} ğŸ’°`;
         btn.disabled = this.authManager.getCoins() < price;
         btn.style.background = '';
         btn.style.color = '';
@@ -1673,12 +1646,12 @@ class Game {
       const isOwned = owned.includes(cosmeticId) || price === 0;
 
       if (cosmeticId === selected) {
-        btn.textContent = 'Seçildi';
+        btn.textContent = 'SeÃ§ildi';
         btn.disabled = true;
         btn.style.background = 'var(--accent)';
         btn.style.color = 'white';
       } else if (isOwned) {
-        btn.textContent = 'Seç';
+        btn.textContent = 'SeÃ§';
         btn.disabled = false;
         btn.style.background = 'var(--surface)';
         btn.style.color = 'var(--neon-green)';
@@ -1719,9 +1692,9 @@ class Game {
     if (!modal || !itemsEl) return;
 
     const items = [
-      { type: 'bomb', icon: '💣', name: 'Bomba', desc: '3x3 alanı temizler.', price: 240 },
-      { type: 'rotate', icon: '🔄', name: 'Döndür', desc: 'Parçaları çevirir.', price: 125 },
-      { type: 'skip', icon: '⏭️', name: 'Pas Geç', desc: 'Yeni parçalar getirir.', price: 190 },
+      { type: 'bomb', icon: 'ğŸ’£', name: 'Bomba', desc: '3x3 alanÄ± temizler.', price: 280 },
+      { type: 'rotate', icon: 'ğŸ”„', name: 'DÃ¶ndÃ¼r', desc: 'ParÃ§alarÄ± Ã§evirir.', price: 150 },
+      { type: 'skip', icon: 'â­ï¸', name: 'Pas GeÃ§', desc: 'Yeni parÃ§alar getirir.', price: 220 },
     ];
     const ordered = [...items].sort((a, b) => (a.type === focusType ? -1 : 0) + (b.type === focusType ? 1 : 0));
     if (balanceEl) balanceEl.textContent = `${this.authManager.getCoins().toLocaleString('tr-TR')} coin`;
@@ -1748,7 +1721,7 @@ class Game {
           this.updateCoinDisplays();
           this.updatePowerUpUI();
           if (balanceEl) balanceEl.textContent = `${this.authManager.getCoins().toLocaleString('tr-TR')} coin`;
-          if (statusEl) statusEl.textContent = 'Alındı. Oyuna devam edebilirsin.';
+          if (statusEl) statusEl.textContent = 'AlÄ±ndÄ±. Oyuna devam edebilirsin.';
           this.audio.pickup();
         } else if (statusEl) {
           statusEl.textContent = 'Coin yetersiz.';
