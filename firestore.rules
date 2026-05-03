@@ -22,17 +22,27 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isOwner(uid);
+      allow get: if isOwner(uid);
+      allow list: if request.query.limit <= 1;
       allow create: if isOwner(uid)
         && hasOnlyAllowedKeys(request.resource.data, [
           'username', 'email', 'highScore', 'coins', 'unlockedLevel',
           'inventory', 'totalGames', 'totalWins', 'totalOnlineGames',
-          'createdAt'
+          'createdAt', 'ownedThemes', 'ownedCosmetics',
+          'quickOnlineGames', 'quickWins', 'quickLosses'
         ]);
       allow update: if isOwner(uid)
         && keepsPremiumUnchanged()
         && keepsIdentityUnchanged();
       allow delete: if false;
+    }
+
+    match /usernames/{usernameKey} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && hasOnlyAllowedKeys(request.resource.data, ['uid', 'username', 'email', 'createdAt']);
+      allow update, delete: if false;
     }
 
     match /leaderboard/{uid} {

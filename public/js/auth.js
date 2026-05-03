@@ -1,6 +1,6 @@
-// ═══════════════════════════════════════════
-//  BLOCK BATTLE — Authentication Manager
-// ═══════════════════════════════════════════
+﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  BLOCK BATTLE â€” Authentication Manager
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class AuthManager {
   constructor() {
@@ -24,6 +24,12 @@ class AuthManager {
 
   async register(username, email, password) {
     try {
+      const usernameKey = username.trim().toLowerCase();
+      const usernameDoc = await db.collection('usernames').doc(usernameKey).get();
+      if (usernameDoc.exists) {
+        return { success: false, error: 'Bu kullanıcı adı alınmış.' };
+      }
+
       // Create auth user FIRST (so we're authenticated for Firestore)
       const cred = await auth.createUserWithEmailAndPassword(email, password);
 
@@ -47,6 +53,13 @@ class AuthManager {
           totalWins: 0,
           totalOnlineGames: 0,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+
+        await db.collection('usernames').doc(usernameKey).set({
+          uid: cred.user.uid,
+          username,
+          email,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
         // Add to leaderboard
@@ -78,15 +91,23 @@ class AuthManager {
 
       // If no @ sign, treat as username and look up email
       if (!emailOrUsername.includes('@')) {
-        const snap = await db.collection('users')
-          .where('username', '==', emailOrUsername)
-          .limit(1)
+        const usernameDoc = await db.collection('usernames')
+          .doc(emailOrUsername.trim().toLowerCase())
           .get();
 
-        if (snap.empty) {
-          return { success: false, error: 'Kullanıcı bulunamadı!' };
+        if (!usernameDoc.exists) {
+          const legacySnap = await db.collection('users')
+            .where('username', '==', emailOrUsername.trim())
+            .limit(1)
+            .get();
+
+          if (legacySnap.empty) {
+            return { success: false, error: 'Kullanıcı bulunamadı!' };
+          }
+          email = legacySnap.docs[0].data().email;
+        } else {
+          email = usernameDoc.data().email;
         }
-        email = snap.docs[0].data().email;
       }
 
       await auth.signInWithEmailAndPassword(email, password);
@@ -107,15 +128,23 @@ class AuthManager {
       if (!email) return { success: false, error: 'Email veya kullanıcı adını yaz.' };
 
       if (!email.includes('@')) {
-        const snap = await db.collection('users')
-          .where('username', '==', email)
-          .limit(1)
+        const usernameDoc = await db.collection('usernames')
+          .doc(email.toLowerCase())
           .get();
 
-        if (snap.empty) {
-          return { success: false, error: 'Bu kullanıcı adı bulunamadı.' };
+        if (!usernameDoc.exists) {
+          const legacySnap = await db.collection('users')
+            .where('username', '==', email)
+            .limit(1)
+            .get();
+
+          if (legacySnap.empty) {
+            return { success: false, error: 'Bu kullanıcı adı bulunamadı.' };
+          }
+          email = legacySnap.docs[0].data().email;
+        } else {
+          email = usernameDoc.data().email;
         }
-        email = snap.docs[0].data().email;
       }
 
       await auth.sendPasswordResetEmail(email);
@@ -125,8 +154,8 @@ class AuthManager {
       let msg = err.message;
       if (err.message && err.message.includes('error-code:-26')) msg = 'Firebase dönüş adresine izin vermedi. Sayfayı yenileyip tekrar dene; artık varsayılan şifre linki kullanılacak.';
       if (err.code === 'auth/invalid-email') msg = 'Geçersiz email adresi.';
-      if (err.code === 'auth/user-not-found') msg = 'Bu email ile hesap bulunamadı.';
-      if (err.code === 'auth/too-many-requests') msg = 'Çok fazla deneme yaptın. Biraz bekle.';
+      if (err.code === 'auth/user-not-found') msg = 'Kullanıcı bulunamadı!';
+      if (err.code === 'auth/too-many-requests') msg = 'Çok fazla deneme! Biraz bekle.';
       if (err.code === 'auth/unauthorized-continue-uri') msg = 'Firebase Authorized domains ayarında bu site adresi yok.';
       return { success: false, error: msg };
     }
@@ -356,3 +385,6 @@ class AuthManager {
     return !!this.user;
   }
 }
+
+
+

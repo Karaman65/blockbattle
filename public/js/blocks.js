@@ -82,7 +82,7 @@ const COSMETICS = {
     },
     smoke: {
       name: 'Kara Duman',
-      price: 850,
+      price: 1000,
       ring: 'rgba(18, 18, 24, 0.86)',
       core: 'rgba(255, 126, 46, 0.82)',
       smoke: ['#1c1d24', '#3a3b45'],
@@ -90,7 +90,7 @@ const COSMETICS = {
     },
     neon: {
       name: 'Neon Şok',
-      price: 1250,
+      price: 1450,
       ring: 'rgba(0, 243, 255, 0.78)',
       core: 'rgba(157, 0, 255, 0.72)',
       smoke: ['#082c38', '#3b1b62'],
@@ -98,7 +98,7 @@ const COSMETICS = {
     },
     frost: {
       name: 'Buz Kırığı',
-      price: 1550,
+      price: 1800,
       ring: 'rgba(126, 214, 223, 0.82)',
       core: 'rgba(199, 249, 255, 0.8)',
       smoke: ['#163746', '#8ed6e6'],

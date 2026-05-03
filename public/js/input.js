@@ -12,6 +12,9 @@ class InputHandler {
     this.currentX = 0;
     this.currentY = 0;
     this.dragEl = null;
+    this.bombDragging = false;
+    this.bombDragEl = null;
+    this.suppressBombClick = false;
   }
 
   init() {
@@ -32,23 +35,33 @@ class InputHandler {
     // Canvas events (for Power-ups)
     canvas.addEventListener('mousedown', (e) => this._onCanvasClick(e));
     canvas.addEventListener('touchstart', (e) => this._onCanvasClick(e));
+
+    const bombBtn = document.getElementById('btn-bomb');
+    if (bombBtn) {
+      bombBtn.addEventListener('mousedown', (e) => this._onBombStart(e));
+      bombBtn.addEventListener('touchstart', (e) => this._onBombStart(e), { passive: false });
+    }
   }
 
   _onCanvasClick(e) {
     if (!this.game.bombMode || this.game.state !== 'playing') return;
     
     e.preventDefault();
-    const pos = this._getPos(e);
-    const rect = document.getElementById('game-canvas').getBoundingClientRect();
-    const x = pos.x - rect.left;
-    const y = pos.y - rect.top;
+    const cell = this._getCanvasCell(this._getPos(e));
+    if (cell) this.game.useBombAt(cell.row, cell.col);
+  }
 
+  _getCanvasCell(pos) {
+    const canvas = document.getElementById('game-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    const x = (pos.x - rect.left) * sx;
+    const y = (pos.y - rect.top) * sy;
     const col = Math.floor((x - this.game.gridOffset.x) / this.game.cellSize);
     const row = Math.floor((y - this.game.gridOffset.y) / this.game.cellSize);
-
-    if (row >= 0 && row < this.game.GRID_SIZE && col >= 0 && col < this.game.GRID_SIZE) {
-      this.game.useBombAt(row, col);
-    }
+    if (row < 0 || row >= this.game.GRID_SIZE || col < 0 || col >= this.game.GRID_SIZE) return null;
+    return { row, col };
   }
 
   _getPos(e) {
@@ -91,6 +104,11 @@ class InputHandler {
 
   _onMove(e) {
     this.lastEvent = e;
+    if (this.bombDragging) {
+      e.preventDefault();
+      this._moveBombDrag(this._getPos(e));
+      return;
+    }
     if (!this.dragging) return;
     e.preventDefault();
 
@@ -119,6 +137,10 @@ class InputHandler {
   }
 
   _onEnd(e) {
+    if (this.bombDragging) {
+      this._endBombDrag(e);
+      return;
+    }
     if (!this.dragging) return;
 
     const pos = this._getPos(e);
@@ -183,5 +205,58 @@ class InputHandler {
 
     document.body.appendChild(el);
     this.dragEl = el;
+  }
+
+  _onBombStart(e) {
+    if (this.game.state !== 'playing') return;
+    if (this.game.powerUps.bomb <= 0) return;
+    if (this.game.animatingClear) return;
+
+    e.preventDefault();
+    this.lastEvent = e;
+    this.bombDragging = true;
+    this.game.bombMode = true;
+    this.game.updatePowerUpUI();
+    this._createBombDragElement(this._getPos(e));
+    this.game.audio.pickup();
+  }
+
+  _moveBombDrag(pos) {
+    this.currentX = pos.x;
+    this.currentY = pos.y;
+    this.lastEvent = { clientX: pos.x, clientY: pos.y };
+    if (!this.bombDragEl) return;
+    this.bombDragEl.style.left = `${pos.x}px`;
+    this.bombDragEl.style.top = `${pos.y - 72}px`;
+  }
+
+  _endBombDrag(e) {
+    const pos = this._getPos(e);
+    const cell = this._getCanvasCell(pos);
+    if (cell) {
+      this.game.useBombAt(cell.row, cell.col);
+    } else {
+      this.game.bombMode = false;
+      this.game.updatePowerUpUI();
+      this.game.audio.invalid();
+    }
+
+    if (this.bombDragEl) {
+      this.bombDragEl.remove();
+      this.bombDragEl = null;
+    }
+    this.bombDragging = false;
+    this.suppressBombClick = true;
+    setTimeout(() => { this.suppressBombClick = false; }, 250);
+  }
+
+  _createBombDragElement(startPos) {
+    if (this.bombDragEl) this.bombDragEl.remove();
+    const el = document.createElement('div');
+    el.className = 'drag-bomb';
+    el.textContent = '💣';
+    document.body.appendChild(el);
+    this.bombDragEl = el;
+    this._moveBombDrag(startPos);
   }
 }

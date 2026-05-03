@@ -92,8 +92,8 @@ class Renderer {
     const pos = this.game.input._getPos(this.game.input.lastEvent);
     if (pos.x == null || pos.y == null) return;
     const rect = document.getElementById('game-canvas').getBoundingClientRect();
-    const x = pos.x - rect.left;
-    const y = pos.y - rect.top;
+    const x = (pos.x - rect.left) * (this.game.canvas.width / rect.width);
+    const y = (pos.y - rect.top) * (this.game.canvas.height / rect.height);
 
     const col = Math.floor((x - offsetX) / cellSize);
     const row = Math.floor((y - offsetY) / cellSize);
