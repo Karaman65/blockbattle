@@ -12,18 +12,40 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .map(v => v.trim())
   .filter(Boolean);
 
+const NATIVE_ORIGINS = new Set([
+  'capacitor://localhost',
+  'ionic://localhost',
+  'http://localhost',
+  'https://localhost',
+]);
+
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  if (NATIVE_ORIGINS.has(origin)) return true;
+  return ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin);
+}
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
-        return callback(null, true);
-      }
+      if (isOriginAllowed(origin)) return callback(null, true);
       return callback(new Error('CORS blocked'));
     }
   }
+});
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  return next();
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
