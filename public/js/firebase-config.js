@@ -18,5 +18,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+auth.languageCode = 'tr';
+
 // Set persistence to local (stay logged in)
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
