@@ -49,6 +49,7 @@ class Game {
     this.nativeBackHandlerRegistered = false;
     this.rewardContinueUsed = false;
     this.rewardBombs = 0;
+    this.pendingRoomJoinStarted = false;
 
     // Power-ups
     this.powerUps = {
@@ -68,6 +69,7 @@ class Game {
     this.setupAuthUI();
     this.setupUI();
     this.setupNativeBackButton();
+    this.setupDeepLinks();
     this.applyUiTheme(localStorage.getItem('uiTheme') || 'dark');
 
     // Initialize Ads
@@ -77,6 +79,10 @@ class Game {
     window.addEventListener('resize', () => {
       if (this.state === 'playing') this.resizeCanvas();
     });
+
+    const params = new URLSearchParams(window.location.search);
+    const roomCode = params.get('room');
+    if (roomCode) this._pendingRoom = roomCode;
 
     // Init auth â€” show loading, then route based on auth state
     this.showScreen('loading-screen');
@@ -91,20 +97,70 @@ class Game {
         this.unlockedLevel = this.getSavedUnlockedLevel();
         this.updateCoinDisplays();
         this.updatePlayerHeader();
-        this.showScreen('menu-screen'); // Default to main menu after login
-        this.maybeShowTutorial();
+        if (!this.handlePendingRoomLink()) {
+          this.showScreen('menu-screen'); // Default to main menu after login
+          this.maybeShowTutorial();
+        }
       } else {
         this.showScreen('login-screen');
       }
     });
 
-    const params = new URLSearchParams(window.location.search);
-    const roomCode = params.get('room');
-    if (roomCode) {
+    requestAnimationFrame((t) => this.gameLoop(t));
+  }
+
+  handlePendingRoomLink() {
+    if (!this._pendingRoom) return false;
+    if (this.pendingRoomJoinStarted) return true;
+    this.pendingRoomJoinStarted = true;
+    const roomCode = this._pendingRoom.trim().toUpperCase();
+    this._pendingRoom = null;
+    this.showScreen('online-screen');
+    const input = document.getElementById('room-code-input');
+    if (input) input.value = roomCode;
+    setTimeout(() => {
+      this.network.joinRoom(roomCode).finally(() => {
+        this.pendingRoomJoinStarted = false;
+      });
+    }, 250);
+    return true;
+  }
+
+  setupDeepLinks() {
+    const app = window.Capacitor?.Plugins?.App;
+    if (!app) return;
+
+    const handleUrl = (url) => {
+      const roomCode = this.getRoomCodeFromUrl(url);
+      if (!roomCode) return;
       this._pendingRoom = roomCode;
+      if (this.authManager && this.authManager.user) this.handlePendingRoomLink();
+      else this.showScreen('login-screen');
+    };
+
+    if (typeof app.getLaunchUrl === 'function') {
+      app.getLaunchUrl().then(data => {
+        if (data && data.url) handleUrl(data.url);
+      }).catch(() => {});
     }
 
-    requestAnimationFrame((t) => this.gameLoop(t));
+    if (typeof app.addListener === 'function') {
+      app.addListener('appUrlOpen', data => {
+        if (data && data.url) handleUrl(data.url);
+      });
+    }
+  }
+
+  getRoomCodeFromUrl(url) {
+    if (!url) return '';
+    try {
+      const parsed = new URL(url);
+      const room = parsed.searchParams.get('room');
+      return room ? room.trim().toUpperCase() : '';
+    } catch (err) {
+      const match = String(url).match(/[?&]room=([^&]+)/i);
+      return match ? decodeURIComponent(match[1]).trim().toUpperCase() : '';
+    }
   }
 
   showScreen(id) {
@@ -349,10 +405,7 @@ class Game {
           // Then attempt connection
           this.network.connect().catch(err => console.warn('Online connection pending:', err.message));
           
-          if (this._pendingRoom) {
-            document.getElementById('room-code-input').value = this._pendingRoom;
-            this._pendingRoom = null;
-          }
+          this.handlePendingRoomLink();
           
           // Reset opacity if successful
           btnOnline.style.opacity = '1';
@@ -893,21 +946,34 @@ class Game {
     const data = await this.dbManager.getLeaderboard(20);
     if (data.length === 0) { list.innerHTML = '<p class="text-muted">Henüz skor yok</p>'; return; }
     const uid = this.authManager.user ? this.authManager.user.uid : '';
-    list.innerHTML = data.map((entry, i) => {
+    const leader = data[0];
+    const rows = data.map((entry, i) => {
       const rankVal = i + 1;
       const rankClass = rankVal <= 3 ? ` rank-${rankVal}` : '';
-      const medal = rankVal === 1 ? '1.' : rankVal === 2 ? '2.' : rankVal === 3 ? '3.' : `${rankVal}`;
+      const medal = rankVal <= 3 ? `TOP ${rankVal}` : `#${rankVal}`;
       const meClass = entry.uid === uid ? ' me' : '';
       const crown = entry.isPremium ? ' <span class="premium-icon" title="Premium">VIP</span>' : '';
       return `
-        <div class="leaderboard-item${meClass}">
+        <div class="leaderboard-item${rankClass}${meClass}">
           <span class="rank${rankClass}">${medal}</span>
           <div class="player-info">
             <span class="player-name">${entry.username}${crown}</span>
+            <small>${entry.uid === uid ? 'Senin skorun' : 'Oyuncu skoru'}</small>
           </div>
-          <span class="player-score">${entry.highScore}</span>
+          <div class="player-score">
+            <span>${entry.highScore}</span>
+            <small>PUAN</small>
+          </div>
         </div>`;
     }).join('');
+
+    list.innerHTML = `
+      <div class="leaderboard-hero">
+        <span class="leaderboard-kicker">Haftanın zirvesi</span>
+        <strong>${leader.username}</strong>
+        <small>${leader.highScore} puanla lider</small>
+      </div>
+      <div class="leaderboard-list">${rows}</div>`;
   }
 
   // â”€â”€ Profile â”€â”€
