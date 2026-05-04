@@ -1,8 +1,9 @@
-const CACHE_NAME = 'block-battle-v61';
+const CACHE_NAME = 'block-battle-v62';
 const ASSETS = [
   '/',
   '/index.html',
   '/reset-password.html',
+  '/delete-account.html',
   '/css/style.css',
   '/js/firebase-config.js',
   '/js/blocks.js',

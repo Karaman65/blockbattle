@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Block Battle Hesap Silme</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070716;
+      --panel: rgba(255, 255, 255, .055);
+      --line: rgba(255, 255, 255, .13);
+      --text: #f8fafc;
+      --muted: #c7d2fe;
+      --accent: #00f3ff;
+      --pink: #ff4da6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(0, 243, 255, .16), transparent 30%),
+        radial-gradient(circle at 82% 12%, rgba(255, 77, 166, .14), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(880px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 44px 0 64px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 24px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
+    }
+
+    h1, h2 { line-height: 1.18; }
+    h1 { margin: 0 0 10px; font-size: clamp(2rem, 5vw, 3.1rem); }
+    h2 { margin: 30px 0 10px; color: var(--accent); font-size: 1.22rem; }
+    p, li { color: var(--muted); }
+    a { color: var(--pink); font-weight: 700; }
+    .brand { color: var(--accent); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .date { color: #94a3b8; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="brand">Block Battle</p>
+    <div class="card">
+      <h1>Hesap Silme Talebi</h1>
+      <p class="date">Son güncelleme: 4 Mayıs 2026</p>
+      <p>Block Battle hesabınızı ve hesabınızla ilişkili kişisel verileri silmek için aşağıdaki adımları izleyebilirsiniz.</p>
+
+      <h2>Hesap Silme Nasıl Talep Edilir?</h2>
+      <ol>
+        <li>Block Battle hesabınızla kayıt olduğunuz e-posta adresinden bize e-posta gönderin.</li>
+        <li>E-postanın konu kısmına <strong>Block Battle hesap silme talebi</strong> yazın.</li>
+        <li>Mesajda kullanıcı adınızı ve hesap e-posta adresinizi belirtin.</li>
+      </ol>
+      <p><strong>Destek e-postası:</strong> <a href="mailto:karamangamesstudio@gmail.com">karamangamesstudio@gmail.com</a></p>
+
+      <h2>Silinen Veriler</h2>
+      <ul>
+        <li>Hesap bilgileri, kullanıcı adı, e-posta adresi ve Firebase kullanıcı kimliği.</li>
+        <li>Oyun ilerlemesi, coin bakiyesi, envanter, skorlar ve maç geçmişi.</li>
+        <li>Geri bildirim formu ile gönderilen hesapla ilişkili mesajlar.</li>
+      </ul>
+
+      <h2>Saklanabilecek Veriler</h2>
+      <p>Yasal yükümlülükler, güvenlik kayıtları, kötüye kullanım önleme veya teknik zorunluluklar nedeniyle bazı kayıtlar sınırlı süreyle saklanabilir. Bu kayıtlar aktif oyun hesabınızı yeniden oluşturmak için kullanılmaz.</p>
+
+      <h2>İşlem Süresi</h2>
+      <p>Silme taleplerini genellikle 30 gün içinde tamamlarız. Talebinizi doğrulamak için hesabınıza ait e-posta adresinden yazmanız gerekir.</p>
+
+      <h2>Gizlilik Politikası</h2>
+      <p>Veri işleme hakkında daha fazla bilgi için <a href="/privacy.html">Block Battle Gizlilik Politikası</a> sayfasını ziyaret edebilirsiniz.</p>
+    </div>
+  </main>
+</body>
+</html>
