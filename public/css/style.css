@@ -448,6 +448,7 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+  max-width: 100%;
 }
 #main-board-wrap { position: relative; }
 #game-canvas {
@@ -998,6 +999,10 @@ body {
   .glass-panel { padding: 24px 18px; }
   .mode-select { grid-template-columns: 1fr; }
   .piece-cell { width: 14px; height: 14px; }
+  #game-area { padding: 0 8px; }
+  #boards-container { gap: 8px; justify-content: center; }
+  #opponent-board-wrap { gap: 4px; }
+  .opponent-label { font-size: 0.58rem; letter-spacing: 1.4px; }
   #game-screen { padding-bottom: calc(34px + env(safe-area-inset-bottom)); }
   #power-ups { margin: 0 0 2px; }
   #piece-tray { gap: 10px; padding: 4px 8px 8px; min-height: 60px; margin-bottom: 10px; }

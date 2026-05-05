@@ -1400,9 +1400,15 @@ class Game {
     const ga = document.getElementById('game-area');
     const availableWidth = ga.clientWidth - 4;
     const availableHeight = ga.clientHeight - 4;
-    let cs = Math.floor(Math.min(availableWidth, availableHeight) / this.GRID_SIZE);
+    let widthForMainBoard = availableWidth;
+    if (this.mode === 'online') {
+      const gap = window.innerWidth <= 480 ? 8 : 16;
+      const onlineWidthLimitedCellSize = Math.floor((availableWidth - gap - 20) / 12.6);
+      widthForMainBoard = Math.max(onlineWidthLimitedCellSize * this.GRID_SIZE, 0);
+    }
+    let cs = Math.floor(Math.min(widthForMainBoard, availableHeight) / this.GRID_SIZE);
     cs = Math.min(cs, this.mode === 'online' ? 68 : 82);
-    cs = Math.max(cs, 30);
+    cs = Math.max(cs, this.mode === 'online' ? 20 : 30);
     this.cellSize = cs;
     const gp = this.GRID_SIZE * cs;
     this.canvas.width = gp + 12; this.canvas.height = gp + 12; this.gridOffset = { x: 6, y: 6 };

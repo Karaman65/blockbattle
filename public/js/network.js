@@ -182,6 +182,10 @@ class NetworkManager {
     return window.location.origin;
   }
 
+  isNativeApp() {
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  }
+
   waitUntilConnected(timeout = 25000) {
     if (this.connected || (this.socket && this.socket.connected)) {
       this.connected = true;
@@ -355,7 +359,12 @@ class NetworkManager {
   }
 
   getRoomLink() {
-    const base = window.location.protocol === 'file:' ? this.getServerUrl() : window.location.origin;
+    if (this.isNativeApp()) {
+      return `blockbattle://join?room=${encodeURIComponent(this.roomId)}`;
+    }
+    const serverUrl = this.getServerUrl();
+    const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    const base = window.location.protocol === 'file:' || isLocalHost ? serverUrl : window.location.origin;
     return `${base}?room=${this.roomId}`;
   }
 
