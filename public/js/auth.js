@@ -207,10 +207,19 @@ class AuthManager {
           return { success: false, error: 'Google giriş köprüsü bulunamadı. Uygulamayı Play Store üzerinden son sürüme güncelle.' };
         }
 
-        const nativeResult = await nativeAuth.signInWithGoogle({
-          skipNativeAuth: true,
-          useCredentialManager: true
-        });
+        let nativeResult;
+        try {
+          nativeResult = await nativeAuth.signInWithGoogle({
+            skipNativeAuth: true,
+            useCredentialManager: true
+          });
+        } catch (nativeErr) {
+          const nativeMessage = nativeErr && (nativeErr.message || nativeErr.errorMessage || nativeErr.code);
+          if (nativeMessage && String(nativeMessage).toLowerCase().includes('unable to find plugin')) {
+            return { success: false, error: 'Google giriş eklentisi bu APK içinde yok. Yeni APK/AAB oluşturup telefondaki eski sürümü kaldırarak tekrar yükle.' };
+          }
+          throw nativeErr;
+        }
         const googleCredential = firebase.auth.GoogleAuthProvider.credential(
           nativeResult.credential && nativeResult.credential.idToken,
           nativeResult.credential && nativeResult.credential.accessToken
