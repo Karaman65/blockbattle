@@ -302,6 +302,8 @@ class Game {
     }
     const passwordResetSend = document.getElementById('btn-password-reset-send');
     if (passwordResetSend) passwordResetSend.onclick = () => this.sendPasswordResetFromModal();
+    const googleLogin = document.getElementById('btn-google-login');
+    if (googleLogin) googleLogin.onclick = () => this.loginWithGoogle();
 
     document.getElementById('login-form').onsubmit = async (e) => {
       e.preventDefault();
@@ -349,6 +351,33 @@ class Game {
   closePasswordResetModal() {
     const modal = document.getElementById('password-reset-modal');
     if (modal) modal.classList.add('hidden');
+  }
+
+  setAuthStatus(id, message, success = false) {
+    const status = document.getElementById(id);
+    if (!status) return;
+    status.textContent = message || '';
+    status.classList.toggle('success', success);
+    status.classList.toggle('hidden', !message);
+  }
+
+  async loginWithGoogle() {
+    const btn = document.getElementById('btn-google-login');
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.classList.add('hidden');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Google açılıyor...';
+    }
+    const res = await this.authManager.loginWithGoogle();
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Google ile giriş';
+    }
+    if (!res.success && errEl) {
+      errEl.textContent = res.error;
+      errEl.classList.remove('hidden');
+    }
   }
 
   async sendPasswordResetFromModal() {

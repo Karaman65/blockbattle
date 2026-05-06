@@ -1,4 +1,4 @@
-const CACHE_NAME = 'block-battle-v65';
+const CACHE_NAME = 'block-battle-v69';
 const ASSETS = [
   '/',
   '/index.html',
@@ -69,6 +69,6 @@ self.addEventListener('fetch', (e) => {
           return response;
         });
       });
-    }).catch(() => caches.match('/index.html'))
+    }).catch(() => caches.match(req))
   );
 });

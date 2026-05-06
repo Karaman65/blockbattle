@@ -14,12 +14,83 @@ class AuthManager {
     auth.onAuthStateChanged(async (user) => {
       this.user = user;
       if (user) {
+        await this.ensureUserProfile(user);
         await this.loadUserData();
       } else {
         this.userData = null;
       }
       if (this.onAuthChanged) this.onAuthChanged(user);
     });
+  }
+
+  getUsernameKey(username) {
+    return String(username || 'oyuncu').trim().toLowerCase().replace(/[^a-z0-9ğüşöçıİĞÜŞÖÇ_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'oyuncu';
+  }
+
+  getProviderUsername(user) {
+    const raw = user.displayName || (user.email ? user.email.split('@')[0] : '') || `oyuncu-${user.uid.slice(0, 6)}`;
+    return String(raw).trim().slice(0, 16) || `Oyuncu${user.uid.slice(0, 4)}`;
+  }
+
+  async reserveUsername(baseUsername, user) {
+    let username = String(baseUsername || 'Oyuncu').trim().slice(0, 16) || 'Oyuncu';
+    let key = this.getUsernameKey(username);
+
+    for (let i = 0; i < 5; i++) {
+      const candidate = i === 0 ? key : `${key}-${user.uid.slice(0, 4 + i)}`;
+      const docRef = db.collection('usernames').doc(candidate);
+      const snap = await docRef.get();
+      if (snap.exists && snap.data().uid === user.uid) return snap.data().username || username;
+      if (snap.exists) continue;
+      const finalUsername = i === 0 ? username : `${username.slice(0, 11)}${user.uid.slice(0, 4 + i)}`;
+      await docRef.set({
+        uid: user.uid,
+        username: finalUsername,
+        email: user.email || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      return finalUsername;
+    }
+
+    return `Oyuncu${user.uid.slice(0, 6)}`;
+  }
+
+  async ensureUserProfile(user = this.user) {
+    if (!user) return false;
+    try {
+      const userRef = db.collection('users').doc(user.uid);
+      const doc = await userRef.get();
+      if (doc.exists) return true;
+
+      const username = await this.reserveUsername(this.getProviderUsername(user), user);
+      await userRef.set({
+        username,
+        email: user.email || '',
+        highScore: 0,
+        coins: 500,
+        unlockedLevel: 1,
+        inventory: {
+          bomb: 2,
+          rotate: 5,
+          skip: 2
+        },
+        totalGames: 0,
+        totalWins: 0,
+        totalOnlineGames: 0,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await db.collection('leaderboard').doc(user.uid).set({
+        username,
+        highScore: 0,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      return true;
+    } catch (err) {
+      console.error('Failed to ensure user profile:', err);
+      return false;
+    }
   }
 
   async register(username, email, password) {
@@ -118,6 +189,28 @@ class AuthManager {
       if (err.code === 'auth/wrong-password') msg = 'Yanlış şifre!';
       if (err.code === 'auth/invalid-credential') msg = 'Email veya şifre hatalı!';
       if (err.code === 'auth/too-many-requests') msg = 'Çok fazla deneme! Biraz bekle.';
+      return { success: false, error: msg };
+    }
+  }
+
+  async loginWithGoogle() {
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+        await auth.signInWithRedirect(provider);
+        return { success: true, pendingRedirect: true };
+      }
+      const cred = await auth.signInWithPopup(provider);
+      await this.ensureUserProfile(cred.user);
+      await this.loadUserData();
+      return { success: true };
+    } catch (err) {
+      console.error('Google login error:', err.code, err.message);
+      let msg = err.message || 'Google ile giriş yapılamadı.';
+      if (err.code === 'auth/popup-closed-by-user') msg = 'Google giriş penceresi kapatıldı.';
+      if (err.code === 'auth/unauthorized-domain') msg = 'Bu domain Firebase Authorized domains listesinde yok.';
+      if (err.code === 'auth/operation-not-supported-in-this-environment') msg = 'Bu ortamda Google popup desteklenmiyor.';
       return { success: false, error: msg };
     }
   }
