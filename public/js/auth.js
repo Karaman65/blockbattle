@@ -199,9 +199,12 @@ class AuthManager {
       provider.setCustomParameters({ prompt: 'select_account' });
       if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
         const nativeAuth = (window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication)
-          || (window.Capacitor.registerPlugin && window.Capacitor.registerPlugin('FirebaseAuthentication'));
+          || (window.Capacitor.registerPlugin && window.Capacitor.registerPlugin('FirebaseAuthentication'))
+          || (window.Capacitor.nativePromise && {
+            signInWithGoogle: (options) => window.Capacitor.nativePromise('FirebaseAuthentication', 'signInWithGoogle', options)
+          });
         if (!nativeAuth || !nativeAuth.signInWithGoogle) {
-          return { success: false, error: 'Google giriş eklentisi Android uygulamasına eklenmemiş.' };
+          return { success: false, error: 'Google giriş köprüsü bulunamadı. Uygulamayı Play Store üzerinden son sürüme güncelle.' };
         }
 
         const nativeResult = await nativeAuth.signInWithGoogle({
