@@ -198,7 +198,8 @@ class AuthManager {
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-        const nativeAuth = window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication;
+        const nativeAuth = (window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication)
+          || (window.Capacitor.registerPlugin && window.Capacitor.registerPlugin('FirebaseAuthentication'));
         if (!nativeAuth || !nativeAuth.signInWithGoogle) {
           return { success: false, error: 'Google giriş eklentisi Android uygulamasına eklenmemiş.' };
         }
