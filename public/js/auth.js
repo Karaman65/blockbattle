@@ -198,8 +198,23 @@ class AuthManager {
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-        await auth.signInWithRedirect(provider);
-        return { success: true, pendingRedirect: true };
+        const nativeAuth = window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication;
+        if (!nativeAuth || !nativeAuth.signInWithGoogle) {
+          return { success: false, error: 'Google giriş eklentisi Android uygulamasına eklenmemiş.' };
+        }
+
+        const nativeResult = await nativeAuth.signInWithGoogle({
+          skipNativeAuth: true,
+          useCredentialManager: true
+        });
+        const googleCredential = firebase.auth.GoogleAuthProvider.credential(
+          nativeResult.credential && nativeResult.credential.idToken,
+          nativeResult.credential && nativeResult.credential.accessToken
+        );
+        const cred = await auth.signInWithCredential(googleCredential);
+        await this.ensureUserProfile(cred.user);
+        await this.loadUserData();
+        return { success: true };
       }
       const cred = await auth.signInWithPopup(provider);
       await this.ensureUserProfile(cred.user);
@@ -211,6 +226,7 @@ class AuthManager {
       if (err.code === 'auth/popup-closed-by-user') msg = 'Google giriş penceresi kapatıldı.';
       if (err.code === 'auth/unauthorized-domain') msg = 'Bu domain Firebase Authorized domains listesinde yok.';
       if (err.code === 'auth/operation-not-supported-in-this-environment') msg = 'Bu ortamda Google popup desteklenmiyor.';
+      if (err.code === 'auth/invalid-credential') msg = 'Google giriş bilgisi alınamadı. Firebase SHA ayarlarını ve google-services.json dosyasını kontrol et.';
       return { success: false, error: msg };
     }
   }
