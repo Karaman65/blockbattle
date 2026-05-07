@@ -87,26 +87,66 @@ class Game {
     // Init auth â€” show loading, then route based on auth state
     this.showScreen('loading-screen');
     this.authManager.init((user) => {
-      if (user) {
-        this.highScore = (this.authManager.userData && this.authManager.userData.highScore) || 0;
-        let displayName = this.authManager.getUsername();
-        document.getElementById('menu-username').textContent = displayName;
-        
-        const savedTheme = localStorage.getItem('selectedTheme') || 'default';
-        this.setTheme(savedTheme);
-        this.unlockedLevel = this.getSavedUnlockedLevel();
-        this.updateCoinDisplays();
-        this.updatePlayerHeader();
-        if (!this.handlePendingRoomLink()) {
-          this.showScreen('menu-screen'); // Default to main menu after login
-          this.maybeShowTutorial();
-        }
+      if (user || this.isGuestSession()) {
+        this.enterMainMenuAfterAuth();
       } else {
         this.showScreen('login-screen');
       }
     });
 
     requestAnimationFrame((t) => this.gameLoop(t));
+  }
+
+  isGuestSession() {
+    return !!(this.authManager && this.authManager.isGuestSession && this.authManager.isGuestSession());
+  }
+
+  hasAccount() {
+    return !!(this.authManager && this.authManager.user);
+  }
+
+  enterMainMenuAfterAuth() {
+    this.highScore = (this.authManager.userData && this.authManager.userData.highScore) || 0;
+    const displayName = this.authManager.getUsername();
+    const menuName = document.getElementById('menu-username');
+    if (menuName) menuName.textContent = displayName;
+
+    const savedTheme = localStorage.getItem('selectedTheme') || 'default';
+    this.setTheme(savedTheme);
+    this.unlockedLevel = this.isGuestSession() ? 1 : this.getSavedUnlockedLevel();
+    this.updateCoinDisplays();
+    this.updatePlayerHeader();
+    if (!this.isGuestSession() && this.handlePendingRoomLink()) return;
+    this.showScreen('menu-screen');
+    this.maybeShowTutorial();
+  }
+
+  requireAccount(message = 'Bu bölüm için giriş yap veya hesap oluştur.') {
+    if (this.hasAccount()) return true;
+    this.openAccountRequiredModal(message);
+    return false;
+  }
+
+  openAccountRequiredModal(message) {
+    const modal = document.getElementById('account-required-modal');
+    const messageEl = document.getElementById('account-required-message');
+    if (messageEl) messageEl.textContent = message || 'Bu bölüm için giriş yap veya hesap oluştur.';
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  closeAccountRequiredModal() {
+    const modal = document.getElementById('account-required-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  goToLoginFromAccountPrompt() {
+    this.closeAccountRequiredModal();
+    this.authManager.clearGuestSession();
+    this.authManager.isGuest = false;
+    this.authManager.userData = null;
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.classList.add('hidden');
+    this.showScreen('login-screen');
   }
 
   handlePendingRoomLink() {
@@ -184,7 +224,7 @@ class Game {
     const bottomNav = document.getElementById('bottom-nav');
     if (bottomNav) {
       const showNavScreens = ['menu-screen', 'store-screen', 'quests-screen', 'profile-screen', 'leaderboard-screen', 'map-screen'];
-      if (showNavScreens.includes(id) && this.authManager && this.authManager.user) {
+      if (showNavScreens.includes(id) && (this.hasAccount() || this.isGuestSession())) {
         bottomNav.classList.remove('hidden');
         // Update active state
         document.querySelectorAll('.nav-item').forEach(btn => {
@@ -235,6 +275,12 @@ class Game {
       const quickShop = document.getElementById('quick-shop-modal');
       if (quickShop && !quickShop.classList.contains('hidden')) {
         this.closeQuickShop();
+        return;
+      }
+
+      const accountModal = document.getElementById('account-required-modal');
+      if (accountModal && !accountModal.classList.contains('hidden')) {
+        this.closeAccountRequiredModal();
         return;
       }
 
@@ -302,8 +348,22 @@ class Game {
     }
     const passwordResetSend = document.getElementById('btn-password-reset-send');
     if (passwordResetSend) passwordResetSend.onclick = () => this.sendPasswordResetFromModal();
+    const accountRequiredClose = document.getElementById('account-required-close');
+    if (accountRequiredClose) accountRequiredClose.onclick = () => this.closeAccountRequiredModal();
+    const accountRequiredCancel = document.getElementById('account-required-cancel');
+    if (accountRequiredCancel) accountRequiredCancel.onclick = () => this.closeAccountRequiredModal();
+    const accountRequiredLogin = document.getElementById('account-required-login');
+    if (accountRequiredLogin) accountRequiredLogin.onclick = () => this.goToLoginFromAccountPrompt();
+    const accountRequiredModal = document.getElementById('account-required-modal');
+    if (accountRequiredModal) {
+      accountRequiredModal.onclick = (e) => {
+        if (e.target === accountRequiredModal) this.closeAccountRequiredModal();
+      };
+    }
     const googleLogin = document.getElementById('btn-google-login');
     if (googleLogin) googleLogin.onclick = () => this.loginWithGoogle();
+    const guestLogin = document.getElementById('btn-guest-login');
+    if (guestLogin) guestLogin.onclick = () => this.loginAsGuest();
 
     document.getElementById('login-form').onsubmit = async (e) => {
       e.preventDefault();
@@ -334,6 +394,12 @@ class Game {
       document.getElementById('btn-register').textContent = 'KAYIT OL';
       if (!res.success) { errEl.textContent = res.error; errEl.classList.remove('hidden'); }
     };
+  }
+
+  loginAsGuest() {
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.classList.add('hidden');
+    this.authManager.startGuestSession(true);
   }
 
   openPasswordResetModal() {
@@ -424,6 +490,7 @@ class Game {
       btnOnline.onclick = null; // Clear previous
       btnOnline.addEventListener('click', () => {
         console.log('Online click triggered');
+        if (!this.requireAccount('Online maç için giriş yap veya ücretsiz hesap oluştur.')) return;
         // Immediate visual feedback
         btnOnline.style.opacity = '0.5';
         
@@ -459,10 +526,14 @@ class Game {
     };
 
     // Leaderboard
-    document.getElementById('btn-leaderboard').onclick = () => this.showLeaderboard();
+    document.getElementById('btn-leaderboard').onclick = () => {
+      if (this.requireAccount('Sıralamayı görmek için giriş yap veya hesap oluştur.')) this.showLeaderboard();
+    };
 
     // Profile
-    document.getElementById('btn-profile').onclick = () => this.showProfile();
+    document.getElementById('btn-profile').onclick = () => {
+      if (this.requireAccount('Profil ve maç geçmişi için giriş yap veya hesap oluştur.')) this.showProfile();
+    };
 
     // Bottom Navigation Logic
     document.querySelectorAll('.nav-item').forEach(btn => {
@@ -545,9 +616,13 @@ class Game {
     modeBtns.forEach(btn => {
       btn.onclick = () => { modeBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); this.onlineMode = btn.dataset.mode; };
     });
-    document.getElementById('btn-quick-match').onclick = () => this.network.quickMatch(this.onlineMode);
-    document.getElementById('btn-create-room').onclick = () => this.network.createRoom(this.onlineMode);
-    document.getElementById('btn-join-room').onclick = () => { const c = document.getElementById('room-code-input').value.trim(); if (c.length >= 4) this.network.joinRoom(c); };
+    document.getElementById('btn-quick-match').onclick = () => { if (this.requireAccount('Hızlı maç için giriş yap veya hesap oluştur.')) this.network.quickMatch(this.onlineMode); };
+    document.getElementById('btn-create-room').onclick = () => { if (this.requireAccount('Oda oluşturmak için giriş yap veya hesap oluştur.')) this.network.createRoom(this.onlineMode); };
+    document.getElementById('btn-join-room').onclick = () => {
+      if (!this.requireAccount('Odaya katılmak için giriş yap veya hesap oluştur.')) return;
+      const c = document.getElementById('room-code-input').value.trim();
+      if (c.length >= 4) this.network.joinRoom(c);
+    };
     document.getElementById('online-back').onclick = () => this.showScreen('menu-screen');
 
     // Waiting
@@ -595,7 +670,7 @@ class Game {
 
     // Game over
     document.getElementById('btn-play-again').onclick = () => {
-      this.mode === 'online' ? this.showScreen('online-screen') : (this.currentLevel ? this.startSoloGame(this.currentLevel.id) : this.startEndlessGame());
+      this.mode === 'online' ? this.showScreen('online-screen') : (this.currentLevel && !this.isGuestSession() ? this.startSoloGame(this.currentLevel.id) : this.startEndlessGame());
     };
     document.getElementById('btn-next-level').onclick = () => this.startNextLevel();
     document.getElementById('btn-reward-continue').onclick = () => this.continueAfterRewardAd();
@@ -717,6 +792,14 @@ class Game {
 
   async recordCompletedGame(won = false) {
     this.updateQuestProgress(won);
+    if (this.isGuestSession()) {
+      const best = Math.max(parseInt(localStorage.getItem('blockBattleGuestHighScore') || '0', 10), this.score || 0);
+      localStorage.setItem('blockBattleGuestHighScore', String(best));
+      if (this.authManager.userData) this.authManager.userData.highScore = best;
+      this.highScore = best;
+      this.updatePlayerHeader();
+      return;
+    }
     if (!this.authManager.isLoggedIn()) return;
     try {
       await this.dbManager.updateHighScore(this.authManager.user.uid, this.score, this.authManager.getUsername(), false);
@@ -969,6 +1052,7 @@ class Game {
 
   // â”€â”€ Leaderboard â”€â”€
   async showLeaderboard() {
+    if (!this.requireAccount('Sıralamayı görmek için giriş yap veya hesap oluştur.')) return;
     this.showScreen('leaderboard-screen');
     const list = document.getElementById('leaderboard-list');
     list.innerHTML = '<div class="leaderboard-loading"><div class="spinner-container"><div class="spinner spinner-sm"></div></div></div>';
@@ -1007,6 +1091,7 @@ class Game {
 
   // â”€â”€ Profile â”€â”€
   async showProfile() {
+    if (!this.requireAccount('Profil ve maç geçmişi için giriş yap veya hesap oluştur.')) return;
     this.showScreen('profile-screen');
     await this.authManager.loadUserData();
     const d = this.authManager.userData || {};
@@ -1121,6 +1206,7 @@ class Game {
   }
 
   async saveUnlockedLevel(level) {
+    if (this.isGuestSession()) return;
     const safeLevel = Math.max(1, Math.min(this.levels.length + 1, level));
     this.unlockedLevel = safeLevel;
     localStorage.setItem(this.getLevelProgressKey(), String(safeLevel));
@@ -1140,7 +1226,7 @@ class Game {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `level-card${isCompleted ? ' completed' : ''}${level.id === Math.min(this.unlockedLevel, this.levels.length) ? ' active' : ''}${!isUnlocked ? ' locked' : ''}`;
-      btn.disabled = !isUnlocked;
+      btn.disabled = !isUnlocked && !this.isGuestSession();
       btn.innerHTML = `
         <div class="level-card-top">
           <span class="level-number">${level.id}</span>
@@ -1151,7 +1237,13 @@ class Game {
           <span class="level-target">${level.target} skor</span>
           <span class="level-difficulty">${level.difficulty}</span>
         </div>`;
-      btn.onclick = () => this.startSoloGame(level.id);
+      btn.onclick = () => {
+        if (this.isGuestSession()) {
+          this.requireAccount('Level modunu oynamak için giriş yap veya hesap oluştur.');
+          return;
+        }
+        this.startSoloGame(level.id);
+      };
       map.appendChild(btn);
     });
   }
@@ -1181,7 +1273,7 @@ class Game {
     this.state = 'gameover';
     this.audio.win();
     this.recordCompletedGame(true);
-    this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
+    if (this.hasAccount()) this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
     this.updatePlayerHeader();
     this.showGameOverScreen(true, `${this.currentLevel.id}. bölüm tamamlandı!`);
   }
@@ -1200,6 +1292,10 @@ class Game {
   resetGrid() { this.grid = []; for (let r = 0; r < this.GRID_SIZE; r++) this.grid.push(new Array(this.GRID_SIZE).fill(0)); }
 
   startSoloGame(levelId = 1) {
+    if (this.isGuestSession()) {
+      this.requireAccount('Level modunu oynamak için giriş yap veya hesap oluştur.');
+      return;
+    }
     this.audio.init(); this.audio.resume();
     const requestedLevel = this.levels.find(level => level.id === levelId) || this.levels[0];
     const highestPlayable = Math.min(this.unlockedLevel, this.levels.length);
@@ -1923,6 +2019,7 @@ class Game {
       const category = btn.dataset.category;
       const cosmeticId = btn.dataset.id;
       const price = parseInt(btn.dataset.price || '0', 10);
+
       const selected = this.getSelectedCosmetic(category);
       const owned = ownedCosmetics[category] || ['classic'];
       const isOwned = owned.includes(cosmeticId) || price === 0;

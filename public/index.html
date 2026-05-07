@@ -8,7 +8,7 @@
   <title>Block Battle — Online Block Puzzle</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=5.0">
+  <link rel="stylesheet" href="css/style.css?v=5.4">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#05050f">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,6 +49,7 @@
       <div class="auth-divider"><span>veya</span></div>
       <div class="social-auth-actions">
         <button type="button" id="btn-google-login" class="btn btn-secondary btn-large btn-full">Google ile giriş</button>
+        <button type="button" id="btn-guest-login" class="btn btn-guest btn-large btn-full">Misafir olarak oyna</button>
       </div>
       <div class="auth-switch" style="margin-top: 8px; margin-bottom: 14px;">
         <a href="#" id="forgot-password" class="auth-link">Şifremi unuttum</a>
@@ -70,6 +71,18 @@
             autocomplete="username">
         </div>
         <button id="btn-password-reset-send" class="btn btn-primary btn-large btn-full">Link Gönder</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="account-required-modal" class="quick-shop-modal hidden">
+    <div class="quick-shop-panel account-required-panel">
+      <button id="account-required-close" class="quick-shop-close">×</button>
+      <div class="quick-shop-title">Hesap Gerekli</div>
+      <p id="account-required-message" class="account-required-copy">Bu bölüm için giriş yap veya hesap oluştur.</p>
+      <div class="account-required-actions">
+        <button id="account-required-login" class="btn btn-primary btn-large btn-full">Giriş yap</button>
+        <button id="account-required-cancel" class="btn btn-ghost btn-large btn-full">İptal</button>
       </div>
     </div>
   </div>
@@ -766,10 +779,10 @@
   <script src="js/renderer.js?v=5.0"></script>
   <script src="js/input.js?v=5.0"></script>
   <script src="js/network.js?v=5.0"></script>
-  <script src="js/auth.js?v=5.3"></script>
+  <script src="js/auth.js?v=5.4"></script>
   <script src="js/db.js?v=5.0"></script>
   <script src="js/ad.js?v=5.0"></script>
-  <script src="js/game.js?v=5.0"></script>
+  <script src="js/game.js?v=5.4"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => { });

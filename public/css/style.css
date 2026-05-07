@@ -237,6 +237,17 @@ body {
   border: 1px solid var(--bg-card-border);
 }
 
+.btn-guest {
+  background: rgba(0, 243, 255, 0.08);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(0, 243, 255, 0.28);
+  box-shadow: 0 4px 18px rgba(0, 243, 255, 0.12);
+}
+
+.btn-guest:hover {
+  box-shadow: 0 6px 24px rgba(0, 243, 255, 0.22);
+}
+
 .btn-premium {
   background: linear-gradient(135deg, #f1c40f, #f39c12, #e67e22);
   color: #000;
@@ -723,6 +734,23 @@ body {
   font-weight: 700;
 }
 .auth-link:hover { text-decoration: underline; }
+
+.account-required-panel {
+  max-width: 360px;
+}
+
+.account-required-copy {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 10px 0 18px;
+}
+
+.account-required-actions {
+  display: grid;
+  gap: 10px;
+}
 
 /* Loading */
 .loading-text { color: var(--text-secondary); margin-top: 16px; font-size: 0.9rem; }
