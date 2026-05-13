@@ -77,6 +77,7 @@ class Game {
     this.setupDeepLinks();
     this.applyUiTheme('light');
     this.setAppTheme(localStorage.getItem('selectedAppTheme') || 'default');
+    this.configureDevicePerformance();
 
     // Initialize Ads
     await this.ad.init();
@@ -101,6 +102,15 @@ class Game {
     });
 
     requestAnimationFrame((t) => this.gameLoop(t));
+  }
+
+  configureDevicePerformance() {
+    const cores = navigator.hardwareConcurrency || 4;
+    const memory = navigator.deviceMemory || 4;
+    const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const compactScreen = Math.min(window.innerWidth, window.innerHeight) <= 420;
+    if (coarsePointer || compactScreen) document.documentElement.classList.add('mobile-device');
+    if (cores <= 4 || memory <= 4 || compactScreen) document.documentElement.classList.add('low-power-device');
   }
 
   isGuestSession() {
