@@ -9824,3 +9824,366 @@ body.ad-banner-visible #menu-screen .menu-content {
     border-radius: 12px !important;
   }
 }
+
+/* Mobile fit and performance pass for real phone browsers/WebView. */
+html.mobile-device *,
+html.low-power-device * {
+  text-shadow: none !important;
+}
+
+html.low-power-device *,
+html.low-power-device *::before,
+html.low-power-device *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.08s !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.low-power-device .menu-bg-effects,
+html.low-power-device .floating-block,
+html.low-power-device #menu-screen.active::before,
+html.low-power-device #map-screen > .store-panel::before,
+html.low-power-device #quests-screen > .store-panel::before,
+html.low-power-device #store-screen .campaign-card > div:first-child::before,
+html.low-power-device #store-screen .campaign-card > div:first-child::after {
+  display: none !important;
+}
+
+@media (max-width: 520px) {
+  :root {
+    --admob-banner-reserve: 112px;
+  }
+
+  #menu-screen,
+  #store-screen,
+  #map-screen,
+  #quests-screen,
+  #leaderboard-screen,
+  #profile-screen {
+    overflow-x: hidden !important;
+  }
+
+  #menu-screen .menu-content,
+  #store-screen .cyber-scroll-area,
+  #map-screen .cyber-scroll-area,
+  #quests-screen .cyber-scroll-area,
+  #leaderboard-screen .cyber-scroll-area,
+  #profile-screen .cyber-scroll-area {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    padding-bottom: calc(98px + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden !important;
+  }
+
+  body.ad-banner-visible #menu-screen .menu-content,
+  body.ad-banner-visible #store-screen .cyber-scroll-area,
+  body.ad-banner-visible #map-screen .cyber-scroll-area,
+  body.ad-banner-visible #quests-screen .cyber-scroll-area,
+  body.ad-banner-visible #leaderboard-screen .cyber-scroll-area,
+  body.ad-banner-visible #profile-screen .cyber-scroll-area {
+    padding-bottom: calc(var(--admob-banner-reserve) + 96px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .bottom-nav {
+    left: 14px !important;
+    right: 14px !important;
+    width: auto !important;
+    height: 66px !important;
+    padding: 0 8px !important;
+    border-radius: 18px !important;
+  }
+
+  .nav-item {
+    min-width: 0 !important;
+    min-height: 54px !important;
+  }
+
+  .nav-icon {
+    font-size: 1.15rem !important;
+  }
+
+  .nav-item span {
+    font-size: 0.66rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  #menu-screen .menu-arena-header,
+  #store-screen .store-header-modern,
+  #map-screen .map-header-modern,
+  #quests-screen .cyber-header,
+  #leaderboard-screen .cyber-header,
+  #profile-screen .cyber-header {
+    min-height: 82px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  #menu-screen .home-avatar,
+  #menu-screen .home-avatar img,
+  #map-screen .map-header-modern img,
+  #quests-screen .cyber-header img {
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  #menu-screen .home-player-block {
+    min-width: 0 !important;
+  }
+
+  #menu-screen .home-player-block strong {
+    max-width: 132px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 1rem !important;
+  }
+
+  #menu-screen .home-player-block span {
+    font-size: 0.78rem !important;
+    line-height: 1.15 !important;
+  }
+
+  #menu-screen .home-level-wallet {
+    min-width: 78px !important;
+    padding: 8px 10px !important;
+  }
+
+  #menu-screen #btn-solo {
+    min-height: 300px !important;
+    height: 300px !important;
+  }
+
+  #menu-screen #btn-solo h2 {
+    font-size: 2.2rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  #menu-screen #btn-online,
+  #menu-screen #btn-leaderboard {
+    height: 175px !important;
+    min-height: 175px !important;
+  }
+
+  #menu-screen #btn-online h2,
+  #menu-screen #btn-leaderboard h2 {
+    font-size: 1.45rem !important;
+  }
+
+  #map-screen .cyber-scroll-area > h2,
+  #map-screen .cyber-scroll-area > p {
+    display: none !important;
+  }
+
+  #map-screen .level-map {
+    margin-top: 0 !important;
+    gap: 12px !important;
+  }
+
+  #map-screen .level-card {
+    min-height: 132px !important;
+    padding: 16px !important;
+    display: grid !important;
+    grid-template-columns: 58px minmax(0, 1fr) 82px !important;
+    grid-template-rows: auto 1fr auto !important;
+    align-items: center !important;
+    gap: 8px 12px !important;
+  }
+
+  #map-screen .level-card::before,
+  #map-screen .level-card::after {
+    display: none !important;
+  }
+
+  #map-screen .level-card-top,
+  #map-screen .level-card-bottom {
+    display: contents !important;
+  }
+
+  #map-screen .level-number {
+    grid-column: 1 !important;
+    grid-row: 1 / span 2 !important;
+    font-size: 2rem !important;
+    align-self: start !important;
+  }
+
+  #map-screen .level-title {
+    grid-column: 2 / span 2 !important;
+    grid-row: 1 !important;
+    font-size: 1.12rem !important;
+    line-height: 1.1 !important;
+    text-align: left !important;
+    word-break: normal !important;
+  }
+
+  #map-screen .level-state {
+    grid-column: 3 !important;
+    grid-row: 2 !important;
+    width: 78px !important;
+    min-width: 78px !important;
+    height: 36px !important;
+    justify-self: end !important;
+  }
+
+  #map-screen .level-target {
+    grid-column: 1 / span 2 !important;
+    grid-row: 3 !important;
+  }
+
+  #map-screen .level-difficulty {
+    grid-column: 3 !important;
+    grid-row: 3 !important;
+    justify-self: end !important;
+  }
+
+  #map-screen .level-card.active {
+    min-height: 210px !important;
+    grid-template-columns: 1fr 72px !important;
+    grid-template-rows: auto 1fr auto !important;
+  }
+
+  #map-screen .level-card.active .level-number {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  #map-screen .level-card.active .level-title {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    align-self: end !important;
+    color: #ffffff !important;
+    font-size: 1.25rem !important;
+  }
+
+  #map-screen .level-card.active .level-state {
+    grid-column: 2 !important;
+    grid-row: 1 / span 3 !important;
+    width: 58px !important;
+    min-width: 58px !important;
+    height: 58px !important;
+    align-self: center !important;
+    font-size: 0 !important;
+  }
+
+  #map-screen .level-card.active .level-state::before {
+    content: "▶" !important;
+    font-size: 1.6rem !important;
+    color: #ffffff !important;
+  }
+
+  #quests-screen .cyber-header span:not(#quests-xp),
+  #map-screen .map-title-modern,
+  #store-screen .screen-gradient-title {
+    font-size: clamp(2rem, 10vw, 2.65rem) !important;
+    line-height: 1 !important;
+  }
+
+  #quests-screen .premium-tag {
+    min-width: 74px !important;
+    padding: 8px 10px !important;
+    font-size: 1rem !important;
+  }
+
+  #quests-screen .quest-summary-card {
+    margin-bottom: 12px !important;
+    padding: 12px !important;
+  }
+
+  #quests-screen .quest-intro h3 {
+    display: none !important;
+  }
+
+  #quests-screen .quest-intro p {
+    margin: 0 0 10px !important;
+    font-size: 0.86rem !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    text-align: center !important;
+  }
+
+  #quests-screen .quest-tabs {
+    height: 58px !important;
+    gap: 6px !important;
+    padding: 6px !important;
+  }
+
+  #quests-screen .quest-tab {
+    min-height: 46px !important;
+    padding: 4px !important;
+    font-size: 0.82rem !important;
+  }
+
+  #quests-screen .quest-card {
+    min-height: 132px !important;
+    padding: 14px !important;
+    grid-template-columns: 54px minmax(0, 1fr) 72px !important;
+    gap: 10px !important;
+  }
+
+  #quests-screen .quest-icon {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  #quests-screen .quest-main strong {
+    font-size: 1rem !important;
+    line-height: 1.15 !important;
+  }
+
+  #quests-screen .quest-main span {
+    font-size: 0.78rem !important;
+    line-height: 1.25 !important;
+  }
+
+  #quests-screen .quest-main small {
+    font-size: 0.78rem !important;
+  }
+
+  #quests-screen .quest-reward b {
+    font-size: 1rem !important;
+  }
+
+  #quests-screen .quest-claim {
+    width: 68px !important;
+    min-height: 42px !important;
+    font-size: 0.85rem !important;
+  }
+
+  #store-screen .campaign-card:first-child .shop-item-details {
+    min-height: 260px !important;
+  }
+
+  #store-screen .campaign-card .shop-item-details span:first-child {
+    font-size: clamp(1.25rem, 7vw, 2rem) !important;
+    line-height: 1.08 !important;
+  }
+
+  #store-screen .campaign-card .shop-item-details span:nth-child(2) {
+    font-size: 0.88rem !important;
+    line-height: 1.25 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  #menu-screen #btn-solo {
+    min-height: 250px !important;
+    height: 250px !important;
+  }
+
+  #menu-screen #btn-online,
+  #menu-screen #btn-leaderboard {
+    height: 150px !important;
+    min-height: 150px !important;
+  }
+
+  #quests-screen .quest-card {
+    grid-template-columns: 46px minmax(0, 1fr) 62px !important;
+    min-height: 118px !important;
+  }
+
+  #quests-screen .quest-icon {
+    width: 44px !important;
+    height: 44px !important;
+  }
+}

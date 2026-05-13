@@ -160,6 +160,14 @@ class Renderer {
   }
 
   drawBlock(ctx, x, y, w, h, color) {
+    if (this.game.lowPowerMode) {
+      ctx.fillStyle = color.base;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect(x + 1, y + 1, w - 2, Math.max(1, h * 0.22));
+      return;
+    }
+
     // Main color
     ctx.fillStyle = color.base;
     ctx.fillRect(x, y, w, h);

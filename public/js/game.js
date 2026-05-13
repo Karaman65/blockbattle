@@ -46,6 +46,8 @@ class Game {
     this.dbManager = new DatabaseManager();
     this.ad = new AdManager();
     this.lastTime = 0;
+    this.lastRenderAt = 0;
+    this.lowPowerMode = false;
     this.nativeBackHandlerRegistered = false;
     this.rewardContinueUsed = false;
     this.rewardBombs = 0;
@@ -110,7 +112,8 @@ class Game {
     const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
     const compactScreen = Math.min(window.innerWidth, window.innerHeight) <= 420;
     if (coarsePointer || compactScreen) document.documentElement.classList.add('mobile-device');
-    if (cores <= 4 || memory <= 4 || compactScreen) document.documentElement.classList.add('low-power-device');
+    this.lowPowerMode = cores <= 4 || memory <= 4 || compactScreen;
+    if (this.lowPowerMode) document.documentElement.classList.add('low-power-device');
   }
 
   isGuestSession() {
@@ -265,11 +268,6 @@ class Game {
     const backBtn = document.getElementById('global-back');
     if (!backBtn) return;
     const visibleScreens = [
-      'map-screen',
-      'quests-screen',
-      'store-screen',
-      'leaderboard-screen',
-      'profile-screen',
       'online-screen',
       'waiting-screen',
       'register-screen',
@@ -2243,13 +2241,18 @@ class Game {
   gameLoop(timestamp) {
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1); this.lastTime = timestamp;
     if (this.state === 'playing') {
-      this.renderer.updateParticles(dt);
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.renderer.drawGrid(this.ctx, this.grid, this.cellSize, this.gridOffset.x, this.gridOffset.y, this.ghost);
-      this.renderer.drawParticles(this.ctx);
-      if (this.mode === 'online' && this.opponentBoard) {
-        this.opponentCtx.clearRect(0, 0, this.opponentCanvas.width, this.opponentCanvas.height);
-        this.renderer.drawOpponentGrid(this.opponentCtx, this.opponentBoard, this.opponentCellSize, 4, 4);
+      const minFrameMs = this.lowPowerMode ? 33 : 16;
+      const shouldRender = !this.lastRenderAt || timestamp - this.lastRenderAt >= minFrameMs;
+      if (shouldRender) {
+        this.lastRenderAt = timestamp;
+        this.renderer.updateParticles(dt);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.renderer.drawGrid(this.ctx, this.grid, this.cellSize, this.gridOffset.x, this.gridOffset.y, this.ghost);
+        this.renderer.drawParticles(this.ctx);
+        if (this.mode === 'online' && this.opponentBoard) {
+          this.opponentCtx.clearRect(0, 0, this.opponentCanvas.width, this.opponentCanvas.height);
+          this.renderer.drawOpponentGrid(this.opponentCtx, this.opponentBoard, this.opponentCellSize, 4, 4);
+        }
       }
       if (this.mode === 'online' && this.onlineMode === 'time' && this.timerRemaining > 0) this.updateTimerDisplay();
       if (this.mode === 'online' && this.onlineMode === 'score' && this.score >= this.targetScore) {
