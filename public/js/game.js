@@ -2241,7 +2241,7 @@ class Game {
   gameLoop(timestamp) {
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1); this.lastTime = timestamp;
     if (this.state === 'playing') {
-      const minFrameMs = this.lowPowerMode ? 33 : 16;
+      const minFrameMs = this.lowPowerMode ? 40 : 16;
       const shouldRender = !this.lastRenderAt || timestamp - this.lastRenderAt >= minFrameMs;
       if (shouldRender) {
         this.lastRenderAt = timestamp;

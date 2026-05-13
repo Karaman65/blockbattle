@@ -10487,3 +10487,289 @@ html.low-power-device #store-screen .campaign-card > div:first-child::after {
     grid-template-columns: 46px minmax(0, 1fr) 62px !important;
   }
 }
+
+/* Native phone tightening: fixed home, readable shop cards, ad-aware navigation. */
+@media (max-width: 520px), (pointer: coarse) and (max-width: 900px) {
+  :root {
+    --mobile-header-h: clamp(86px, 13dvh, 112px);
+    --mobile-nav-h: 68px;
+    --mobile-page-x: clamp(14px, 4vw, 22px);
+    --mobile-ad-gap: 0px;
+    --admob-banner-reserve: 96px;
+  }
+
+  body.ad-banner-visible {
+    --mobile-ad-gap: var(--admob-banner-reserve);
+  }
+
+  body.ad-banner-visible #menu-screen,
+  body.ad-banner-visible #store-screen,
+  body.ad-banner-visible #map-screen,
+  body.ad-banner-visible #quests-screen,
+  body.ad-banner-visible #leaderboard-screen,
+  body.ad-banner-visible #profile-screen {
+    padding-bottom: 0 !important;
+  }
+
+  .bottom-nav,
+  body:has(#menu-screen.active) .bottom-nav {
+    left: var(--mobile-page-x) !important;
+    right: var(--mobile-page-x) !important;
+    bottom: calc(var(--mobile-ad-gap) + max(10px, env(safe-area-inset-bottom))) !important;
+    width: auto !important;
+    height: var(--mobile-nav-h) !important;
+    transform: none !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    padding: 0 6px !important;
+    border-radius: 18px !important;
+  }
+
+  .nav-item {
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 6px 2px !important;
+    justify-content: center !important;
+  }
+
+  .nav-item .nav-icon {
+    width: 23px !important;
+    height: 23px !important;
+    font-size: 1.02rem !important;
+  }
+
+  .nav-item span:not(.nav-icon) {
+    font-size: 0.58rem !important;
+    line-height: 1 !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  #menu-screen.active {
+    display: grid !important;
+    grid-template-rows: var(--mobile-header-h) minmax(0, 1fr) !important;
+    overflow: hidden !important;
+    touch-action: none !important;
+  }
+
+  #menu-screen .menu-arena-header {
+    min-height: var(--mobile-header-h) !important;
+    height: var(--mobile-header-h) !important;
+    padding: max(14px, env(safe-area-inset-top)) var(--mobile-page-x) 8px !important;
+    grid-template-columns: 42px minmax(0, 1fr) 76px !important;
+  }
+
+  #menu-screen .menu-content {
+    width: calc(100% - (var(--mobile-page-x) * 2)) !important;
+    height: calc(100dvh - var(--mobile-header-h) - var(--mobile-nav-h) - var(--mobile-ad-gap) - 26px - env(safe-area-inset-bottom)) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 6px 0 0 !important;
+    margin: 0 auto !important;
+  }
+
+  #menu-screen .menu-grid {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: minmax(0, 1.45fr) minmax(0, 0.72fr) !important;
+    gap: 12px !important;
+  }
+
+  #menu-screen .menu-grid > div[style*="grid-template-columns"] {
+    min-height: 0 !important;
+    gap: 12px !important;
+  }
+
+  #menu-screen #btn-solo,
+  #menu-screen #btn-online,
+  #menu-screen #btn-leaderboard {
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  #menu-screen #btn-solo {
+    background-size: auto, auto, min(64%, 245px) auto, auto !important;
+  }
+
+  #menu-screen #btn-solo h2 {
+    top: clamp(34px, 6dvh, 58px) !important;
+    font-size: clamp(2rem, 10vw, 2.9rem) !important;
+  }
+
+  #menu-screen #btn-solo h2::after {
+    max-width: min(260px, 72vw) !important;
+    margin-top: clamp(116px, 20dvh, 178px) !important;
+    font-size: clamp(0.72rem, 3.8vw, 0.92rem) !important;
+    line-height: 1.12 !important;
+  }
+
+  #menu-screen #btn-online,
+  #menu-screen #btn-leaderboard {
+    min-height: 0 !important;
+    padding: 12px !important;
+  }
+
+  #menu-screen #btn-online h2,
+  #menu-screen #btn-leaderboard h2 {
+    font-size: clamp(1rem, 5vw, 1.3rem) !important;
+  }
+
+  #store-screen .cyber-scroll-area,
+  #map-screen .cyber-scroll-area,
+  #quests-screen .cyber-scroll-area,
+  #profile-screen .cyber-scroll-area,
+  #leaderboard-screen .cyber-scroll-area {
+    height: calc(100dvh - var(--mobile-header-h)) !important;
+    padding: 8px var(--mobile-page-x) calc(var(--mobile-nav-h) + var(--mobile-ad-gap) + 22px + env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    touch-action: pan-y !important;
+  }
+
+  #store-screen .store-header-modern,
+  #map-screen .map-header-modern,
+  #quests-screen .cyber-header,
+  #leaderboard-screen .cyber-header,
+  #profile-screen .cyber-header {
+    min-height: var(--mobile-header-h) !important;
+    height: var(--mobile-header-h) !important;
+    padding: max(14px, env(safe-area-inset-top)) var(--mobile-page-x) 8px !important;
+  }
+
+  #store-screen .screen-gradient-title,
+  #map-screen .map-title-modern,
+  #quests-screen .cyber-header span:not(#quests-xp) {
+    font-size: clamp(2.05rem, 11vw, 2.85rem) !important;
+    line-height: 0.96 !important;
+  }
+
+  #store-screen .store-grid-large {
+    gap: 14px !important;
+  }
+
+  #store-screen .campaign-card {
+    min-height: 206px !important;
+    display: grid !important;
+    grid-template-rows: 76px auto !important;
+    overflow: hidden !important;
+  }
+
+  #store-screen .campaign-card > div:first-child {
+    height: 76px !important;
+    min-height: 76px !important;
+    padding: 10px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+
+  #store-screen .store-pack-icons {
+    position: static !important;
+    inset: auto !important;
+    display: flex !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    overflow: hidden !important;
+  }
+
+  #store-screen .store-pack-icons span {
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 4px 6px !important;
+    font-size: clamp(0.56rem, 2.8vw, 0.68rem) !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  #store-screen .campaign-ribbon {
+    top: 10px !important;
+    right: 10px !important;
+    max-width: 118px !important;
+    padding: 6px 10px !important;
+    font-size: 0.64rem !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  #store-screen .campaign-card:first-child .shop-item-details,
+  #store-screen .campaign-card .shop-item-details {
+    min-height: 116px !important;
+    height: auto !important;
+    position: relative !important;
+    padding: 14px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) clamp(78px, 23vw, 108px) !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  #store-screen .campaign-card .shop-item-details > div {
+    min-width: 0 !important;
+    gap: 4px !important;
+  }
+
+  #store-screen .campaign-card .shop-item-details span:first-child {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    max-width: none !important;
+    font-size: clamp(1.18rem, 6vw, 1.72rem) !important;
+    line-height: 1.02 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  #store-screen .campaign-card .shop-item-details span:nth-child(2) {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    max-width: none !important;
+    font-size: clamp(0.74rem, 3.4vw, 0.88rem) !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+  }
+
+  #store-screen .campaign-price {
+    gap: 6px !important;
+    font-size: 0.78rem !important;
+    line-height: 1.1 !important;
+  }
+
+  #store-screen .campaign-price s,
+  #store-screen .campaign-price strong {
+    font-size: 0.78rem !important;
+  }
+
+  #store-screen .campaign-card .btn-buy {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    padding: 0 8px !important;
+    font-size: 0.82rem !important;
+    align-self: center !important;
+  }
+
+  html.mobile-device .menu-bg-effects,
+  html.mobile-device .floating-block,
+  html.mobile-device .screen:not(#game-screen)::before {
+    display: none !important;
+  }
+
+  html.mobile-device .cyber-card,
+  html.mobile-device .glass-panel,
+  html.mobile-device .bottom-nav,
+  html.mobile-device .home-avatar,
+  html.mobile-device .home-level-wallet,
+  html.mobile-device #store-screen .premium-tag,
+  html.mobile-device .quest-card,
+  html.mobile-device .level-card {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}

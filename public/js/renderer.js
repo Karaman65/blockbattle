@@ -217,6 +217,7 @@ class Renderer {
 
   // Particle system for line clear effects
   addClearParticles(row, col, cellSize, offsetX, offsetY, colorIndex) {
+    if (this.game.lowPowerMode) return;
     const color = BLOCK_COLORS[(colorIndex - 1) % BLOCK_COLORS.length];
     const cx = offsetX + col * cellSize + cellSize / 2;
     const cy = offsetY + row * cellSize + cellSize / 2;
@@ -239,12 +240,14 @@ class Renderer {
   }
 
   addFlashCells(cells) {
+    if (this.game.lowPowerMode) return;
     for (const { r, c } of cells) {
       this.flashCells.push({ r, c, alpha: 0.9, time: 0 });
     }
   }
 
   addClearWave(rows, cols, cellSize, offsetX, offsetY) {
+    if (this.game.lowPowerMode) return;
     for (const r of rows) {
       this.shockwaves.push({
         kind: 'line-h',
@@ -279,6 +282,21 @@ class Renderer {
     const cx = offsetX + col * cellSize + cellSize / 2;
     const cy = offsetY + row * cellSize + cellSize / 2;
     const style = this.game.getBombEffectStyle ? this.game.getBombEffectStyle() : COSMETICS.bombEffect.smoke;
+    if (this.game.lowPowerMode) {
+      this.shockwaves.push({
+        kind: 'circle',
+        x: cx,
+        y: cy,
+        radius: cellSize * 0.2,
+        maxRadius: cellSize * 1.45,
+        width: 3,
+        color: style.ring,
+        alpha: 0.55,
+        life: 0.24,
+        age: 0,
+      });
+      return;
+    }
     this.shockwaves.push({
       kind: 'circle',
       x: cx,
@@ -323,6 +341,7 @@ class Renderer {
   }
 
   addPowerBurst(type) {
+    if (this.game.lowPowerMode) return;
     const tray = document.getElementById('piece-tray');
     const canvas = document.getElementById('game-canvas');
     if (!tray || !canvas) return;
