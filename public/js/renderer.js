@@ -13,12 +13,32 @@ class Renderer {
   drawGrid(ctx, grid, cellSize, offsetX, offsetY, ghost) {
     const G = 9;
     const totalSize = G * cellSize;
+    const hasBoardPhoto = Boolean(this.game.boardBgImage && this.game.boardBgImage.complete);
 
     // Background
-    ctx.fillStyle = '#0e0e28';
+    ctx.fillStyle = '#0b0b24';
     ctx.beginPath();
     ctx.roundRect(offsetX - 4, offsetY - 4, totalSize + 8, totalSize + 8, 10);
     ctx.fill();
+
+    if (hasBoardPhoto) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(offsetX, offsetY, totalSize, totalSize, 8);
+      ctx.clip();
+      const img = this.game.boardBgImage;
+      const scale = Math.max(totalSize / img.width, totalSize / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      const dx = offsetX + (totalSize - dw) / 2;
+      const dy = offsetY + (totalSize - dh) / 2;
+      ctx.globalAlpha = 0.72;
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(7, 8, 30, 0.24)';
+      ctx.fillRect(offsetX, offsetY, totalSize, totalSize);
+      ctx.restore();
+    }
 
     // Grid cells
     for (let r = 0; r < G; r++) {
@@ -29,7 +49,9 @@ class Renderer {
 
         // Cell background
         const is3x3 = (Math.floor(r / 3) + Math.floor(c / 3)) % 2 === 0;
-        ctx.fillStyle = is3x3 ? '#13132e' : '#16163a';
+        ctx.fillStyle = hasBoardPhoto
+          ? (is3x3 ? 'rgba(20, 20, 48, 0.32)' : 'rgba(27, 27, 64, 0.24)')
+          : (is3x3 ? '#13132e' : '#16163a');
         ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
 
         // Filled cell
@@ -66,9 +88,22 @@ class Renderer {
     }
 
     // Grid lines
-    ctx.strokeStyle = 'rgba(108, 92, 231, 0.12)';
+    ctx.strokeStyle = hasBoardPhoto ? 'rgba(126, 238, 255, 0.34)' : 'rgba(108, 92, 231, 0.12)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= G; i++) {
+      ctx.beginPath();
+      ctx.moveTo(offsetX + i * cellSize, offsetY);
+      ctx.lineTo(offsetX + i * cellSize, offsetY + totalSize);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(offsetX, offsetY + i * cellSize);
+      ctx.lineTo(offsetX + totalSize, offsetY + i * cellSize);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = hasBoardPhoto ? 'rgba(126, 238, 255, 0.52)' : 'rgba(126, 238, 255, 0.16)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= G; i += 3) {
       ctx.beginPath();
       ctx.moveTo(offsetX + i * cellSize, offsetY);
       ctx.lineTo(offsetX + i * cellSize, offsetY + totalSize);

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="a" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#52efff"/><stop offset=".52" stop-color="#6650ff"/><stop offset="1" stop-color="#ff58ec"/></linearGradient>
+    <linearGradient id="c1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8ef8ff"/><stop offset=".55" stop-color="#5d7cff"/><stop offset="1" stop-color="#ff71ef"/></linearGradient>
+    <filter id="g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="640" height="360" rx="28" fill="url(#a)" opacity=".28"/>
+  <g stroke="#72f2ff" stroke-width="1" opacity=".28">
+    <path d="M0 285h640M0 318h640M80 360l210-170M210 360l125-170M350 360l34-170M505 360l-70-170"/>
+  </g>
+  <g filter="url(#g)">
+    <g transform="translate(245 155)">
+      <path d="M0 30l50-26 50 26-50 28z" fill="#8af5ff"/>
+      <path d="M0 30v56l50 30V58z" fill="#397cff"/>
+      <path d="M100 30v56l-50 30V58z" fill="#d74cff"/>
+    </g>
+    <g transform="translate(330 110) scale(.92)">
+      <path d="M0 30l50-26 50 26-50 28z" fill="#b2fbff"/>
+      <path d="M0 30v56l50 30V58z" fill="#2ed9ff"/>
+      <path d="M100 30v56l-50 30V58z" fill="#9b55ff"/>
+    </g>
+    <g transform="translate(385 175) scale(.82)">
+      <path d="M0 30l50-26 50 26-50 28z" fill="#ffd2ff"/>
+      <path d="M0 30v56l50 30V58z" fill="#8d58ff"/>
+      <path d="M100 30v56l-50 30V58z" fill="#ff62e9"/>
+    </g>
+    <g transform="translate(278 82) scale(.72)">
+      <path d="M0 30l50-26 50 26-50 28z" fill="#e9fdff"/>
+      <path d="M0 30v56l50 30V58z" fill="#48efff"/>
+      <path d="M100 30v56l-50 30V58z" fill="#6d56ff"/>
+    </g>
+  </g>
+</svg>

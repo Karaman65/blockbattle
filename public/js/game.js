@@ -50,6 +50,9 @@ class Game {
     this.rewardContinueUsed = false;
     this.rewardBombs = 0;
     this.pendingRoomJoinStarted = false;
+    this.boardBgImage = null;
+    this.boardBgDataUrl = localStorage.getItem('blockBattleBoardPhoto') || '';
+    this.noMoveHintAt = 0;
 
     // Power-ups
     this.powerUps = {
@@ -68,9 +71,12 @@ class Game {
     this.input.init();
     this.setupAuthUI();
     this.setupUI();
+    this.setupFluidPressFeedback();
+    this.loadBoardBackground();
     this.setupNativeBackButton();
     this.setupDeepLinks();
-    this.applyUiTheme(localStorage.getItem('uiTheme') || 'dark');
+    this.applyUiTheme('light');
+    this.setAppTheme(localStorage.getItem('selectedAppTheme') || 'default');
 
     // Initialize Ads
     await this.ad.init();
@@ -206,9 +212,18 @@ class Game {
   showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => {
       if (!s.classList.contains('overlay')) s.classList.remove('active');
+      s.classList.remove('screen-flow-enter');
     });
     const el = document.getElementById(id);
-    if (el) el.classList.add('active');
+    if (el) {
+      el.classList.add('active');
+      void el.offsetWidth;
+      el.classList.add('screen-flow-enter');
+      window.clearTimeout(this.screenFlowTimer);
+      this.screenFlowTimer = window.setTimeout(() => {
+        el.classList.remove('screen-flow-enter');
+      }, 640);
+    }
     if (id === 'game-screen' && this.canvas) {
       requestAnimationFrame(() => this.resizeCanvas());
     }
@@ -317,6 +332,18 @@ class Game {
   openPauseMenu() {
     const pauseTitle = document.getElementById('pause-title');
     if (pauseTitle) pauseTitle.textContent = this.mode === 'online' ? 'Maç Menüsü' : 'Duraklatıldı';
+    const pauseScore = document.getElementById('pause-score');
+    const pauseHigh = document.getElementById('pause-high');
+    const pauseMode = document.getElementById('pause-mode');
+    if (pauseScore) pauseScore.textContent = this.score || 0;
+    if (pauseHigh) pauseHigh.textContent = this.highScore || 0;
+    if (pauseMode) {
+      pauseMode.textContent = this.mode === 'online'
+        ? 'Online'
+        : this.currentLevel
+          ? `Level ${this.currentLevel.id}`
+          : 'Sonsuz';
+    }
     const pauseOverlay = document.getElementById('pause-overlay');
     if (!pauseOverlay) return;
     pauseOverlay.classList.remove('hidden');
@@ -446,6 +473,37 @@ class Game {
     }
   }
 
+  setupFluidPressFeedback() {
+    if (this.fluidPressBound) return;
+    this.fluidPressBound = true;
+    const selector = [
+      'button',
+      '.nav-item',
+      '.side-menu-item',
+      '.side-section-toggle',
+      '.quest-tab',
+      '.mode-btn',
+      '.level-card',
+      '.leaderboard-row',
+      '.power-shop-card',
+      '.cosmetic-card',
+      '.app-theme-card',
+      '.cyber-card[data-clickable="true"]'
+    ].join(',');
+
+    document.addEventListener('pointerdown', (event) => {
+      const target = event.target.closest(selector);
+      if (!target || target.disabled) return;
+      target.classList.remove('ui-pressed');
+      void target.offsetWidth;
+      target.classList.add('ui-pressed');
+      window.clearTimeout(target._uiPressTimer);
+      target._uiPressTimer = window.setTimeout(() => {
+        target.classList.remove('ui-pressed');
+      }, 520);
+    }, { passive: true });
+  }
+
   async sendPasswordResetFromModal() {
     const input = document.getElementById('password-reset-email');
     const status = document.getElementById('password-reset-status');
@@ -476,14 +534,24 @@ class Game {
   setupUI() {
     const globalBack = document.getElementById('global-back');
     if (globalBack) globalBack.onclick = () => this.goBack();
+    document.querySelectorAll('.map-back-pill').forEach(btn => {
+      btn.onclick = () => this.goBack();
+    });
+    document.querySelectorAll('.header-menu-btn').forEach(btn => {
+      btn.onclick = () => this.openSideMenu();
+    });
+    const sideClose = document.getElementById('side-menu-close');
+    if (sideClose) sideClose.onclick = () => this.closeSideMenu();
+    const sideBackdrop = document.getElementById('side-menu-backdrop');
+    if (sideBackdrop) sideBackdrop.onclick = () => this.closeSideMenu();
+    document.querySelectorAll('[data-side-toggle]').forEach(btn => {
+      btn.onclick = () => this.toggleSideSection(btn.dataset.sideToggle);
+    });
 
     document.getElementById('btn-solo').onclick = () => this.startEndlessGame();
     const themeToggle = document.getElementById('btn-theme-toggle');
     if (themeToggle) {
-      themeToggle.onclick = () => {
-        const current = document.documentElement.dataset.uiTheme || 'dark';
-        this.applyUiTheme(current === 'dark' ? 'light' : 'dark');
-      };
+      themeToggle.hidden = true;
     }
     const btnOnline = document.getElementById('btn-online');
     if (btnOnline) {
@@ -514,16 +582,32 @@ class Game {
         }
       });
     }
-    document.getElementById('btn-sound-toggle').onclick = () => {
+    const toggleSoundUi = () => {
       this.audio.init();
       const on = this.audio.toggle();
       const soundBtn = document.getElementById('btn-sound-toggle');
-      soundBtn.textContent = on ? 'SES' : 'KAPALI';
-      soundBtn.title = on ? 'Sesi kapat' : 'Sesi aç';
+      if (soundBtn) {
+        soundBtn.textContent = on ? 'SES' : 'KAPALI';
+        soundBtn.title = on ? 'Sesi kapat' : 'Sesi aç';
+      }
+      const sideSoundBtn = document.getElementById('side-sound-toggle');
+      if (sideSoundBtn) sideSoundBtn.textContent = on ? 'AÇIK' : 'KAPALI';
     };
-    document.getElementById('btn-logout').onclick = async () => {
+    const soundToggle = document.getElementById('btn-sound-toggle');
+    if (soundToggle) soundToggle.onclick = toggleSoundUi;
+    const sideSoundToggle = document.getElementById('side-sound-toggle');
+    if (sideSoundToggle) {
+      sideSoundToggle.textContent = this.audio.muted ? 'KAPALI' : 'AÇIK';
+      sideSoundToggle.onclick = toggleSoundUi;
+    }
+    const logoutHandler = async () => {
+      this.closeSideMenu();
       await this.authManager.logout();
     };
+    const logoutBtn = document.getElementById('btn-logout');
+    if (logoutBtn) logoutBtn.onclick = logoutHandler;
+    const sideLogoutBtn = document.getElementById('side-btn-logout');
+    if (sideLogoutBtn) sideLogoutBtn.onclick = logoutHandler;
 
     // Leaderboard
     document.getElementById('btn-leaderboard').onclick = () => {
@@ -532,8 +616,93 @@ class Game {
 
     // Profile
     document.getElementById('btn-profile').onclick = () => {
-      if (this.requireAccount('Profil ve maç geçmişi için giriş yap veya hesap oluştur.')) this.showProfile();
+      if (this.requireAccount('Profil ve maç geçmişi için giriş yap veya hesap oluştur.')) {
+        this.closeSideMenu();
+        this.showProfile();
+      }
     };
+
+    document.querySelectorAll('[data-menu-screen]').forEach(btn => {
+      btn.onclick = () => {
+        this.closeSideMenu();
+        this.showScreen(btn.dataset.menuScreen);
+      };
+    });
+    document.querySelectorAll('[data-menu-target]').forEach(btn => {
+      btn.onclick = () => {
+        const target = btn.dataset.menuTarget;
+        this.closeSideMenu();
+        if (target === 'store') this.showStore();
+        if (target === 'leaderboard') this.showLeaderboard();
+        if (target === 'tutorial') {
+          localStorage.removeItem('blockBattleTutorialSeen');
+          this.maybeShowTutorial();
+        }
+      };
+    });
+    document.querySelectorAll('[data-local-toggle]').forEach(btn => {
+      const key = `setting_${btn.dataset.localToggle}`;
+      const saved = localStorage.getItem(key);
+      const settingName = btn.dataset.localToggle;
+      if (settingName === 'notifications') {
+        const canNotify = 'Notification' in window;
+        const isGranted = canNotify && Notification.permission === 'granted';
+        const enabled = saved === '1' && isGranted;
+        localStorage.setItem(key, enabled ? '1' : '0');
+        btn.textContent = enabled ? 'AÇIK' : 'KAPALI';
+        btn.title = canNotify ? 'Tarayıcı bildirimi izni ister.' : 'Bu tarayıcı bildirim desteklemiyor.';
+      } else if (saved) {
+        btn.textContent = saved === '1' ? 'AÇIK' : 'KAPALI';
+      }
+      btn.onclick = async () => {
+        if (settingName === 'notifications') {
+          if (!('Notification' in window)) {
+            btn.textContent = 'YOK';
+            btn.title = 'Bu tarayıcı bildirim desteklemiyor.';
+            localStorage.setItem(key, '0');
+            return;
+          }
+
+          const turningOn = btn.textContent.trim() !== 'AÇIK';
+          if (!turningOn) {
+            localStorage.setItem(key, '0');
+            btn.textContent = 'KAPALI';
+            btn.title = 'Bildirim kapalı.';
+            return;
+          }
+
+          let permission = Notification.permission;
+          if (permission === 'default') {
+            btn.textContent = 'İZİN';
+            try {
+              permission = await Notification.requestPermission();
+            } catch (err) {
+              permission = 'denied';
+            }
+          }
+
+          const allowed = permission === 'granted';
+          localStorage.setItem(key, allowed ? '1' : '0');
+          btn.textContent = allowed ? 'AÇIK' : 'KAPALI';
+          btn.title = allowed ? 'Bildirim açık.' : 'Tarayıcı bildirim izni verilmedi.';
+          if (allowed) {
+            try {
+              new Notification('Block Battle', {
+                body: 'Bildirimler açık. Ödül ve etkinlik hatırlatmaları burada görünecek.',
+                icon: 'icon-512.png'
+              });
+            } catch (err) {
+              console.warn('Notification test failed:', err);
+            }
+          }
+          return;
+        }
+
+        const next = btn.textContent.trim() === 'AÇIK' ? '0' : '1';
+        localStorage.setItem(key, next);
+        btn.textContent = next === '1' ? 'AÇIK' : 'KAPALI';
+      };
+    });
 
     // Bottom Navigation Logic
     document.querySelectorAll('.nav-item').forEach(btn => {
@@ -559,6 +728,13 @@ class Game {
           this.setTheme(themeId);
           this.updateCoinDisplays();
           this.updateStoreThemesUI();
+          this.audio.pickup();
+          return;
+        }
+
+        if (type === 'app-theme') {
+          this.setAppTheme(btn.dataset.id || 'default');
+          this.updateStoreAppThemesUI();
           this.audio.pickup();
           return;
         }
@@ -613,9 +789,39 @@ class Game {
 
     // Online menu
     const modeBtns = document.querySelectorAll('.mode-btn');
+    const updateOnlineModeInfo = (mode = this.onlineMode) => {
+      const info = document.getElementById('online-mode-info');
+      if (!info) return;
+      const copy = {
+        score: {
+          title: 'Skor Yarışı',
+          desc: '1000 puana ilk ulaşan kazanır. Hızlı ve riskli hamlelerle puan topla.'
+        },
+        time: {
+          title: 'Zamana Karşı',
+          desc: 'Süre bitmeden en yüksek skoru yap. Hızlı karar ver, boş alan bırakma.'
+        }
+      };
+      const selected = copy[mode] || copy.score;
+      info.classList.remove('mode-info-pop');
+      void info.offsetWidth;
+      info.innerHTML = `<strong>${selected.title}</strong><span>${selected.desc}</span>`;
+      info.classList.add('mode-info-pop');
+    };
     modeBtns.forEach(btn => {
-      btn.onclick = () => { modeBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); this.onlineMode = btn.dataset.mode; };
+      btn.onclick = () => {
+        modeBtns.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+        this.onlineMode = btn.dataset.mode;
+        updateOnlineModeInfo(this.onlineMode);
+      };
+      btn.setAttribute('aria-pressed', btn.classList.contains('active') ? 'true' : 'false');
     });
+    updateOnlineModeInfo(this.onlineMode);
     document.getElementById('btn-quick-match').onclick = () => { if (this.requireAccount('Hızlı maç için giriş yap veya hesap oluştur.')) this.network.quickMatch(this.onlineMode); };
     document.getElementById('btn-create-room').onclick = () => { if (this.requireAccount('Oda oluşturmak için giriş yap veya hesap oluştur.')) this.network.createRoom(this.onlineMode); };
     document.getElementById('btn-join-room').onclick = () => {
@@ -638,6 +844,12 @@ class Game {
 
     // Game screen
     document.getElementById('btn-game-menu').onclick = () => this.openPauseMenu();
+    const boardPhotoBtn = document.getElementById('btn-board-photo');
+    const boardPhotoInput = document.getElementById('board-photo-input');
+    if (boardPhotoBtn && boardPhotoInput) {
+      boardPhotoBtn.onclick = () => boardPhotoInput.click();
+      boardPhotoInput.onchange = () => this.handleBoardPhotoSelect(boardPhotoInput);
+    }
     document.getElementById('btn-resume').onclick = () => this.closePauseMenu();
     document.getElementById('btn-quit').onclick = () => {
       this.closePauseMenu();
@@ -745,6 +957,62 @@ class Game {
         setTimeout(() => { btn.textContent = originalText; }, 1500);
       }
     }
+  }
+
+  loadBoardBackground() {
+    if (!this.boardBgDataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      this.boardBgImage = img;
+      const btn = document.getElementById('btn-board-photo');
+      if (btn) btn.classList.add('has-photo');
+    };
+    img.src = this.boardBgDataUrl;
+  }
+
+  async handleBoardPhotoSelect(input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+    try {
+      const dataUrl = await this.prepareBoardPhoto(file);
+      localStorage.setItem('blockBattleBoardPhoto', dataUrl);
+      this.boardBgDataUrl = dataUrl;
+      const img = new Image();
+      img.onload = () => {
+        this.boardBgImage = img;
+        const btn = document.getElementById('btn-board-photo');
+        if (btn) btn.classList.add('has-photo');
+      };
+      img.src = dataUrl;
+    } catch (err) {
+      console.warn('Board photo could not be loaded', err);
+    }
+  }
+
+  prepareBoardPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          const maxSide = 900;
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.78));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   getQuestPeriodKey(type) {
@@ -896,13 +1164,15 @@ class Game {
     const list = document.getElementById('quests-list');
     const summary = document.getElementById('quest-summary');
     if (!list || !summary) return;
+    list.classList.remove('quest-list-exiting');
+    summary.classList.remove('quest-summary-switching');
     const groups = this.buildQuests();
     {
-      const labels = { daily: 'GUNLUK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
+      const labels = { daily: 'GÜNLÜK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
       const subtitles = {
-        daily: 'Bugun bitecek kisa gorevler.',
-        weekly: 'Daha uzun hedefler, daha guclu oduller.',
-        monthly: 'En zor gorevler ve en yuksek coin odulleri.',
+        daily: 'Bugün bitecek kısa görevler.',
+        weekly: 'Daha uzun hedefler, daha güçlü ödüller.',
+        monthly: 'En zor görevler ve en yüksek coin ödülleri.',
       };
       let activeType = this.activeQuestType || localStorage.getItem('activeQuestType') || 'daily';
       if (!groups[activeType]) activeType = 'daily';
@@ -926,8 +1196,10 @@ class Game {
       });
 
       summary.innerHTML = `
-        <h3>Gorev Merkezi</h3>
-        <p>${doneCount}/${totalCount} odul alindi. ${subtitles[activeType]}</p>
+        <div class="quest-intro">
+          <h3>GÖREVLER</h3>
+          <p>Görevleri tamamla, ödülleri topla. ${subtitles[activeType]}</p>
+        </div>
         <div class="quest-tabs">
           ${Object.keys(groups).map(type => `
             <button class="quest-tab ${type === activeType ? 'active' : ''}" data-type="${type}">
@@ -940,9 +1212,20 @@ class Game {
 
       summary.querySelectorAll('.quest-tab').forEach(tab => {
         tab.onclick = () => {
-          this.activeQuestType = tab.dataset.type;
-          localStorage.setItem('activeQuestType', this.activeQuestType);
-          this.renderQuests();
+          const nextType = tab.dataset.type;
+          if (!nextType || nextType === activeType) return;
+          window.clearTimeout(this.questSwitchTimer);
+          summary.querySelectorAll('.quest-tab').forEach(item => item.classList.remove('pressed', 'leaving'));
+          const activeTab = summary.querySelector('.quest-tab.active');
+          if (activeTab) activeTab.classList.add('leaving');
+          tab.classList.add('pressed');
+          list.classList.add('quest-list-exiting');
+          summary.classList.add('quest-summary-switching');
+          this.questSwitchTimer = window.setTimeout(() => {
+            this.activeQuestType = nextType;
+            localStorage.setItem('activeQuestType', this.activeQuestType);
+            this.renderQuests();
+          }, 260);
         };
       });
 
@@ -957,6 +1240,7 @@ class Game {
         const row = document.createElement('div');
         row.className = `quest-card ${ready ? 'ready' : ''} ${isClaimed ? 'claimed' : ''}`;
         row.innerHTML = `
+          <div class="quest-icon" aria-hidden="true"></div>
           <div class="quest-main">
             <strong>${title}</strong>
             <span>${desc}</span>
@@ -964,8 +1248,8 @@ class Game {
             <small>${Math.min(value, target)} / ${target}</small>
           </div>
           <div class="quest-reward">
-            <b>${reward}</b>
-            <span>coin</span>
+            <b>+${reward}</b>
+            <span>COIN</span>
             <button class="btn btn-buy btn-small quest-claim" ${!ready || isClaimed ? 'disabled' : ''}>${isClaimed ? 'ALINDI' : 'AL'}</button>
           </div>`;
         const btn = row.querySelector('.quest-claim');
@@ -1040,13 +1324,12 @@ class Game {
   }
 
   applyUiTheme(theme) {
-    const selected = theme === 'light' ? 'light' : 'dark';
+    const selected = 'light';
     document.documentElement.dataset.uiTheme = selected;
     localStorage.setItem('uiTheme', selected);
     const btn = document.getElementById('btn-theme-toggle');
     if (btn) {
-      btn.textContent = selected === 'light' ? 'DARK' : 'LIGHT';
-      btn.title = selected === 'light' ? 'Koyu temaya geç' : 'Açık temaya geç';
+      btn.hidden = true;
     }
   }
 
@@ -1060,10 +1343,22 @@ class Game {
     if (data.length === 0) { list.innerHTML = '<p class="text-muted">Henüz skor yok</p>'; return; }
     const uid = this.authManager.user ? this.authManager.user.uid : '';
     const leader = data[0];
+    const topThree = data.slice(0, 3);
+    const podium = topThree.map((entry, i) => {
+      const rankVal = i + 1;
+      const medal = rankVal === 1 ? '🏆' : rankVal === 2 ? '🥈' : '🥉';
+      const meClass = entry.uid === uid ? ' me' : '';
+      return `
+        <div class="podium-card podium-${rankVal}${meClass}">
+          <span class="podium-medal">${medal}</span>
+          <strong>${entry.username}</strong>
+          <small>${entry.highScore} puan</small>
+        </div>`;
+    }).join('');
     const rows = data.map((entry, i) => {
       const rankVal = i + 1;
       const rankClass = rankVal <= 3 ? ` rank-${rankVal}` : '';
-      const medal = rankVal <= 3 ? `TOP ${rankVal}` : `#${rankVal}`;
+      const medal = rankVal === 1 ? '🏆' : rankVal === 2 ? '🥈' : rankVal === 3 ? '🥉' : `#${rankVal}`;
       const meClass = entry.uid === uid ? ' me' : '';
       const crown = entry.isPremium ? ' <span class="premium-icon" title="Premium">VIP</span>' : '';
       return `
@@ -1086,7 +1381,56 @@ class Game {
         <strong>${leader.username}</strong>
         <small>${leader.highScore} puanla lider</small>
       </div>
+      <div class="leaderboard-podium">${podium}</div>
       <div class="leaderboard-list">${rows}</div>`;
+  }
+
+  openSideMenu() {
+    this.updatePlayerHeader();
+    const menu = document.getElementById('side-menu');
+    if (!menu) return;
+    this.collapseSideSections();
+    menu.classList.remove('hidden');
+    menu.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => menu.classList.add('active'));
+    });
+  }
+
+  collapseSideSections() {
+    document.querySelectorAll('[data-side-section]').forEach(section => {
+      section.classList.add('collapsed');
+      const toggle = section.querySelector('[data-side-toggle]');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      const content = section.querySelector('.side-section-content');
+      if (content) {
+        content.setAttribute('aria-hidden', 'true');
+        content.inert = true;
+      }
+    });
+  }
+
+  toggleSideSection(name) {
+    const section = document.querySelector(`[data-side-section="${name}"]`);
+    if (!section) return;
+    const collapsed = section.classList.toggle('collapsed');
+    const toggle = section.querySelector('[data-side-toggle]');
+    if (toggle) toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    const content = section.querySelector('.side-section-content');
+    if (content) {
+      content.setAttribute('aria-hidden', collapsed ? 'true' : 'false');
+      content.inert = collapsed;
+    }
+  }
+
+  closeSideMenu() {
+    const menu = document.getElementById('side-menu');
+    if (!menu) return;
+    menu.classList.remove('active');
+    menu.setAttribute('aria-hidden', 'true');
+    window.setTimeout(() => {
+      if (!menu.classList.contains('active')) menu.classList.add('hidden');
+    }, 620);
   }
 
   // â”€â”€ Profile â”€â”€
@@ -1304,7 +1648,9 @@ class Game {
     this.mode = 'solo'; this.state = 'playing'; this.score = 0; this.combo = 0; this.animatingClear = false;
     this.rewardContinueUsed = false; this.rewardBombs = 0;
     this.seed = Date.now(); this.rng = new SeededRandom(this.seed); this.blockSetIndex = 0;
-    this.resetGrid(); this.applyLevelSetup(this.currentLevel); this.generatePieces(); this.resizeCanvas();
+    this.resetGrid(); this.applyLevelSetup(this.currentLevel); this.generatePieces();
+    document.getElementById('game-screen').classList.remove('online-layout');
+    this.resizeCanvas();
     this.resetPowerUps();
     document.getElementById('opponent-board-wrap').classList.add('hidden');
     document.getElementById('opponent-score-box').classList.add('hidden');
@@ -1329,6 +1675,7 @@ class Game {
     this.blockSetIndex = 0;
     this.resetGrid();
     this.generatePieces();
+    document.getElementById('game-screen').classList.remove('online-layout');
     this.resizeCanvas();
     this.resetPowerUps();
     document.getElementById('opponent-board-wrap').classList.add('hidden');
@@ -1348,7 +1695,9 @@ class Game {
     this.opponentBoard = null; this.opponentScore = 0;
     this.onlineLocked = false;
     this.opponentUid = null; this.opponentUsername = 'Rakip'; this.onlineMatchRecorded = false;
-    this.resetGrid(); this.generatePieces(); this.resizeCanvas();
+    this.resetGrid(); this.generatePieces();
+    document.getElementById('game-screen').classList.add('online-layout');
+    this.resizeCanvas();
     const tray = document.getElementById('piece-tray');
     if (tray) tray.classList.remove('locked');
     this.resetPowerUps();
@@ -1526,19 +1875,19 @@ class Game {
     const availableWidth = ga.clientWidth - 4;
     const availableHeight = ga.clientHeight - 4;
     let widthForMainBoard = availableWidth;
+    let heightForMainBoard = availableHeight;
     if (this.mode === 'online') {
-      const gap = window.innerWidth <= 480 ? 8 : 16;
-      const onlineWidthLimitedCellSize = Math.floor((availableWidth - gap - 20) / 12.6);
-      widthForMainBoard = Math.max(onlineWidthLimitedCellSize * this.GRID_SIZE, 0);
+      const opponentReserve = window.innerWidth <= 620 ? 104 : 128;
+      heightForMainBoard = Math.max(availableHeight - opponentReserve, 0);
     }
-    let cs = Math.floor(Math.min(widthForMainBoard, availableHeight) / this.GRID_SIZE);
-    cs = Math.min(cs, this.mode === 'online' ? 68 : 82);
+    let cs = Math.floor(Math.min(widthForMainBoard, heightForMainBoard) / this.GRID_SIZE);
+    cs = Math.min(cs, this.mode === 'online' ? 76 : 82);
     cs = Math.max(cs, this.mode === 'online' ? 20 : 30);
     this.cellSize = cs;
     const gp = this.GRID_SIZE * cs;
     this.canvas.width = gp + 12; this.canvas.height = gp + 12; this.gridOffset = { x: 6, y: 6 };
     if (this.mode === 'online') {
-      this.opponentCellSize = Math.max(Math.floor(cs * 0.4), 12);
+      this.opponentCellSize = Math.max(Math.floor(cs * 0.24), 12);
       const op = this.GRID_SIZE * this.opponentCellSize;
       this.opponentCanvas.width = op + 8; this.opponentCanvas.height = op + 8;
     }
@@ -1574,10 +1923,6 @@ class Game {
   }
 
   tryPlace(screenX, screenY, pieceIndex) {
-    if (this.mode === 'online' && this.onlineLocked) {
-      this.audio.invalid();
-      return false;
-    }
     if (!this.ghost || !this.ghost.valid) { this.audio.invalid(); return false; }
     const piece = this.pieces[pieceIndex]; const shape = piece.shape; const colorVal = piece.colorIndex + 1;
     for (let r = 0; r < shape.length; r++) for (let c = 0; c < shape[r].length; c++) if (shape[r][c]) this.grid[this.ghost.row + r][this.ghost.col + c] = colorVal;
@@ -1681,14 +2026,16 @@ class Game {
   }
 
   onOnlineLocked() {
-    if (this.onlineLocked) return;
-    this.onlineLocked = true;
-    this.network.sendPlayerLocked();
+    this.onlineLocked = false;
     const tray = document.getElementById('piece-tray');
-    if (tray) tray.classList.add('locked');
-    const status = this.onlineMode === 'time'
-        ? 'Hamlen kalmadı. Süre bitince sonuç açıklanacak.'
-        : 'Hamlen kalmadı. Rakip de kilitlenirse veya 1000 puana ulaşılırsa maç bitecek.';
+    if (tray) {
+      tray.classList.remove('locked');
+      this.pulsePieceTray();
+    }
+    const now = Date.now();
+    if (now - this.noMoveHintAt < 1800) return;
+    this.noMoveHintAt = now;
+    const status = 'Hamle yok: bomba, döndür veya pas kullan!';
     this.showCombo(status);
   }
 
@@ -1947,16 +2294,44 @@ class Game {
     const headerUsername = document.getElementById('header-username');
     const headerLevel = document.getElementById('header-level');
     const headerXp = document.getElementById('header-xp');
+    const sideUsername = document.getElementById('side-menu-username');
+    const sideLevel = document.getElementById('side-menu-level');
     if (headerUsername) headerUsername.textContent = username;
     if (headerLevel) headerLevel.textContent = level;
     if (headerXp) headerXp.textContent = `${currentXp}/500`;
+    if (sideUsername) sideUsername.textContent = username;
+    if (sideLevel) sideLevel.textContent = `LVL ${level} • ${currentXp}/500 XP`;
   }
 
   showStore() {
     this.updateCoinDisplays();
+    this.updateStoreAppThemesUI();
     this.updateStoreThemesUI();
     this.updateStoreCosmeticsUI();
     this.showScreen('store-screen');
+  }
+
+  setAppTheme(themeId = 'default') {
+    const allowed = new Set(['default', 'tactical', 'voltage', 'inferno']);
+    const safeTheme = allowed.has(themeId) ? themeId : 'default';
+    document.documentElement.dataset.appTheme = safeTheme;
+    localStorage.setItem('selectedAppTheme', safeTheme);
+  }
+
+  updateStoreAppThemesUI() {
+    const selected = localStorage.getItem('selectedAppTheme') || 'default';
+    document.querySelectorAll('#store-app-themes .btn-buy').forEach(btn => {
+      const themeId = btn.dataset.id;
+      btn.style.background = '';
+      btn.style.color = '';
+      if (themeId === selected) {
+        btn.textContent = 'Seçildi';
+        btn.disabled = true;
+      } else {
+        btn.textContent = 'Seç';
+        btn.disabled = false;
+      }
+    });
   }
 
   setTheme(themeId) {
@@ -2146,6 +2521,7 @@ class Game {
 
   useBombAt(row, col) {
     if (this.powerUps.bomb <= 0) return;
+    this.onlineLocked = false;
     this.powerUps.bomb--;
     if (this.rewardBombs > 0) this.rewardBombs--;
     else this.authManager.decrementInventory('bomb');
@@ -2164,10 +2540,16 @@ class Game {
     this.audio.pickup(); // Or a bomb sound
     this.updatePowerUpUI();
     this.checkAndClearLines();
+    if (this.mode === 'online') {
+      this.network.sendBoardUpdate(this.grid, this.score);
+      this.updateScoreDisplay();
+      if (this.checkGameOver()) this.onOnlineLocked();
+    }
   }
 
   useRotate() {
     if (this.powerUps.rotate <= 0) return;
+    this.onlineLocked = false;
     this.powerUps.rotate--;
     this.authManager.decrementInventory('rotate');
     
@@ -2180,10 +2562,12 @@ class Game {
     this.pulsePieceTray();
     this.updatePowerUpUI();
     this.audio.pickup();
+    if (this.mode === 'online' && this.checkGameOver()) this.onOnlineLocked();
   }
 
   useSkip() {
     if (this.powerUps.skip <= 0) return;
+    this.onlineLocked = false;
     this.powerUps.skip--;
     this.authManager.decrementInventory('skip');
     
@@ -2192,6 +2576,7 @@ class Game {
     this.pulsePieceTray();
     this.updatePowerUpUI();
     this.audio.pickup();
+    if (this.mode === 'online' && this.checkGameOver()) this.onOnlineLocked();
   }
 
   pulsePieceTray() {

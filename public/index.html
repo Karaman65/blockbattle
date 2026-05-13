@@ -7,10 +7,10 @@
   <meta name="description" content="Block Battle - Online çok oyunculu blok bulmaca oyunu. Arkadaşlarınla yarış!">
   <title>Block Battle — Online Block Puzzle</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=5.4">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=7.0">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#05050f">
+  <meta name="theme-color" content="#26106b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="icon-512.png">
@@ -26,6 +26,12 @@
       <div class="floating-block fb3"></div>
     </div>
     <div class="panel glass-panel auth-panel">
+      <div class="auth-brand">
+        <div class="auth-logo-mark" aria-hidden="true">
+          <span></span>
+        </div>
+        <p class="auth-kicker">Eğlenceli mücadeleye katıl!</p>
+      </div>
       <div class="menu-header" style="text-align: center; margin-bottom: 20px;">
         <h1 class="logo" style="justify-content: center;">
           <span class="logo-block">BLOCK</span><span class="logo-battle">BATTLE</span>
@@ -36,7 +42,7 @@
       <form id="login-form" class="auth-form">
         <div class="input-group">
           <label for="login-email" class="sr-only">Email veya kullanıcı adı</label>
-          <input type="text" id="login-email" class="input-field auth-input" placeholder="Email veya kullanıcı adı"
+          <input type="text" id="login-email" class="input-field auth-input" placeholder="Kullanıcı Adı"
             required autocomplete="username">
         </div>
         <div class="input-group">
@@ -44,18 +50,18 @@
           <input type="password" id="login-password" class="input-field auth-input" placeholder="Şifre" required
             autocomplete="current-password">
         </div>
-        <button type="submit" id="btn-login" class="btn btn-primary btn-large btn-full">🔑 GİRİŞ YAP</button>
+        <button type="submit" id="btn-login" class="btn btn-primary btn-large btn-full">OYNAYA BAŞLA</button>
       </form>
-      <div class="auth-divider"><span>veya</span></div>
+      <div class="auth-divider"><span>veya şununla giriş yap</span></div>
       <div class="social-auth-actions">
-        <button type="button" id="btn-google-login" class="btn btn-secondary btn-large btn-full">Google ile giriş</button>
-        <button type="button" id="btn-guest-login" class="btn btn-guest btn-large btn-full">Misafir olarak oyna</button>
+        <button type="button" id="btn-google-login" class="btn btn-secondary btn-large btn-full">Google</button>
+        <button type="button" id="btn-guest-login" class="btn btn-guest btn-large btn-full">Misafir</button>
       </div>
       <div class="auth-switch" style="margin-top: 8px; margin-bottom: 14px;">
         <a href="#" id="forgot-password" class="auth-link">Şifremi unuttum</a>
       </div>
       <div class="auth-switch">
-        Yeni misin? <a href="#" id="goto-register" class="auth-link">Hesap oluştur</a>
+        Hesabın yok mu? <a href="#" id="goto-register" class="auth-link">Kayıt Ol</a>
       </div>
     </div>
 
@@ -94,11 +100,16 @@
       <div class="floating-block fb2"></div>
     </div>
     <div class="panel glass-panel auth-panel">
+      <div class="auth-brand">
+        <div class="auth-logo-mark" aria-hidden="true">
+          <span></span>
+        </div>
+        <p class="auth-kicker">Arena hesabını kur!</p>
+      </div>
       <div class="menu-header" style="text-align: center; margin-bottom: 20px;">
         <h1 class="logo" style="justify-content: center;">
           <span class="logo-block">BLOCK</span><span class="logo-battle">BATTLE</span>
         </h1>
-        <p class="subtitle">Yeni hesap oluşturuluyor...</p>
       </div>
 
       <div id="register-error" class="auth-error hidden"></div>
@@ -143,29 +154,34 @@
     </div>
 
     <!-- Top Header Bar -->
-    <div class="cyber-header">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <div
-          style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--neon-purple); padding: 2px; overflow: hidden;">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar"
-            style="width: 100%; height: 100%; border-radius: 50%;">
+    <div class="cyber-header app-header menu-arena-header">
+      <button type="button" class="header-menu-btn" aria-label="Menü">☰</button>
+      <div class="home-player-block">
+        <div class="home-avatar">
+          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar">
         </div>
-        <span id="header-username"
-          style="font-size: 1.2rem; font-weight: 900; letter-spacing: 2px; font-style: italic; color: var(--neon-cyan);">Oyuncu</span>
+        <div>
+          <strong id="header-username">Oyuncu</strong>
+          <span>Sisteme hoş geldin!</span>
+        </div>
       </div>
-      <div class="header-stats-capsule">
-        <div class="stat-item">
-          <span class="stat-label-mini">LVL</span>
-          <span class="stat-value-mini" id="header-level">1</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label-mini" style="color: var(--neon-cyan);" id="header-xp">0/500</span>
-          <span class="stat-value-mini">XP</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label-mini" id="menu-coins">500</span>
-          <span class="stat-value-mini">$</span>
-        </div>
+      <div class="home-level-wallet">
+        <span>LVL <b id="header-level">1</b></span>
+        <strong><b id="menu-coins">500</b> 💎</strong>
+      </div>
+    </div>
+    <div class="header-stats-capsule arena-stats">
+      <div class="stat-item">
+        <span class="stat-label-mini">LVL</span>
+        <span class="stat-value-mini">1</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label-mini" style="color: var(--neon-cyan);" id="header-xp">0/500</span>
+        <span class="stat-value-mini">XP</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label-mini">500</span>
+        <span class="stat-value-mini">$</span>
       </div>
     </div>
 
@@ -231,47 +247,134 @@
           </button>
         </div>
 
-        <!-- PROFIL AYARLARI -->
-        <button id="btn-profile" class="card-btn cyber-card"
-          style="padding: 20px; display: flex; flex-direction: row; align-items: center; gap: 20px; background: rgba(20,20,45,0.6);">
-          <div
-            style="width: 60px; height: 60px; background: rgba(255,255,255,0.05); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #fff;">
-            👤</div>
-          <div style="flex: 1;">
-            <h2 style="font-size: 1.3rem; font-weight: 900; color: #fff;">PROFİL AYARLARI</h2>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">İstatistikleri ve ekipmanları yönet
-            </p>
-          </div>
-          <div style="color: var(--text-muted); font-size: 1.5rem;">›</div>
-        </button>
-
       </div>
 
-      <div class="menu-footer-btns" style="margin-top: 30px; display: flex; justify-content: center; gap: 20px;">
-        <button id="btn-theme-toggle" class="btn btn-icon-only" title="Tema Değiştir">LIGHT</button>
-        <button id="btn-sound-toggle" class="btn btn-icon-only" title="Sesi kapat">SES</button>
-        <button id="btn-logout" class="btn btn-icon-only" title="Çıkış yap">ÇIK</button>
-      </div>
     </div>
+  </div>
+
+  <!-- ═══ SIDE MENU ═══ -->
+  <div id="side-menu" class="side-menu-overlay hidden" aria-hidden="true">
+    <button id="side-menu-backdrop" class="side-menu-backdrop" type="button" aria-label="Menüyü kapat"></button>
+    <aside class="side-menu-panel" aria-label="Oyun menüsü">
+      <div class="side-menu-header">
+        <div>
+          <span class="side-menu-kicker">BLOCK BATTLE</span>
+          <h2>Menü</h2>
+        </div>
+        <button id="side-menu-close" class="side-menu-close" type="button" aria-label="Menüyü kapat">×</button>
+      </div>
+
+      <section class="side-profile-card">
+        <div class="side-avatar">☻</div>
+        <div>
+          <strong id="side-menu-username">Oyuncu</strong>
+          <span id="side-menu-level">LVL 1 • 0 XP</span>
+        </div>
+      </section>
+
+      <section class="side-menu-section">
+        <h3>Oyuncu</h3>
+        <button id="btn-profile" class="side-menu-item" type="button">
+          <span>👤</span>
+          <div>
+            <strong>Profil</strong>
+            <small>İstatistikler ve geçmiş maçlar.</small>
+          </div>
+        </button>
+        <button class="side-menu-item" type="button" data-menu-screen="quests-screen">
+          <span>📋</span>
+          <div>
+            <strong>Görevler</strong>
+            <small>Günlük, haftalık ve aylık ödüller.</small>
+          </div>
+        </button>
+      </section>
+
+      <section class="side-menu-section side-collapsible collapsed" data-side-section="settings">
+        <button class="side-section-toggle" type="button" data-side-toggle="settings" aria-expanded="false">
+          <span>Ayarlar</span>
+          <b aria-hidden="true">⌄</b>
+        </button>
+        <div class="side-section-content side-settings-list">
+          <div class="settings-row">
+            <div class="settings-copy">
+              <strong>Ses</strong>
+              <span>Efekt ve oyun sesleri</span>
+            </div>
+            <button id="side-sound-toggle" class="settings-toggle" type="button">SES</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-copy">
+              <strong>Titreşim</strong>
+              <span>Dokunsal geri bildirim</span>
+            </div>
+            <button class="settings-toggle" data-local-toggle="vibration" type="button">AÇIK</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-copy">
+              <strong>Bildirim</strong>
+              <span>Ödül ve etkinlik hatırlatmaları</span>
+            </div>
+            <button class="settings-toggle" data-local-toggle="notifications" type="button">KAPALI</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="side-menu-section side-help-section side-collapsible collapsed" data-side-section="help">
+        <button class="side-section-toggle" type="button" data-side-toggle="help" aria-expanded="false">
+          <span>Yardım</span>
+          <b aria-hidden="true">⌄</b>
+        </button>
+        <div class="side-section-content side-feedback-form">
+          <div class="side-feedback-head">
+            <span>⚠️</span>
+            <div>
+              <strong>Hata Bildir</strong>
+              <small>Karşılaştığın sorunu bize gönder.</small>
+            </div>
+          </div>
+          <select id="feedback-type" class="feedback-input">
+            <option value="bug">Hata bildirimi</option>
+            <option value="suggestion">Öneri</option>
+            <option value="account">Hesap / ödeme</option>
+            <option value="other">Diğer</option>
+          </select>
+          <textarea id="feedback-message" class="feedback-input feedback-textarea" maxlength="800"
+            placeholder="Mesajını yaz..."></textarea>
+          <button id="btn-send-feedback" class="btn btn-primary btn-full" type="button">GÖNDER</button>
+          <div id="feedback-status" class="feedback-status"></div>
+        </div>
+      </section>
+
+      <section class="side-menu-section">
+        <h3>Hızlı Erişim</h3>
+        <div class="side-menu-grid">
+          <button type="button" data-menu-screen="map-screen">Level</button>
+          <button type="button" data-menu-target="store">Mağaza</button>
+          <button type="button" data-menu-target="leaderboard">Sıralama</button>
+          <button type="button" data-menu-target="tutorial">Nasıl Oynanır</button>
+        </div>
+      </section>
+
+      <button id="side-btn-logout" class="side-logout" type="button">Çıkış Yap</button>
+    </aside>
   </div>
 
   <!-- ═══ STORE SCREEN ═══ -->
   <div id="store-screen" class="screen">
     <div class="panel glass-panel store-panel"
       style="background: var(--bg-primary); border: none; height: 100vh; width: 100vw; max-width: none; border-radius: 0; padding: 0;">
-      <div class="cyber-header">
+      <div class="cyber-header app-header store-header-modern">
         <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--neon-cyan); padding: 2px;">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar"
-              style="width: 100%; height: 100%; border-radius: 50%;">
-          </div>
-          <span style="font-size: 1rem; font-weight: 900; letter-spacing: 1px; color: #fff;">MAĞAZA</span>
+          <button type="button" class="header-menu-btn" aria-label="Menü">☰</button>
+          <span class="screen-gradient-title">MAĞAZA</span>
         </div>
         <div style="display: flex; gap: 12px;">
           <div class="premium-tag"
             style="background: rgba(255, 255, 255, 0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 5px 15px; display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--accent);">💎</span> <span id="store-coins">500</span>
+            <span class="coin-icon">S</span> <span id="store-coins">500</span>
           </div>
+          <div class="header-user-dot" aria-hidden="true">☻</div>
         </div>
       </div>
 
@@ -281,7 +384,6 @@
             style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
             <div class="section-titles">
               <h3 class="section-title-cyber">GÜNÜN ÖNE ÇIKANLARI</h3>
-              <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Sınırlı süreli ekipmanlar</p>
             </div>
           </div>
 
@@ -374,6 +476,36 @@
         </div>
 
         <div class="store-section" style="margin-top: 40px;">
+          <h3 class="section-title-cyber">TEMALAR</h3>
+          <div id="store-app-themes" class="app-theme-grid">
+            <div class="cyber-card app-theme-card theme-default">
+              <div class="app-theme-preview"><span></span><span></span><span></span></div>
+              <strong>Neon Mor</strong>
+              <small>Mevcut arena görünümü.</small>
+              <button class="btn btn-buy" data-type="app-theme" data-id="default" data-price="0">Seç</button>
+            </div>
+            <div class="cyber-card app-theme-card theme-tactical">
+              <div class="app-theme-preview"><span></span><span></span><span></span></div>
+              <strong>Taktik Yeşil</strong>
+              <small>Askeri, koyu panel stili.</small>
+              <button class="btn btn-buy" data-type="app-theme" data-id="tactical" data-price="0">Seç</button>
+            </div>
+            <div class="cyber-card app-theme-card theme-voltage">
+              <div class="app-theme-preview"><span></span><span></span><span></span></div>
+              <strong>Neon Volt</strong>
+              <small>Mavi ve parlak yeşil vurgu.</small>
+              <button class="btn btn-buy" data-type="app-theme" data-id="voltage" data-price="0">Seç</button>
+            </div>
+            <div class="cyber-card app-theme-card theme-inferno">
+              <div class="app-theme-preview"><span></span><span></span><span></span></div>
+              <strong>Lava Kırmızı</strong>
+              <small>Kızıl, savaş modu hissi.</small>
+              <button class="btn btn-buy" data-type="app-theme" data-id="inferno" data-price="0">Seç</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="store-section" style="margin-top: 40px;">
           <h3 class="section-title-cyber">BLOK GÖRÜNÜMLERİ</h3>
           <div id="store-themes" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div class="cyber-card accent-cyan" style="padding: 20px; text-align: center;">
@@ -448,21 +580,21 @@
   <div id="map-screen" class="screen">
     <div class="panel glass-panel store-panel"
       style="background: var(--bg-primary); border: none; height: 100vh; width: 100vw; max-width: none; border-radius: 0; padding: 0;">
-      <div class="cyber-header">
+      <div class="cyber-header app-header map-header-modern">
         <div style="display: flex; align-items: center; gap: 12px;">
           <div style="width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--neon-cyan); padding: 2px;">
             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar"
               style="width: 100%; height: 100%; border-radius: 50%;">
           </div>
-          <span style="font-size: 1rem; font-weight: 900; letter-spacing: 1px; color: #fff;">HARİTA</span>
+          <span class="map-title-modern">HARİTA</span>
         </div>
-        <div style="color: var(--text-muted); font-size: 1.2rem;">🔔</div>
+        <div class="map-bell-dot" aria-hidden="true">🔔</div>
       </div>
 
       <div class="cyber-scroll-area">
         <h2
           style="font-size: 2.2rem; font-weight: 900; letter-spacing: -1px; text-align: center; text-transform: uppercase;">
-          EFSANEYE YOLCULUK</h2>
+          EFSANEYE<br>YOLCULUK</h2>
         <p style="font-size: 0.85rem; color: var(--text-secondary); text-align: center; margin-bottom: 40px;">Sistem
           ağında yükselerek elit ödülleri kazan.</p>
 
@@ -558,20 +690,6 @@
             <span id="p-total-losses" style="font-size: 1.2rem; font-weight: 900; color: var(--danger);">0</span>
           </div>
         </div>
-        <div class="cyber-card feedback-card">
-          <h3 class="section-title-cyber">GERİ BİLDİRİM</h3>
-          <p class="feedback-help">Hata, öneri veya iletişim mesajını gönder.</p>
-          <select id="feedback-type" class="feedback-input">
-            <option value="bug">Hata bildirimi</option>
-            <option value="suggestion">Öneri</option>
-            <option value="account">Hesap / ödeme</option>
-            <option value="other">Diğer</option>
-          </select>
-          <textarea id="feedback-message" class="feedback-input feedback-textarea" maxlength="800"
-            placeholder="Mesajını yaz..."></textarea>
-          <button id="btn-send-feedback" class="btn btn-primary btn-full">GÖNDER</button>
-          <div id="feedback-status" class="feedback-status"></div>
-        </div>
         <h3 class="section-title-cyber">MAÇ GEÇMİŞİ</h3>
         <div id="match-history" class="cyber-list"></div>
       </div>
@@ -580,11 +698,15 @@
 
   <!-- ═══ ONLINE LOBBY SCREEN ═══ -->
   <div id="online-screen" class="screen">
-    <div class="panel glass-panel">
+    <div class="panel glass-panel online-panel">
       <h2 class="panel-title">Online Arena</h2>
       <div class="mode-selector" style="display: flex; gap: 10px; margin-bottom: 20px;">
         <button class="mode-btn active" data-mode="score">Skor Yarışı</button>
         <button class="mode-btn" data-mode="time">Zamana Karşı</button>
+      </div>
+      <div id="online-mode-info" class="online-mode-info" aria-live="polite">
+        <strong>Skor Yarışı</strong>
+        <span>1000 puana ilk ulaşan kazanır. Hızlı ve riskli hamlelerle puan topla.</span>
       </div>
       <button id="btn-quick-match" class="btn btn-primary btn-large btn-full">⚡ HIZLI MAÇ</button>
       <div style="margin: 15px 0; color: var(--text-muted); font-size: 0.8rem;">Oda kur veya koda katıl</div>
@@ -601,7 +723,7 @@
 
   <!-- ═══ WAITING SCREEN ═══ -->
   <div id="waiting-screen" class="screen">
-    <div class="panel glass-panel">
+    <div class="panel glass-panel waiting-panel">
       <h2 id="waiting-title" class="panel-title">Rakip Bekleniyor...</h2>
       <p id="waiting-subtitle" class="waiting-subtitle">Online maç hazırlanıyor.</p>
       <div id="quick-waiting-info" class="hidden" style="text-align: center; margin: 20px 0;">
@@ -646,6 +768,8 @@
           <span class="stat-label">RAKİP</span>
           <span class="stat-value" id="opponent-score-value">0</span>
         </div>
+        <button id="btn-board-photo" class="btn btn-icon-only btn-small" type="button" title="Izgara arka planı seç">🖼</button>
+        <input id="board-photo-input" class="sr-only" type="file" accept="image/*">
         <button id="btn-game-menu" class="btn btn-icon-only btn-small">☰</button>
       </div>
     </div>
@@ -697,8 +821,11 @@
 
   <!-- ═══ GAME OVER ═══ -->
   <div id="gameover-screen" class="screen">
-    <div class="panel glass-panel gameover-panel">
+    <div class="panel glass-panel gameover-panel"
+      style="background: radial-gradient(circle at 18% 0%, rgba(83,239,255,.18), transparent 34%), radial-gradient(circle at 92% 0%, rgba(255,93,244,.34), transparent 35%), linear-gradient(145deg, rgba(30,39,132,.98), rgba(26,17,92,.99)) !important; color: #fff !important;">
+      <div class="gameover-badge">MAÇ SONU</div>
       <h2 id="gameover-title" class="gameover-title">Oyun Bitti!</h2>
+      <p class="gameover-subtitle">Performansını gör, ödülünü al ve arenaya geri dön.</p>
       <div class="gameover-stats">
         <div class="go-stat">
           <span class="go-stat-label">Skor</span>
@@ -714,7 +841,7 @@
       <div class="gameover-buttons">
         <button id="btn-reward-continue" class="btn btn-accent btn-large hidden">Reklam izle, +1 bomba ile devam et</button>
         <button id="btn-next-level" class="btn btn-accent btn-large hidden">Sonraki Level</button>
-        <button id="btn-play-again" class="btn btn-primary btn-large">🔄 Tekrar Oyna</button>
+        <button id="btn-play-again" class="btn btn-primary btn-large">Tekrar Oyna</button>
         <button id="btn-go-menu" class="btn btn-ghost">Ana Menü</button>
       </div>
     </div>
@@ -722,15 +849,34 @@
 
   <!-- ═══ PAUSE OVERLAY ═══ -->
   <div id="pause-overlay" class="screen overlay hidden">
-    <div class="panel glass-panel">
+    <div class="panel glass-panel pause-panel"
+      style="background: radial-gradient(circle at 18% 0%, rgba(83,239,255,.18), transparent 34%), radial-gradient(circle at 92% 0%, rgba(255,93,244,.34), transparent 35%), linear-gradient(145deg, rgba(30,39,132,.98), rgba(26,17,92,.99)) !important; color: #fff !important;">
+      <div class="pause-badge">OYUN MENÜSÜ</div>
       <h2 id="pause-title" class="panel-title">Duraklatıldı</h2>
-      <button id="btn-resume" class="btn btn-primary">▶ Devam Et</button>
-      <button id="btn-quit" class="btn btn-ghost">🚪 Çık</button>
+      <div class="pause-summary">
+        <div>
+          <span>Skor</span>
+          <strong id="pause-score">0</strong>
+        </div>
+        <div>
+          <span>Rekor</span>
+          <strong id="pause-high">0</strong>
+        </div>
+        <div>
+          <span>Mod</span>
+          <strong id="pause-mode">Sonsuz</strong>
+        </div>
+      </div>
+      <div class="pause-actions">
+        <button id="btn-resume" class="btn btn-primary">Devam Et</button>
+        <button id="btn-quit" class="btn btn-ghost">Çık</button>
+      </div>
     </div>
   </div>
 
   <div id="tutorial-overlay" class="screen overlay hidden">
-    <div class="panel glass-panel tutorial-panel">
+    <div class="panel glass-panel tutorial-panel"
+      style="background: radial-gradient(circle at 18% 0%, rgba(83,239,255,.18), transparent 34%), radial-gradient(circle at 92% 0%, rgba(255,93,244,.34), transparent 35%), linear-gradient(145deg, rgba(30,39,132,.98), rgba(26,17,92,.99)) !important; color: #fff !important;">
       <h2 class="panel-title">Nasıl Oynanır?</h2>
       <div class="tutorial-steps">
         <div class="tutorial-step"><span>1</span><p>Blokları 9x9 alana sürükle ve yerleştir.</p></div>
@@ -760,7 +906,7 @@
     </button>
     <button class="nav-item" data-target="store-screen">
       <div class="nav-icon">🛒</div>
-      <span>MARKET</span>
+      <span>MAĞAZA</span>
     </button>
   </nav>
 
@@ -782,7 +928,7 @@
   <script src="js/auth.js?v=5.4"></script>
   <script src="js/db.js?v=5.0"></script>
   <script src="js/ad.js?v=5.0"></script>
-  <script src="js/game.js?v=5.4"></script>
+  <script src="js/game.js?v=7.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => { });
@@ -791,4 +937,3 @@
 </body>
 
 </html>
-
