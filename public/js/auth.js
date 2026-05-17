@@ -7,7 +7,6 @@ class AuthManager {
     this.user = null;
     this.userData = null;
     this.onAuthChanged = null; // callback
-    this.isGuest = false;
   }
 
   init(callback) {
@@ -15,61 +14,13 @@ class AuthManager {
     auth.onAuthStateChanged(async (user) => {
       this.user = user;
       if (user) {
-        this.isGuest = false;
         await this.ensureUserProfile(user);
         await this.loadUserData();
-      } else if (localStorage.getItem('blockBattleGuestSession') === '1') {
-        this.startGuestSession(false);
       } else {
-        this.isGuest = false;
         this.userData = null;
       }
       if (this.onAuthChanged) this.onAuthChanged(user);
     });
-  }
-
-  createGuestUsername() {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let suffix = '';
-    for (let i = 0; i < 4; i++) suffix += alphabet[Math.floor(Math.random() * alphabet.length)];
-    return `Misafir-${suffix}`;
-  }
-
-  startGuestSession(notify = true) {
-    let username = localStorage.getItem('blockBattleGuestName');
-    if (!username) {
-      username = this.createGuestUsername();
-      localStorage.setItem('blockBattleGuestName', username);
-    }
-    const guestInventory = JSON.parse(localStorage.getItem('blockBattleGuestInventory') || '{"bomb":1,"rotate":2,"skip":1}');
-    const guestOwnedThemes = JSON.parse(localStorage.getItem('blockBattleGuestOwnedThemes') || '["default"]');
-    const guestOwnedCosmetics = JSON.parse(localStorage.getItem('blockBattleGuestOwnedCosmetics') || '{"bombEffect":["classic"]}');
-    localStorage.setItem('blockBattleGuestSession', '1');
-    this.user = null;
-    this.isGuest = true;
-    this.userData = {
-      username,
-      email: '',
-      highScore: parseInt(localStorage.getItem('blockBattleGuestHighScore') || '0', 10),
-      coins: parseInt(localStorage.getItem('blockBattleGuestCoins') || '500', 10),
-      unlockedLevel: 1,
-      inventory: {
-        bomb: guestInventory.bomb || 0,
-        rotate: guestInventory.rotate || 0,
-        skip: guestInventory.skip || 0
-      },
-      ownedThemes: Array.isArray(guestOwnedThemes) && guestOwnedThemes.length ? guestOwnedThemes : ['default'],
-      ownedCosmetics: guestOwnedCosmetics && typeof guestOwnedCosmetics === 'object' ? guestOwnedCosmetics : { bombEffect: ['classic'] },
-      totalGames: 0,
-      totalWins: 0,
-      totalOnlineGames: 0
-    };
-    if (notify && this.onAuthChanged) this.onAuthChanged(null);
-    return { success: true, username };
-  }
-
-  clearGuestSession() {
-    localStorage.removeItem('blockBattleGuestSession');
   }
 
   getUsernameKey(username) {
@@ -144,7 +95,6 @@ class AuthManager {
 
   async register(username, email, password) {
     try {
-      this.clearGuestSession();
       const usernameKey = username.trim().toLowerCase();
       const usernameDoc = await db.collection('usernames').doc(usernameKey).get();
       if (usernameDoc.exists) {
@@ -208,7 +158,6 @@ class AuthManager {
 
   async login(emailOrUsername, password) {
     try {
-      this.clearGuestSession();
       let email = emailOrUsername;
 
       // If no @ sign, treat as username and look up email
@@ -246,7 +195,6 @@ class AuthManager {
 
   async loginWithGoogle() {
     try {
-      this.clearGuestSession();
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
@@ -336,19 +284,11 @@ class AuthManager {
   }
 
   async logout() {
-    if (this.isGuest) {
-      this.clearGuestSession();
-      this.isGuest = false;
-      this.user = null;
-      this.userData = null;
-      if (this.onAuthChanged) this.onAuthChanged(null);
-      return;
-    }
     await auth.signOut();
   }
 
   async loadUserData() {
-    if (this.isGuest || !this.user) return;
+    if (!this.user) return;
     try {
       const doc = await db.collection('users').doc(this.user.uid).get();
       if (doc.exists) {
@@ -367,20 +307,11 @@ class AuthManager {
     return (this.userData && this.userData.inventory) || { bomb: 0, rotate: 0, skip: 0 };
   }
 
-  saveGuestEconomy() {
-    if (!this.isGuest || !this.userData) return;
-    localStorage.setItem('blockBattleGuestCoins', String(this.userData.coins || 0));
-    localStorage.setItem('blockBattleGuestInventory', JSON.stringify(this.userData.inventory || { bomb: 0, rotate: 0, skip: 0 }));
-    localStorage.setItem('blockBattleGuestOwnedThemes', JSON.stringify(this.userData.ownedThemes || ['default']));
-    localStorage.setItem('blockBattleGuestOwnedCosmetics', JSON.stringify(this.userData.ownedCosmetics || { bombEffect: ['classic'] }));
-  }
-
   getUnlockedLevel() {
     return Math.max(1, (this.userData && this.userData.unlockedLevel) || 1);
   }
 
   async setUnlockedLevel(level) {
-    if (this.isGuest) return false;
     if (!this.user) return false;
     const safeLevel = Math.max(1, level);
     try {
@@ -393,12 +324,6 @@ class AuthManager {
   }
 
   async addCoins(amount) {
-    if (this.isGuest) {
-      if (!this.userData) return false;
-      this.userData.coins = (this.userData.coins || 0) + amount;
-      this.saveGuestEconomy();
-      return true;
-    }
     if (!this.user) return false;
     try {
       await db.collection('users').doc(this.user.uid).update({
@@ -410,14 +335,6 @@ class AuthManager {
   }
 
   async buyPowerUp(type, price) {
-    if (this.isGuest) {
-      if (!this.userData || this.getCoins() < price) return false;
-      this.userData.coins -= price;
-      if (!this.userData.inventory) this.userData.inventory = {};
-      this.userData.inventory[type] = (this.userData.inventory[type] || 0) + 1;
-      this.saveGuestEconomy();
-      return true;
-    }
     if (!this.user || this.getCoins() < price) return false;
     try {
       const field = `inventory.${type}`;
@@ -436,16 +353,6 @@ class AuthManager {
   }
 
   async buyBundle(items, price) {
-    if (this.isGuest) {
-      if (!this.userData || this.getCoins() < price) return false;
-      this.userData.coins -= price;
-      if (!this.userData.inventory) this.userData.inventory = {};
-      for (const [type, count] of Object.entries(items)) {
-        if (count > 0) this.userData.inventory[type] = (this.userData.inventory[type] || 0) + count;
-      }
-      this.saveGuestEconomy();
-      return true;
-    }
     if (!this.user || this.getCoins() < price) return false;
     try {
       const update = {
@@ -468,16 +375,6 @@ class AuthManager {
   }
 
   async buyTheme(themeId, price) {
-    if (this.isGuest) {
-      if (!this.userData) return false;
-      if (!this.userData.ownedThemes) this.userData.ownedThemes = ['default'];
-      if (this.userData.ownedThemes.includes(themeId)) return true;
-      if (this.getCoins() < price) return false;
-      this.userData.coins -= price;
-      this.userData.ownedThemes.push(themeId);
-      this.saveGuestEconomy();
-      return true;
-    }
     if (!this.user) return false;
     const owned = this.userData?.ownedThemes || ['default'];
     if (owned.includes(themeId)) return true;
@@ -499,17 +396,6 @@ class AuthManager {
   }
 
   async buyCosmetic(category, cosmeticId, price) {
-    if (this.isGuest) {
-      if (!this.userData) return false;
-      if (!this.userData.ownedCosmetics) this.userData.ownedCosmetics = {};
-      if (!this.userData.ownedCosmetics[category]) this.userData.ownedCosmetics[category] = ['classic'];
-      if (this.userData.ownedCosmetics[category].includes(cosmeticId)) return true;
-      if (this.getCoins() < price) return false;
-      this.userData.coins -= price;
-      this.userData.ownedCosmetics[category].push(cosmeticId);
-      this.saveGuestEconomy();
-      return true;
-    }
     if (!this.user) return false;
     const owned = this.userData?.ownedCosmetics?.[category] || ['classic'];
     if (owned.includes(cosmeticId)) return true;
@@ -532,13 +418,6 @@ class AuthManager {
   }
 
   async decrementInventory(type) {
-    if (this.isGuest) {
-      if (this.userData && this.userData.inventory) {
-        this.userData.inventory[type] = Math.max(0, (this.userData.inventory[type] || 0) - 1);
-        this.saveGuestEconomy();
-      }
-      return;
-    }
     if (!this.user) return;
     try {
       const field = `inventory.${type}`;
@@ -552,7 +431,7 @@ class AuthManager {
   getUsername() {
     if (this.userData && this.userData.username) return this.userData.username;
     if (this.user && this.user.displayName) return this.user.displayName;
-    return this.isGuest && this.userData && this.userData.username ? this.userData.username : 'Oyuncu';
+    return 'Oyuncu';
   }
 
   isPremium() {
@@ -626,10 +505,6 @@ class AuthManager {
 
   isLoggedIn() {
     return !!this.user;
-  }
-
-  isGuestSession() {
-    return this.isGuest === true;
   }
 }
 

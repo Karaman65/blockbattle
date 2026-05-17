@@ -13,32 +13,12 @@ class Renderer {
   drawGrid(ctx, grid, cellSize, offsetX, offsetY, ghost) {
     const G = 9;
     const totalSize = G * cellSize;
-    const hasBoardPhoto = Boolean(this.game.boardBgImage && this.game.boardBgImage.complete);
 
     // Background
-    ctx.fillStyle = '#0b0b24';
+    ctx.fillStyle = '#0e0e28';
     ctx.beginPath();
     ctx.roundRect(offsetX - 4, offsetY - 4, totalSize + 8, totalSize + 8, 10);
     ctx.fill();
-
-    if (hasBoardPhoto) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(offsetX, offsetY, totalSize, totalSize, 8);
-      ctx.clip();
-      const img = this.game.boardBgImage;
-      const scale = Math.max(totalSize / img.width, totalSize / img.height);
-      const dw = img.width * scale;
-      const dh = img.height * scale;
-      const dx = offsetX + (totalSize - dw) / 2;
-      const dy = offsetY + (totalSize - dh) / 2;
-      ctx.globalAlpha = 0.72;
-      ctx.drawImage(img, dx, dy, dw, dh);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = 'rgba(7, 8, 30, 0.24)';
-      ctx.fillRect(offsetX, offsetY, totalSize, totalSize);
-      ctx.restore();
-    }
 
     // Grid cells
     for (let r = 0; r < G; r++) {
@@ -49,9 +29,7 @@ class Renderer {
 
         // Cell background
         const is3x3 = (Math.floor(r / 3) + Math.floor(c / 3)) % 2 === 0;
-        ctx.fillStyle = hasBoardPhoto
-          ? (is3x3 ? 'rgba(20, 20, 48, 0.32)' : 'rgba(27, 27, 64, 0.24)')
-          : (is3x3 ? '#13132e' : '#16163a');
+        ctx.fillStyle = is3x3 ? '#13132e' : '#16163a';
         ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
 
         // Filled cell
@@ -88,22 +66,9 @@ class Renderer {
     }
 
     // Grid lines
-    ctx.strokeStyle = hasBoardPhoto ? 'rgba(126, 238, 255, 0.34)' : 'rgba(108, 92, 231, 0.12)';
+    ctx.strokeStyle = 'rgba(108, 92, 231, 0.12)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= G; i++) {
-      ctx.beginPath();
-      ctx.moveTo(offsetX + i * cellSize, offsetY);
-      ctx.lineTo(offsetX + i * cellSize, offsetY + totalSize);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(offsetX, offsetY + i * cellSize);
-      ctx.lineTo(offsetX + totalSize, offsetY + i * cellSize);
-      ctx.stroke();
-    }
-
-    ctx.strokeStyle = hasBoardPhoto ? 'rgba(126, 238, 255, 0.52)' : 'rgba(126, 238, 255, 0.16)';
-    ctx.lineWidth = 2;
-    for (let i = 0; i <= G; i += 3) {
       ctx.beginPath();
       ctx.moveTo(offsetX + i * cellSize, offsetY);
       ctx.lineTo(offsetX + i * cellSize, offsetY + totalSize);
@@ -160,14 +125,6 @@ class Renderer {
   }
 
   drawBlock(ctx, x, y, w, h, color) {
-    if (this.game.lowPowerMode) {
-      ctx.fillStyle = color.base;
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
-      ctx.fillRect(x + 1, y + 1, w - 2, Math.max(1, h * 0.22));
-      return;
-    }
-
     // Main color
     ctx.fillStyle = color.base;
     ctx.fillRect(x, y, w, h);
@@ -217,7 +174,6 @@ class Renderer {
 
   // Particle system for line clear effects
   addClearParticles(row, col, cellSize, offsetX, offsetY, colorIndex) {
-    if (this.game.lowPowerMode) return;
     const color = BLOCK_COLORS[(colorIndex - 1) % BLOCK_COLORS.length];
     const cx = offsetX + col * cellSize + cellSize / 2;
     const cy = offsetY + row * cellSize + cellSize / 2;
@@ -240,14 +196,12 @@ class Renderer {
   }
 
   addFlashCells(cells) {
-    if (this.game.lowPowerMode) return;
     for (const { r, c } of cells) {
       this.flashCells.push({ r, c, alpha: 0.9, time: 0 });
     }
   }
 
   addClearWave(rows, cols, cellSize, offsetX, offsetY) {
-    if (this.game.lowPowerMode) return;
     for (const r of rows) {
       this.shockwaves.push({
         kind: 'line-h',
@@ -282,21 +236,6 @@ class Renderer {
     const cx = offsetX + col * cellSize + cellSize / 2;
     const cy = offsetY + row * cellSize + cellSize / 2;
     const style = this.game.getBombEffectStyle ? this.game.getBombEffectStyle() : COSMETICS.bombEffect.smoke;
-    if (this.game.lowPowerMode) {
-      this.shockwaves.push({
-        kind: 'circle',
-        x: cx,
-        y: cy,
-        radius: cellSize * 0.2,
-        maxRadius: cellSize * 1.45,
-        width: 3,
-        color: style.ring,
-        alpha: 0.55,
-        life: 0.24,
-        age: 0,
-      });
-      return;
-    }
     this.shockwaves.push({
       kind: 'circle',
       x: cx,
@@ -341,7 +280,6 @@ class Renderer {
   }
 
   addPowerBurst(type) {
-    if (this.game.lowPowerMode) return;
     const tray = document.getElementById('piece-tray');
     const canvas = document.getElementById('game-canvas');
     if (!tray || !canvas) return;
