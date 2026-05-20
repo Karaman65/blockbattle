@@ -48,7 +48,13 @@ app.use((req, res, next) => {
   return next();
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (/\.(html|css|js)$/.test(filePath) || filePath.endsWith('sw.js')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
+  },
+}));
 
 app.get(['/privacy', '/privacy.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy.html'));

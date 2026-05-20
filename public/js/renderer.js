@@ -8,6 +8,14 @@ class Renderer {
     this.particles = [];
     this.flashCells = []; // {r, c, alpha, time}
     this.shockwaves = [];
+
+    // Performance: Gradient cache
+    this.gradientCache = new Map();
+
+    // Performance: Particle limits
+    this.MAX_PARTICLES = this.game.isMobile ? 0 : 50;
+    this.MAX_FLASH_CELLS = 50;
+    this.MAX_SHOCKWAVES = 20;
   }
 
   drawGrid(ctx, grid, cellSize, offsetX, offsetY, ghost) {
@@ -15,7 +23,7 @@ class Renderer {
     const totalSize = G * cellSize;
 
     // Background
-    ctx.fillStyle = '#0e0e28';
+    ctx.fillStyle = '#041814';
     ctx.beginPath();
     ctx.roundRect(offsetX - 4, offsetY - 4, totalSize + 8, totalSize + 8, 10);
     ctx.fill();
@@ -29,7 +37,7 @@ class Renderer {
 
         // Cell background
         const is3x3 = (Math.floor(r / 3) + Math.floor(c / 3)) % 2 === 0;
-        ctx.fillStyle = is3x3 ? '#13132e' : '#16163a';
+        ctx.fillStyle = is3x3 ? '#073528' : '#05241f';
         ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
 
         // Filled cell
@@ -66,7 +74,7 @@ class Renderer {
     }
 
     // Grid lines
-    ctx.strokeStyle = 'rgba(108, 92, 231, 0.12)';
+    ctx.strokeStyle = 'rgba(90, 239, 171, 0.18)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= G; i++) {
       ctx.beginPath();
@@ -102,7 +110,7 @@ class Renderer {
       ctx.fillStyle = 'rgba(255, 71, 87, 0.3)';
       ctx.strokeStyle = 'rgba(255, 71, 87, 0.8)';
       ctx.lineWidth = 3;
-      
+
       const rStart = Math.max(0, row - 1);
       const rEnd = Math.min(8, row + 1);
       const cStart = Math.max(0, col - 1);
@@ -120,7 +128,7 @@ class Renderer {
       ctx.font = '24px Outfit';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('💣', offsetX + col * cellSize + cellSize/2, offsetY + row * cellSize + cellSize/2);
+      ctx.fillText('💣', offsetX + col * cellSize + cellSize / 2, offsetY + row * cellSize + cellSize / 2);
     }
   }
 
@@ -129,13 +137,22 @@ class Renderer {
     ctx.fillStyle = color.base;
     ctx.fillRect(x, y, w, h);
 
-    // Top highlight
-    const grad = ctx.createLinearGradient(x, y, x, y + h);
-    grad.addColorStop(0, color.light);
-    grad.addColorStop(0.4, color.base);
-    grad.addColorStop(1, color.dark);
+    // Performance: Cached gradient
+    const gradKey = `${color.base}-${h}`;
+    let grad = this.gradientCache.get(gradKey);
+    if (!grad) {
+      grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, color.light);
+      grad.addColorStop(0.4, color.base);
+      grad.addColorStop(1, color.dark);
+      this.gradientCache.set(gradKey, grad);
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
     ctx.fillStyle = grad;
-    ctx.fillRect(x, y, w, h);
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
 
     // Inner shine
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
@@ -150,7 +167,7 @@ class Renderer {
     const G = 9;
     const totalSize = G * cellSize;
 
-    ctx.fillStyle = '#0b0b22';
+    ctx.fillStyle = '#041814';
     ctx.beginPath();
     ctx.roundRect(offsetX - 2, offsetY - 2, totalSize + 4, totalSize + 4, 6);
     ctx.fill();
@@ -165,7 +182,7 @@ class Renderer {
           ctx.fillStyle = BLOCK_COLORS[(val - 1) % BLOCK_COLORS.length].base;
           ctx.fillRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
         } else {
-          ctx.fillStyle = '#111130';
+          ctx.fillStyle = '#05241f';
           ctx.fillRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
         }
       }
@@ -174,6 +191,10 @@ class Renderer {
 
   // Particle system for line clear effects
   addClearParticles(row, col, cellSize, offsetX, offsetY, colorIndex) {
+    // Performance: Skip particles on mobile
+    if (!this.game.particlesEnabled) return;
+    if (this.particles.length >= this.MAX_PARTICLES) return;
+
     const color = BLOCK_COLORS[(colorIndex - 1) % BLOCK_COLORS.length];
     const cx = offsetX + col * cellSize + cellSize / 2;
     const cy = offsetY + row * cellSize + cellSize / 2;
@@ -236,32 +257,41 @@ class Renderer {
     const cx = offsetX + col * cellSize + cellSize / 2;
     const cy = offsetY + row * cellSize + cellSize / 2;
     const style = this.game.getBombEffectStyle ? this.game.getBombEffectStyle() : COSMETICS.bombEffect.smoke;
-    this.shockwaves.push({
-      kind: 'circle',
-      x: cx,
-      y: cy,
-      radius: cellSize * 0.2,
-      maxRadius: cellSize * 2.25,
-      width: 6,
-      color: style.ring,
-      alpha: 0.82,
-      life: 0.42,
-      age: 0,
-    });
-    this.shockwaves.push({
-      kind: 'circle',
-      x: cx,
-      y: cy,
-      radius: cellSize * 0.12,
-      maxRadius: cellSize * 0.95,
-      width: 5,
-      color: style.core,
-      alpha: 0.7,
-      life: 0.22,
-      age: 0,
-    });
 
-    for (let i = 0; i < 24; i++) {
+    // Shockwaves always visible (lightweight)
+    if (this.shockwaves.length < this.MAX_SHOCKWAVES) {
+      this.shockwaves.push({
+        kind: 'circle',
+        x: cx,
+        y: cy,
+        radius: cellSize * 0.2,
+        maxRadius: cellSize * 2.25,
+        width: 6,
+        color: style.ring,
+        alpha: 0.82,
+        life: 0.42,
+        age: 0,
+      });
+      this.shockwaves.push({
+        kind: 'circle',
+        x: cx,
+        y: cy,
+        radius: cellSize * 0.12,
+        maxRadius: cellSize * 0.95,
+        width: 5,
+        color: style.core,
+        alpha: 0.7,
+        life: 0.22,
+        age: 0,
+      });
+    }
+
+    // Performance: Skip particles on mobile
+    if (!this.game.particlesEnabled) return;
+    if (this.particles.length >= this.MAX_PARTICLES) return;
+
+    const particleCount = this.game.isMobile ? 0 : 24;
+    for (let i = 0; i < particleCount; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 70 + Math.random() * 135;
       const smoke = i % 3 !== 0;

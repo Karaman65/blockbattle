@@ -38,6 +38,11 @@ class Game {
     this.rng = null;
     this.seed = Date.now();
     this.blockSetIndex = 0;
+
+    // Performance: Mobile detection
+    this.isMobile = this.detectMobile();
+    this.particlesEnabled = !this.isMobile;
+
     this.renderer = new Renderer(this);
     this.input = new InputHandler(this);
     this.audio = new AudioManager();
@@ -51,6 +56,9 @@ class Game {
     this.rewardBombs = 0;
     this.pendingRoomJoinStarted = false;
 
+    // Performance: Opponent board hash cache
+    this._lastOpponentHash = 0;
+
     // Power-ups
     this.powerUps = {
       bomb: 1,
@@ -58,6 +66,20 @@ class Game {
       skip: 1
     };
     this.bombMode = false;
+  }
+
+  detectMobile() {
+    // Check user agent
+    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    const isMobileUA = mobileRegex.test(navigator.userAgent);
+
+    // Check screen size
+    const isMobileScreen = window.innerWidth <= 768;
+
+    // Check touch capability
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    return isMobileUA || (isMobileScreen && hasTouch);
   }
 
   async init() {
@@ -84,29 +106,68 @@ class Game {
     const roomCode = params.get('room');
     if (roomCode) this._pendingRoom = roomCode;
 
-    // Init auth â€” show loading, then route based on auth state
-    this.showScreen('loading-screen');
+    // Init auth â€" direkt ekrana geç (loading screen kaldırıldı)
     this.authManager.init((user) => {
-      if (user) {
-        this.highScore = (this.authManager.userData && this.authManager.userData.highScore) || 0;
-        let displayName = this.authManager.getUsername();
-        document.getElementById('menu-username').textContent = displayName;
-        
-        const savedTheme = localStorage.getItem('selectedTheme') || 'default';
-        this.setTheme(savedTheme);
-        this.unlockedLevel = this.getSavedUnlockedLevel();
-        this.updateCoinDisplays();
-        this.updatePlayerHeader();
-        if (!this.handlePendingRoomLink()) {
-          this.showScreen('menu-screen'); // Default to main menu after login
-          this.maybeShowTutorial();
-        }
+      if (user || this.isGuestSession()) {
+        this.enterMainMenuAfterAuth();
       } else {
         this.showScreen('login-screen');
       }
     });
 
     requestAnimationFrame((t) => this.gameLoop(t));
+  }
+
+  isGuestSession() {
+    return !!(this.authManager && this.authManager.isGuestSession && this.authManager.isGuestSession());
+  }
+
+  hasAccount() {
+    return !!(this.authManager && this.authManager.user);
+  }
+
+  enterMainMenuAfterAuth() {
+    this.highScore = (this.authManager.userData && this.authManager.userData.highScore) || 0;
+    const displayName = this.authManager.getUsername();
+    const menuName = document.getElementById('menu-username');
+    if (menuName) menuName.textContent = displayName;
+
+    const savedTheme = localStorage.getItem('selectedTheme') || 'default';
+    this.setTheme(savedTheme);
+    this.unlockedLevel = this.isGuestSession() ? 1 : this.getSavedUnlockedLevel();
+    this.updateCoinDisplays();
+    this.updatePlayerHeader();
+    if (!this.isGuestSession() && this.handlePendingRoomLink()) return;
+    this.showScreen('menu-screen');
+    this.maybeShowTutorial();
+  }
+
+  requireAccount(message = 'Bu bölüm için giriş yap veya hesap oluştur.') {
+    if (this.hasAccount()) return true;
+    this.openAccountRequiredModal(message);
+    return false;
+  }
+
+  openAccountRequiredModal(message) {
+    const modal = document.getElementById('account-required-modal');
+    const messageEl = document.getElementById('account-required-message');
+    if (messageEl) messageEl.textContent = message || 'Bu bölüm için giriş yap veya hesap oluştur.';
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  closeAccountRequiredModal() {
+    const modal = document.getElementById('account-required-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  goToLoginFromAccountPrompt() {
+    this.closeAccountRequiredModal();
+    this.authManager.clearGuestSession();
+    this.authManager.isGuest = false;
+    this.authManager.userData = null;
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.classList.add('hidden');
+    this.showScreen('login-screen');
   }
 
   handlePendingRoomLink() {
@@ -141,7 +202,7 @@ class Game {
     if (typeof app.getLaunchUrl === 'function') {
       app.getLaunchUrl().then(data => {
         if (data && data.url) handleUrl(data.url);
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     if (typeof app.addListener === 'function') {
@@ -164,11 +225,19 @@ class Game {
   }
 
   showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => {
-      if (!s.classList.contains('overlay')) s.classList.remove('active');
-    });
     const el = document.getElementById(id);
-    if (el) el.classList.add('active');
+    if (!el) return;
+
+    this.closeTransientOverlays();
+
+    el.classList.add('active');
+
+    document.querySelectorAll('.screen').forEach(s => {
+      if (!s.classList.contains('overlay') && s.id !== id) {
+        s.classList.remove('active');
+      }
+    });
+
     if (id === 'game-screen' && this.canvas) {
       requestAnimationFrame(() => this.resizeCanvas());
     }
@@ -184,7 +253,7 @@ class Game {
     const bottomNav = document.getElementById('bottom-nav');
     if (bottomNav) {
       const showNavScreens = ['menu-screen', 'store-screen', 'quests-screen', 'profile-screen', 'leaderboard-screen', 'map-screen'];
-      if (showNavScreens.includes(id) && this.authManager && this.authManager.user) {
+      if (showNavScreens.includes(id) && (this.hasAccount() || this.isGuestSession())) {
         bottomNav.classList.remove('hidden');
         // Update active state
         document.querySelectorAll('.nav-item').forEach(btn => {
@@ -196,21 +265,29 @@ class Game {
     }
   }
 
+  closeTransientOverlays() {
+    [
+      'main-menu-drawer',
+      'quick-shop-modal',
+      'password-reset-modal',
+      'account-required-modal',
+      'feedback-modal',
+      'settings-modal',
+      'tutorial-overlay',
+      'pause-overlay',
+    ].forEach((id) => {
+      const node = document.getElementById(id);
+      if (!node) return;
+      node.classList.add('hidden');
+      node.classList.remove('active');
+      if (node.hasAttribute('aria-hidden')) node.setAttribute('aria-hidden', 'true');
+    });
+  }
+
   updateBackButton(id) {
     const backBtn = document.getElementById('global-back');
     if (!backBtn) return;
-    const visibleScreens = [
-      'map-screen',
-      'quests-screen',
-      'store-screen',
-      'leaderboard-screen',
-      'profile-screen',
-      'online-screen',
-      'waiting-screen',
-      'register-screen',
-      'gameover-screen',
-    ];
-    backBtn.classList.toggle('hidden', !visibleScreens.includes(id));
+    backBtn.classList.add('hidden');
   }
 
   goBack() {
@@ -235,6 +312,24 @@ class Game {
       const quickShop = document.getElementById('quick-shop-modal');
       if (quickShop && !quickShop.classList.contains('hidden')) {
         this.closeQuickShop();
+        return;
+      }
+
+      const accountModal = document.getElementById('account-required-modal');
+      if (accountModal && !accountModal.classList.contains('hidden')) {
+        this.closeAccountRequiredModal();
+        return;
+      }
+
+      const feedbackModal = document.getElementById('feedback-modal');
+      if (feedbackModal && !feedbackModal.classList.contains('hidden')) {
+        this.closeFeedbackModal();
+        return;
+      }
+
+      const settingsModal = document.getElementById('settings-modal');
+      if (settingsModal && !settingsModal.classList.contains('hidden')) {
+        this.closeSettingsModal();
         return;
       }
 
@@ -302,8 +397,38 @@ class Game {
     }
     const passwordResetSend = document.getElementById('btn-password-reset-send');
     if (passwordResetSend) passwordResetSend.onclick = () => this.sendPasswordResetFromModal();
+    const accountRequiredClose = document.getElementById('account-required-close');
+    if (accountRequiredClose) accountRequiredClose.onclick = () => this.closeAccountRequiredModal();
+    const accountRequiredCancel = document.getElementById('account-required-cancel');
+    if (accountRequiredCancel) accountRequiredCancel.onclick = () => this.closeAccountRequiredModal();
+    const accountRequiredLogin = document.getElementById('account-required-login');
+    if (accountRequiredLogin) accountRequiredLogin.onclick = () => this.goToLoginFromAccountPrompt();
+    const accountRequiredModal = document.getElementById('account-required-modal');
+    if (accountRequiredModal) {
+      accountRequiredModal.onclick = (e) => {
+        if (e.target === accountRequiredModal) this.closeAccountRequiredModal();
+      };
+    }
+    const feedbackClose = document.getElementById('feedback-close');
+    if (feedbackClose) feedbackClose.onclick = () => this.closeFeedbackModal();
+    const feedbackModal = document.getElementById('feedback-modal');
+    if (feedbackModal) {
+      feedbackModal.onclick = (e) => {
+        if (e.target === feedbackModal) this.closeFeedbackModal();
+      };
+    }
+    const settingsClose = document.getElementById('settings-close');
+    if (settingsClose) settingsClose.onclick = () => this.closeSettingsModal();
+    const settingsModal = document.getElementById('settings-modal');
+    if (settingsModal) {
+      settingsModal.onclick = (e) => {
+        if (e.target === settingsModal) this.closeSettingsModal();
+      };
+    }
     const googleLogin = document.getElementById('btn-google-login');
     if (googleLogin) googleLogin.onclick = () => this.loginWithGoogle();
+    const guestLogin = document.getElementById('btn-guest-login');
+    if (guestLogin) guestLogin.onclick = () => this.loginAsGuest();
 
     document.getElementById('login-form').onsubmit = async (e) => {
       e.preventDefault();
@@ -334,6 +459,12 @@ class Game {
       document.getElementById('btn-register').textContent = 'KAYIT OL';
       if (!res.success) { errEl.textContent = res.error; errEl.classList.remove('hidden'); }
     };
+  }
+
+  loginAsGuest() {
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.classList.add('hidden');
+    this.authManager.startGuestSession(true);
   }
 
   openPasswordResetModal() {
@@ -410,6 +541,7 @@ class Game {
   setupUI() {
     const globalBack = document.getElementById('global-back');
     if (globalBack) globalBack.onclick = () => this.goBack();
+    this.setupGameMenu();
 
     document.getElementById('btn-solo').onclick = () => this.startEndlessGame();
     const themeToggle = document.getElementById('btn-theme-toggle');
@@ -424,18 +556,19 @@ class Game {
       btnOnline.onclick = null; // Clear previous
       btnOnline.addEventListener('click', () => {
         console.log('Online click triggered');
+        if (!this.requireAccount('Online maç için giriş yap veya ücretsiz hesap oluştur.')) return;
         // Immediate visual feedback
         btnOnline.style.opacity = '0.5';
-        
+
         try {
           // Switch screen first to ensure user sees progress
           this.showScreen('online-screen');
-          
+
           // Then attempt connection
           this.network.connect().catch(err => console.warn('Online connection pending:', err.message));
-          
+
           this.handlePendingRoomLink();
-          
+
           // Reset opacity if successful
           btnOnline.style.opacity = '1';
         } catch (err) {
@@ -451,18 +584,23 @@ class Game {
       this.audio.init();
       const on = this.audio.toggle();
       const soundBtn = document.getElementById('btn-sound-toggle');
-      soundBtn.textContent = on ? 'SES' : 'KAPALI';
+      this.setDrawerButtonMeta(soundBtn, on ? 'SES' : 'KAPALI');
       soundBtn.title = on ? 'Sesi kapat' : 'Sesi aç';
     };
     document.getElementById('btn-logout').onclick = async () => {
+      this.closeGameMenu();
       await this.authManager.logout();
     };
 
     // Leaderboard
-    document.getElementById('btn-leaderboard').onclick = () => this.showLeaderboard();
+    document.getElementById('btn-leaderboard').onclick = () => {
+      if (this.requireAccount('Sıralamayı görmek için giriş yap veya hesap oluştur.')) this.showLeaderboard();
+    };
 
     // Profile
-    document.getElementById('btn-profile').onclick = () => this.showProfile();
+    document.getElementById('btn-profile').onclick = () => {
+      if (this.requireAccount('Profil ve maç geçmişi için giriş yap veya hesap oluştur.')) this.showProfile();
+    };
 
     // Bottom Navigation Logic
     document.querySelectorAll('.nav-item').forEach(btn => {
@@ -470,6 +608,14 @@ class Game {
         const target = btn.dataset.target;
         if (target === 'store-screen') this.showStore();
         else if (target === 'map-screen') this.showScreen('map-screen');
+        else this.showScreen(target);
+      };
+    });
+
+    document.querySelectorAll('[data-back-target]').forEach(btn => {
+      btn.onclick = () => {
+        const target = btn.dataset.backTarget || 'menu-screen';
+        if (target === 'store-screen') this.showStore();
         else this.showScreen(target);
       };
     });
@@ -545,9 +691,13 @@ class Game {
     modeBtns.forEach(btn => {
       btn.onclick = () => { modeBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); this.onlineMode = btn.dataset.mode; };
     });
-    document.getElementById('btn-quick-match').onclick = () => this.network.quickMatch(this.onlineMode);
-    document.getElementById('btn-create-room').onclick = () => this.network.createRoom(this.onlineMode);
-    document.getElementById('btn-join-room').onclick = () => { const c = document.getElementById('room-code-input').value.trim(); if (c.length >= 4) this.network.joinRoom(c); };
+    document.getElementById('btn-quick-match').onclick = () => { if (this.requireAccount('Hızlı maç için giriş yap veya hesap oluştur.')) this.network.quickMatch(this.onlineMode); };
+    document.getElementById('btn-create-room').onclick = () => { if (this.requireAccount('Oda oluşturmak için giriş yap veya hesap oluştur.')) this.network.createRoom(this.onlineMode); };
+    document.getElementById('btn-join-room').onclick = () => {
+      if (!this.requireAccount('Odaya katılmak için giriş yap veya hesap oluştur.')) return;
+      const c = document.getElementById('room-code-input').value.trim();
+      if (c.length >= 4) this.network.joinRoom(c);
+    };
     document.getElementById('online-back').onclick = () => this.showScreen('menu-screen');
 
     // Waiting
@@ -595,7 +745,7 @@ class Game {
 
     // Game over
     document.getElementById('btn-play-again').onclick = () => {
-      this.mode === 'online' ? this.showScreen('online-screen') : (this.currentLevel ? this.startSoloGame(this.currentLevel.id) : this.startEndlessGame());
+      this.mode === 'online' ? this.showScreen('online-screen') : (this.currentLevel && !this.isGuestSession() ? this.startSoloGame(this.currentLevel.id) : this.startEndlessGame());
     };
     document.getElementById('btn-next-level').onclick = () => this.startNextLevel();
     document.getElementById('btn-reward-continue').onclick = () => this.continueAfterRewardAd();
@@ -605,6 +755,136 @@ class Game {
     if (btnSendFeedback) {
       btnSendFeedback.onclick = () => this.submitFeedback();
     }
+  }
+
+  setupGameMenu() {
+    const openBtn = document.getElementById('btn-open-game-menu');
+    const closeBtn = document.getElementById('btn-close-game-menu');
+    const backdrop = document.getElementById('game-menu-backdrop');
+    if (openBtn) openBtn.onclick = () => this.openGameMenu();
+    if (closeBtn) closeBtn.onclick = () => this.closeGameMenu();
+    if (backdrop) backdrop.onclick = () => this.closeGameMenu();
+
+    const go = (fn) => {
+      this.closeGameMenu();
+      fn();
+    };
+
+    const drawerStore = document.getElementById('drawer-store');
+    if (drawerStore) drawerStore.onclick = () => go(() => this.showStore());
+    const drawerMap = document.getElementById('drawer-map');
+    if (drawerMap) drawerMap.onclick = () => go(() => this.showScreen('map-screen'));
+    const drawerQuests = document.getElementById('drawer-quests');
+    if (drawerQuests) drawerQuests.onclick = () => go(() => this.showScreen('quests-screen'));
+    const drawerLeaderboard = document.getElementById('drawer-leaderboard');
+    if (drawerLeaderboard) {
+      drawerLeaderboard.onclick = () => go(() => {
+        if (this.requireAccount('Sıralamayı görmek için giriş yap veya hesap oluştur.')) this.showLeaderboard();
+      });
+    }
+    const drawerTutorial = document.getElementById('drawer-tutorial');
+    if (drawerTutorial) drawerTutorial.onclick = () => go(() => this.openTutorial());
+    const drawerFeedback = document.getElementById('drawer-feedback');
+    if (drawerFeedback) {
+      drawerFeedback.onclick = () => go(() => {
+        if (!this.requireAccount('Geri bildirim göndermek için giriş yap veya hesap oluştur.')) return;
+        this.openFeedbackModal();
+      });
+    }
+    const drawerSettings = document.getElementById('drawer-settings');
+    if (drawerSettings) drawerSettings.onclick = () => go(() => this.openSettingsModal());
+
+    const vibrationToggle = document.getElementById('btn-vibration-toggle');
+    if (vibrationToggle) vibrationToggle.onclick = () => this.toggleVibration();
+    this.updateVibrationButton();
+
+    const settingsTutorial = document.getElementById('settings-tutorial');
+    if (settingsTutorial) {
+      settingsTutorial.onclick = () => {
+        this.closeSettingsModal();
+        this.openTutorial();
+      };
+    }
+  }
+
+  openGameMenu() {
+    const drawer = document.getElementById('main-menu-drawer');
+    if (!drawer) return;
+    this.updatePlayerHeader();
+    document.body.classList.add('game-menu-open');
+    drawer.classList.remove('hidden');
+    drawer.setAttribute('aria-hidden', 'false');
+  }
+
+  closeGameMenu() {
+    const drawer = document.getElementById('main-menu-drawer');
+    if (!drawer) return;
+    document.body.classList.remove('game-menu-open');
+    drawer.classList.add('hidden');
+    drawer.setAttribute('aria-hidden', 'true');
+  }
+
+  setDrawerButtonMeta(button, text) {
+    if (!button) return;
+    const meta = button.querySelector('em');
+    if (meta) meta.textContent = text;
+    else button.textContent = text;
+  }
+
+  openTutorial() {
+    const overlay = document.getElementById('tutorial-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+    overlay.classList.add('active');
+  }
+
+  openFeedbackModal() {
+    const modal = document.getElementById('feedback-modal');
+    const status = document.getElementById('feedback-status');
+    const message = document.getElementById('feedback-message');
+    if (!modal) return;
+    if (status) {
+      status.textContent = '';
+      status.classList.remove('success');
+    }
+    if (message) message.value = '';
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+      if (message) message.focus();
+    }, 80);
+  }
+
+  closeFeedbackModal() {
+    const modal = document.getElementById('feedback-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  openSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+    this.updateVibrationButton();
+    modal.classList.remove('hidden');
+  }
+
+  closeSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  isVibrationEnabled() {
+    return localStorage.getItem('blockBattleVibration') !== '0';
+  }
+
+  updateVibrationButton() {
+    const btn = document.getElementById('btn-vibration-toggle');
+    this.setDrawerButtonMeta(btn, this.isVibrationEnabled() ? 'AÇIK' : 'KAPALI');
+  }
+
+  toggleVibration() {
+    const enabled = !this.isVibrationEnabled();
+    localStorage.setItem('blockBattleVibration', enabled ? '1' : '0');
+    this.updateVibrationButton();
+    if (enabled && navigator.vibrate) navigator.vibrate(30);
   }
 
   async submitFeedback() {
@@ -628,8 +908,12 @@ class Game {
     const result = await this.authManager.submitFeedback(typeEl ? typeEl.value : 'other', message);
     if (result && result.ok) {
       if (messageEl) messageEl.value = '';
-      if (statusEl) statusEl.textContent = 'Teşekkürler, mesajın alındı.';
+      if (statusEl) {
+        statusEl.textContent = 'Teşekkürler, mesajın alındı.';
+        statusEl.classList.add('success');
+      }
     } else if (statusEl) {
+      statusEl.classList.remove('success');
       if (result && result.reason === 'auth') {
         statusEl.textContent = 'Göndermek için giriş yapmalısın.';
       } else if (result && result.reason === 'permission-denied') {
@@ -717,6 +1001,14 @@ class Game {
 
   async recordCompletedGame(won = false) {
     this.updateQuestProgress(won);
+    if (this.isGuestSession()) {
+      const best = Math.max(parseInt(localStorage.getItem('blockBattleGuestHighScore') || '0', 10), this.score || 0);
+      localStorage.setItem('blockBattleGuestHighScore', String(best));
+      if (this.authManager.userData) this.authManager.userData.highScore = best;
+      this.highScore = best;
+      this.updatePlayerHeader();
+      return;
+    }
     if (!this.authManager.isLoggedIn()) return;
     try {
       await this.dbManager.updateHighScore(this.authManager.user.uid, this.score, this.authManager.getUsername(), false);
@@ -815,11 +1107,11 @@ class Game {
     if (!list || !summary) return;
     const groups = this.buildQuests();
     {
-      const labels = { daily: 'GUNLUK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
+      const labels = { daily: 'GÜNLÜK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
       const subtitles = {
-        daily: 'Bugun bitecek kisa gorevler.',
-        weekly: 'Daha uzun hedefler, daha guclu oduller.',
-        monthly: 'En zor gorevler ve en yuksek coin odulleri.',
+        daily: 'Bugün bitecek kısa görevler.',
+        weekly: 'Daha uzun hedefler, daha güçlü ödüller.',
+        monthly: 'En zor görevler ve en yüksek coin ödülleri.',
       };
       let activeType = this.activeQuestType || localStorage.getItem('activeQuestType') || 'daily';
       if (!groups[activeType]) activeType = 'daily';
@@ -843,8 +1135,11 @@ class Game {
       });
 
       summary.innerHTML = `
-        <h3>Gorev Merkezi</h3>
-        <p>${doneCount}/${totalCount} odul alindi. ${subtitles[activeType]}</p>
+        <div class="quest-summary-art" aria-hidden="true">
+          <span></span><span></span><span></span><em>♛</em>
+        </div>
+        <h3>Görev Merkezi</h3>
+        <p>${doneCount}/${totalCount} ödül alındı. ${subtitles[activeType]}</p>
         <div class="quest-tabs">
           ${Object.keys(groups).map(type => `
             <button class="quest-tab ${type === activeType ? 'active' : ''}" data-type="${type}">
@@ -874,6 +1169,7 @@ class Game {
         const row = document.createElement('div');
         row.className = `quest-card ${ready ? 'ready' : ''} ${isClaimed ? 'claimed' : ''}`;
         row.innerHTML = `
+          <div class="quest-icon" aria-hidden="true">${this.getQuestIcon(id)}</div>
           <div class="quest-main">
             <strong>${title}</strong>
             <span>${desc}</span>
@@ -956,19 +1252,28 @@ class Game {
       <p>${doneCount}/${totalCount} ödül alındı. Günlük görevler kolay, haftalıklar daha güçlü, aylık görevler en zor ve en yüksek ödüllü.</p>`;
   }
 
+  getQuestIcon(id) {
+    if (id.includes('score') || id.endsWith('1')) return '★';
+    if (id.includes('win') || id.endsWith('2')) return '▥';
+    if (id.includes('game') || id.endsWith('3')) return '⚔';
+    if (id.includes('coin') || id.endsWith('4')) return '♕';
+    return '✓';
+  }
+
   applyUiTheme(theme) {
     const selected = theme === 'light' ? 'light' : 'dark';
     document.documentElement.dataset.uiTheme = selected;
     localStorage.setItem('uiTheme', selected);
     const btn = document.getElementById('btn-theme-toggle');
     if (btn) {
-      btn.textContent = selected === 'light' ? 'DARK' : 'LIGHT';
+      this.setDrawerButtonMeta(btn, selected === 'light' ? 'DARK' : 'LIGHT');
       btn.title = selected === 'light' ? 'Koyu temaya geç' : 'Açık temaya geç';
     }
   }
 
   // â”€â”€ Leaderboard â”€â”€
   async showLeaderboard() {
+    if (!this.requireAccount('Sıralamayı görmek için giriş yap veya hesap oluştur.')) return;
     this.showScreen('leaderboard-screen');
     const list = document.getElementById('leaderboard-list');
     list.innerHTML = '<div class="leaderboard-loading"><div class="spinner-container"><div class="spinner spinner-sm"></div></div></div>';
@@ -1007,6 +1312,7 @@ class Game {
 
   // â”€â”€ Profile â”€â”€
   async showProfile() {
+    if (!this.requireAccount('Profil ve maç geçmişi için giriş yap veya hesap oluştur.')) return;
     this.showScreen('profile-screen');
     await this.authManager.loadUserData();
     const d = this.authManager.userData || {};
@@ -1121,6 +1427,7 @@ class Game {
   }
 
   async saveUnlockedLevel(level) {
+    if (this.isGuestSession()) return;
     const safeLevel = Math.max(1, Math.min(this.levels.length + 1, level));
     this.unlockedLevel = safeLevel;
     localStorage.setItem(this.getLevelProgressKey(), String(safeLevel));
@@ -1140,8 +1447,9 @@ class Game {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `level-card${isCompleted ? ' completed' : ''}${level.id === Math.min(this.unlockedLevel, this.levels.length) ? ' active' : ''}${!isUnlocked ? ' locked' : ''}`;
-      btn.disabled = !isUnlocked;
+      btn.disabled = !isUnlocked && !this.isGuestSession();
       btn.innerHTML = `
+        <span class="level-card-art" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
         <div class="level-card-top">
           <span class="level-number">${level.id}</span>
           <span class="level-state">${isCompleted ? 'OK' : isUnlocked ? 'PLAY' : 'LOCK'}</span>
@@ -1151,7 +1459,13 @@ class Game {
           <span class="level-target">${level.target} skor</span>
           <span class="level-difficulty">${level.difficulty}</span>
         </div>`;
-      btn.onclick = () => this.startSoloGame(level.id);
+      btn.onclick = () => {
+        if (this.isGuestSession()) {
+          this.requireAccount('Level modunu oynamak için giriş yap veya hesap oluştur.');
+          return;
+        }
+        this.startSoloGame(level.id);
+      };
       map.appendChild(btn);
     });
   }
@@ -1181,7 +1495,7 @@ class Game {
     this.state = 'gameover';
     this.audio.win();
     this.recordCompletedGame(true);
-    this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
+    if (this.hasAccount()) this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
     this.updatePlayerHeader();
     this.showGameOverScreen(true, `${this.currentLevel.id}. bölüm tamamlandı!`);
   }
@@ -1200,6 +1514,10 @@ class Game {
   resetGrid() { this.grid = []; for (let r = 0; r < this.GRID_SIZE; r++) this.grid.push(new Array(this.GRID_SIZE).fill(0)); }
 
   startSoloGame(levelId = 1) {
+    if (this.isGuestSession()) {
+      this.requireAccount('Level modunu oynamak için giriş yap veya hesap oluştur.');
+      return;
+    }
     this.audio.init(); this.audio.resume();
     const requestedLevel = this.levels.find(level => level.id === levelId) || this.levels[0];
     const highestPlayable = Math.min(this.unlockedLevel, this.levels.length);
@@ -1440,11 +1758,20 @@ class Game {
     cs = Math.max(cs, this.mode === 'online' ? 20 : 30);
     this.cellSize = cs;
     const gp = this.GRID_SIZE * cs;
-    this.canvas.width = gp + 12; this.canvas.height = gp + 12; this.gridOffset = { x: 6, y: 6 };
+
+    this.canvas.width = gp + 12;
+    this.canvas.height = gp + 12;
+    this.canvas.style.width = '';
+    this.canvas.style.height = '';
+    this.gridOffset = { x: 6, y: 6 };
+
     if (this.mode === 'online') {
       this.opponentCellSize = Math.max(Math.floor(cs * 0.4), 12);
       const op = this.GRID_SIZE * this.opponentCellSize;
-      this.opponentCanvas.width = op + 8; this.opponentCanvas.height = op + 8;
+      this.opponentCanvas.width = op + 8;
+      this.opponentCanvas.height = op + 8;
+      this.opponentCanvas.style.width = '';
+      this.opponentCanvas.style.height = '';
     }
   }
 
@@ -1452,6 +1779,17 @@ class Game {
   updateGhost(screenX, screenY, pieceIndex) {
     const piece = this.pieces[pieceIndex];
     if (!piece || piece.placed) { this.ghost = null; return; }
+
+    // Performance: Debounce ghost updates (skip if moved less than threshold)
+    if (this.input._lastGhostX && this.input._lastGhostY) {
+      const dx = screenX - this.input._lastGhostX;
+      const dy = screenY - this.input._lastGhostY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < 8) return; // 8px threshold
+    }
+    this.input._lastGhostX = screenX;
+    this.input._lastGhostY = screenY;
+
     const shape = piece.shape; const rows = shape.length; const cols = shape[0].length;
     const rect = this.canvas.getBoundingClientRect();
     const sx = this.canvas.width / rect.width; const sy = this.canvas.height / rect.height;
@@ -1591,8 +1929,8 @@ class Game {
     const tray = document.getElementById('piece-tray');
     if (tray) tray.classList.add('locked');
     const status = this.onlineMode === 'time'
-        ? 'Hamlen kalmadı. Süre bitince sonuç açıklanacak.'
-        : 'Hamlen kalmadı. Rakip de kilitlenirse veya 1000 puana ulaşılırsa maç bitecek.';
+      ? 'Hamlen kalmadı. Süre bitince sonuç açıklanacak.'
+      : 'Hamlen kalmadı. Rakip de kilitlenirse veya 1000 puana ulaşılırsa maç bitecek.';
     this.showCombo(status);
   }
 
@@ -1601,10 +1939,10 @@ class Game {
     this.state = 'gameover'; this.audio.gameOver();
     if (this.mode === 'online') this.network.sendGameOver();
     if (this.mode === 'online') this.recordOnlineMatchResult(false);
-    
+
     // Show interstitial ad
     this.ad.showInterstitial();
-    
+
     // Save to Firebase
     await this.recordCompletedGame(false);
     if (this.score > this.highScore) this.highScore = this.score;
@@ -1652,25 +1990,25 @@ class Game {
     this.stopOnlineTimer();
     this.state = 'gameover';
     const won = this.score > this.opponentScore; const tied = this.score === this.opponentScore;
-    if (won) { 
-      this.audio.win(); 
+    if (won) {
+      this.audio.win();
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
-      this.showGameOverScreen(true, `Kazandın! ${this.score} - ${this.opponentScore}`); 
+      this.showGameOverScreen(true, `Kazandın! ${this.score} - ${this.opponentScore}`);
     }
-    else if (tied) { 
+    else if (tied) {
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(null);
       this.authManager.addCoins(50).then(() => this.updateCoinDisplays());
-      this.showGameOverScreen(false, `Berabere! ${this.score} - ${this.opponentScore}`); 
+      this.showGameOverScreen(false, `Berabere! ${this.score} - ${this.opponentScore}`);
     }
-    else { 
-      this.audio.gameOver(); 
+    else {
+      this.audio.gameOver();
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(false);
       this.authManager.addCoins(25).then(() => this.updateCoinDisplays());
-      this.showGameOverScreen(false, `Kaybettin! ${this.score} - ${this.opponentScore}`); 
+      this.showGameOverScreen(false, `Kaybettin! ${this.score} - ${this.opponentScore}`);
     }
   }
 
@@ -1767,7 +2105,7 @@ class Game {
       ? `${this.score}/${this.currentLevel.target}`
       : this.mode === 'online' && this.onlineMode === 'score'
         ? `${this.score}/${this.targetScore}`
-      : this.score;
+        : this.score;
     document.getElementById('score-value').textContent = scoreText;
     this.updateLevelBadge();
   }
@@ -1790,14 +2128,28 @@ class Game {
   gameLoop(timestamp) {
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1); this.lastTime = timestamp;
     if (this.state === 'playing') {
-      this.renderer.updateParticles(dt);
+      // Performance: Particles sadece desktop'ta
+      if (this.particlesEnabled) {
+        this.renderer.updateParticles(dt);
+      }
+
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       this.renderer.drawGrid(this.ctx, this.grid, this.cellSize, this.gridOffset.x, this.gridOffset.y, this.ghost);
-      this.renderer.drawParticles(this.ctx);
-      if (this.mode === 'online' && this.opponentBoard) {
-        this.opponentCtx.clearRect(0, 0, this.opponentCanvas.width, this.opponentCanvas.height);
-        this.renderer.drawOpponentGrid(this.opponentCtx, this.opponentBoard, this.opponentCellSize, 4, 4);
+
+      if (this.particlesEnabled) {
+        this.renderer.drawParticles(this.ctx);
       }
+
+      // Performance: Opponent board hash ile karşılaştır (JSON.stringify yerine)
+      if (this.mode === 'online' && this.opponentBoard) {
+        const currentHash = this.hashBoard(this.opponentBoard);
+        if (this._lastOpponentHash !== currentHash) {
+          this.opponentCtx.clearRect(0, 0, this.opponentCanvas.width, this.opponentCanvas.height);
+          this.renderer.drawOpponentGrid(this.opponentCtx, this.opponentBoard, this.opponentCellSize, 4, 4);
+          this._lastOpponentHash = currentHash;
+        }
+      }
+
       if (this.mode === 'online' && this.onlineMode === 'time' && this.timerRemaining > 0) this.updateTimerDisplay();
       if (this.mode === 'online' && this.onlineMode === 'score' && this.score >= this.targetScore) {
         this.stopOnlineTimer();
@@ -1811,13 +2163,25 @@ class Game {
     requestAnimationFrame((t) => this.gameLoop(t));
   }
 
+  // Performance: Fast board hash function (JSON.stringify yerine)
+  hashBoard(board) {
+    let hash = 0;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        hash = ((hash << 5) - hash) + board[r][c];
+        hash = hash & hash; // Convert to 32bit integer
+      }
+    }
+    return hash;
+  }
+
   // â”€â”€ Power-ups Logic â”€â”€
   resetPowerUps() {
     const inv = this.authManager.getInventory();
-    this.powerUps = { 
-      bomb: inv.bomb || 0, 
-      rotate: inv.rotate || 0, 
-      skip: inv.skip || 0 
+    this.powerUps = {
+      bomb: inv.bomb || 0,
+      rotate: inv.rotate || 0,
+      skip: inv.skip || 0
     };
     this.bombMode = false;
     this.updatePowerUpUI();
@@ -1827,10 +2191,12 @@ class Game {
     const coins = this.authManager.getCoins();
     const menuCoins = document.getElementById('menu-coins');
     const storeCoins = document.getElementById('store-coins');
+    const drawerCoins = document.getElementById('drawer-coins');
     if (menuCoins) menuCoins.textContent = coins;
     if (storeCoins) storeCoins.textContent = coins;
+    if (drawerCoins) drawerCoins.textContent = coins.toLocaleString('tr-TR');
     this.updatePlayerHeader();
-    
+
     // Keep consumable shop buttons clickable so they can show feedback when coins are low.
     document.querySelectorAll('.btn-buy').forEach(btn => {
       const price = parseInt(btn.dataset.price);
@@ -1851,7 +2217,9 @@ class Game {
     const headerUsername = document.getElementById('header-username');
     const headerLevel = document.getElementById('header-level');
     const headerXp = document.getElementById('header-xp');
+    const drawerUsername = document.getElementById('drawer-username');
     if (headerUsername) headerUsername.textContent = username;
+    if (drawerUsername) drawerUsername.textContent = username;
     if (headerLevel) headerLevel.textContent = level;
     if (headerXp) headerXp.textContent = `${currentXp}/500`;
   }
@@ -1876,11 +2244,11 @@ class Game {
   updateStoreThemesUI() {
     const selected = localStorage.getItem('selectedTheme') || 'default';
     const owned = this.authManager.userData?.ownedThemes || ['default'];
-    
+
     document.querySelectorAll('#store-themes .btn-buy').forEach(btn => {
       const themeId = btn.dataset.id;
       const price = parseInt(btn.dataset.price);
-      
+
       if (themeId === selected) {
         btn.textContent = 'Seçildi';
         btn.disabled = true;
@@ -1923,6 +2291,7 @@ class Game {
       const category = btn.dataset.category;
       const cosmeticId = btn.dataset.id;
       const price = parseInt(btn.dataset.price || '0', 10);
+
       const selected = this.getSelectedCosmetic(category);
       const owned = ownedCosmetics[category] || ['classic'];
       const isOwned = owned.includes(cosmeticId) || price === 0;
@@ -1950,7 +2319,7 @@ class Game {
     const bombEl = document.getElementById('count-bomb');
     const rotateEl = document.getElementById('count-rotate');
     const skipEl = document.getElementById('count-skip');
-    
+
     if (bombEl) bombEl.textContent = this.powerUps.bomb;
     if (rotateEl) rotateEl.textContent = this.powerUps.rotate;
     if (skipEl) skipEl.textContent = this.powerUps.skip;
@@ -1961,7 +2330,7 @@ class Game {
     if (bombBtn) bombBtn.classList.toggle('empty', this.powerUps.bomb <= 0);
     if (rotateBtn) rotateBtn.classList.toggle('empty', this.powerUps.rotate <= 0);
     if (skipBtn) skipBtn.classList.toggle('empty', this.powerUps.skip <= 0);
-    
+
     if (this.bombMode) document.getElementById('btn-bomb').classList.add('active');
     else document.getElementById('btn-bomb').classList.remove('active');
   }
@@ -2054,7 +2423,7 @@ class Game {
     else this.authManager.decrementInventory('bomb');
     this.bombMode = false;
     this.renderer.addBombEffect(row, col, this.cellSize, this.gridOffset.x, this.gridOffset.y);
-    
+
     // Clear 3x3 area
     for (let r = row - 1; r <= row + 1; r++) {
       for (let c = col - 1; c <= col + 1; c++) {
@@ -2063,7 +2432,7 @@ class Game {
         }
       }
     }
-    
+
     this.audio.pickup(); // Or a bomb sound
     this.updatePowerUpUI();
     this.checkAndClearLines();
@@ -2073,11 +2442,11 @@ class Game {
     if (this.powerUps.rotate <= 0) return;
     this.powerUps.rotate--;
     this.authManager.decrementInventory('rotate');
-    
+
     this.pieces.forEach(p => {
       if (!p.placed) p.shape = rotateShape(p.shape);
     });
-    
+
     this.renderPieceTray();
     this.renderer.addPowerBurst('rotate');
     this.pulsePieceTray();
@@ -2089,7 +2458,7 @@ class Game {
     if (this.powerUps.skip <= 0) return;
     this.powerUps.skip--;
     this.authManager.decrementInventory('skip');
-    
+
     this.generatePieces();
     this.renderer.addPowerBurst('skip');
     this.pulsePieceTray();

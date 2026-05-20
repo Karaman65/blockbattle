@@ -15,6 +15,11 @@ class InputHandler {
     this.bombDragging = false;
     this.bombDragEl = null;
     this.suppressBombClick = false;
+
+    // Performance: Ghost preview debouncing
+    this._lastGhostX = 0;
+    this._lastGhostY = 0;
+    this._lastMoveTime = 0;
   }
 
   init() {
@@ -26,9 +31,12 @@ class InputHandler {
     window.addEventListener('mousemove', (e) => this._onMove(e));
     window.addEventListener('mouseup', (e) => this._onEnd(e));
 
+    // Performance: Throttled touch move
+    const throttledMove = this.throttle((e) => this._onMove(e), 16); // ~60fps
+
     // Touch events
     tray.addEventListener('touchstart', (e) => this._onStart(e), { passive: false });
-    window.addEventListener('touchmove', (e) => this._onMove(e), { passive: false });
+    window.addEventListener('touchmove', throttledMove, { passive: false });
     window.addEventListener('touchend', (e) => this._onEnd(e));
     window.addEventListener('touchcancel', (e) => this._onEnd(e));
 
@@ -43,9 +51,33 @@ class InputHandler {
     }
   }
 
+  // Performance: Throttle function
+  throttle(func, wait) {
+    let timeout = null;
+    let previous = 0;
+    return function (...args) {
+      const now = Date.now();
+      const remaining = wait - (now - previous);
+      if (remaining <= 0 || remaining > wait) {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
+        previous = now;
+        func.apply(this, args);
+      } else if (!timeout) {
+        timeout = setTimeout(() => {
+          previous = Date.now();
+          timeout = null;
+          func.apply(this, args);
+        }, remaining);
+      }
+    };
+  }
+
   _onCanvasClick(e) {
     if (!this.game.bombMode || this.game.state !== 'playing') return;
-    
+
     e.preventDefault();
     const cell = this._getCanvasCell(this._getPos(e));
     if (cell) this.game.useBombAt(cell.row, cell.col);
@@ -199,7 +231,7 @@ class InputHandler {
     const yOffset = 100;
     const centerX = startPos.x;
     const centerY = startPos.y - yOffset;
-    
+
     el.style.left = (centerX - w / 2) + 'px';
     el.style.top = (centerY - h / 2) + 'px';
 

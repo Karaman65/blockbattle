@@ -1,0 +1,159 @@
+/* ═══════════════════════════════════════════
+   BLOCK BATTLE — Mobile Performance CSS
+   ═══════════════════════════════════════════ */
+
+/* Performance: Mobilde tüm animasyonları kapat */
+@media (max-width: 768px) {
+
+    /* Animasyonları devre dışı bırak */
+    .auth-tile,
+    .auth-spark,
+    .menu-block,
+    .floating-block,
+    .auth-crest-outline,
+    #btn-premium-menu,
+    .level-card.pulse-active {
+        animation: none !important;
+    }
+
+    /* Transition'ları minimize et - sadece kritik olanları tut */
+    * {
+        transition: none !important;
+    }
+
+    /* Sadece piece slot'lar için minimal transition (oynanabilirlik için gerekli) */
+    .piece-slot {
+        transition: transform 0.1s ease, opacity 0.15s ease !important;
+    }
+
+    /* Button feedback için minimal transition */
+    .btn {
+        transition: transform 0.1s ease !important;
+    }
+
+    /* Box-shadow'ları kaldır (GPU intensive) */
+    * {
+        box-shadow: none !important;
+    }
+
+    /* Text-shadow'ları kaldır */
+    * {
+        text-shadow: none !important;
+    }
+
+    /* Filter effects'leri kaldır */
+    * {
+        filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    /* Gradient'ları basitleştir */
+    body {
+        background: var(--bg-primary) !important;
+    }
+}
+
+/* Performance: Desktop için will-change optimizasyonları */
+@media (min-width: 769px) {
+
+    /* Sürekli animasyonlu elementler */
+    .auth-tile,
+    .auth-spark,
+    .menu-block,
+    .floating-block {
+        will-change: transform;
+    }
+
+    /* Drag sırasında optimize edilecek elementler */
+    .piece-slot.dragging {
+        will-change: transform, opacity;
+    }
+
+    /* Hover'da değil, sadece active state'de */
+    .piece-slot:active {
+        will-change: transform;
+    }
+
+    /* Modal ve overlay'ler */
+    .screen.overlay,
+    .quick-shop-modal,
+    .game-menu-drawer {
+        will-change: opacity;
+    }
+
+    /* Animating elements */
+    .combo-popup.show {
+        will-change: transform, opacity;
+    }
+
+    /* Score pop animations */
+    .score-pop {
+        will-change: transform, opacity;
+    }
+}
+
+/* Performance: Box-shadow alternatifleri (pseudo-element glow) */
+@media (min-width: 769px) {
+    .piece-slot {
+        position: relative;
+    }
+
+    .piece-slot::after {
+        content: '';
+        position: absolute;
+        inset: -8px;
+        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    .piece-slot:hover::after {
+        opacity: 1;
+    }
+}
+
+/* Performance: GPU acceleration için 3D transforms */
+.piece-slot,
+.btn,
+.level-card,
+.nav-item {
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Performance: Reduce motion için accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Performance: Touch action optimizasyonları */
+.piece-slot,
+.btn,
+.level-card {
+    touch-action: manipulation;
+}
+
+#game-canvas,
+#opponent-canvas {
+    touch-action: none;
+}
+
+/* Performance: Contain layout shifts */
+.piece-slot,
+.level-card,
+.nav-item {
+    contain: layout style paint;
+}
+
+/* Performance: Canvas rendering hints */
+#game-canvas,
+#opponent-canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
