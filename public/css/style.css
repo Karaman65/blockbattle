@@ -4658,7 +4658,7 @@ body.ad-banner-visible #menu-screen {
 
 #menu-screen .menu-content {
   width: min(91vw, 920px) !important;
-  padding: 28px 24px calc(130px + env(safe-area-inset-bottom)) !important;
+  padding: 38px 24px calc(130px + env(safe-area-inset-bottom)) !important;
   max-width: 920px !important;
 }
 
@@ -4667,12 +4667,12 @@ body.ad-banner-visible #menu-screen {
 }
 
 #menu-screen .menu-header .logo {
-  line-height: 0.78 !important;
+  line-height: 0.95 !important;
   letter-spacing: -2px !important;
 }
 
 #menu-screen .menu-header .logo span {
-  font-size: clamp(4rem, 11.5vw, 7.7rem) !important;
+  font-size: clamp(3.8rem, 9vw, 6.5rem) !important;
   transform: scaleX(1.08);
 }
 
@@ -4745,6 +4745,54 @@ body.ad-banner-visible #menu-screen {
   font-size: clamp(1rem, 3vw, 1.3rem) !important;
   font-weight: 800;
   line-height: 1.4;
+}
+
+:root[data-ui-theme="light"] #menu-screen .cyber-header,
+:root[data-ui-theme="light"] #menu-screen #btn-solo,
+:root[data-ui-theme="light"] #menu-screen #btn-online,
+:root[data-ui-theme="light"] #menu-screen #btn-leaderboard {
+  color: #f4ead4 !important;
+}
+
+:root[data-ui-theme="light"] #menu-screen #btn-solo {
+  background:
+    radial-gradient(circle at 66% 42%, rgba(74,226,151,0.22), transparent 24%),
+    linear-gradient(135deg, rgba(6,75,55,0.86), rgba(5,20,21,0.98)) !important;
+  border-color: rgba(52, 226, 151, 0.45) !important;
+}
+
+:root[data-ui-theme="light"] #menu-screen #btn-online {
+  background:
+    radial-gradient(circle at 54% 25%, rgba(0,243,255,0.17), transparent 28%),
+    linear-gradient(145deg, rgba(7,73,65,0.84), rgba(4,18,20,0.98)) !important;
+  border-color: rgba(33, 206, 154, 0.45) !important;
+}
+
+:root[data-ui-theme="light"] #menu-screen #btn-leaderboard {
+  background:
+    radial-gradient(circle at 62% 28%, rgba(255,173,27,0.24), transparent 28%),
+    linear-gradient(145deg, rgba(62,35,10,0.82), rgba(10,12,12,0.98)) !important;
+  border-color: rgba(217,125,16,0.58) !important;
+}
+
+:root[data-ui-theme="light"] #menu-screen h2,
+:root[data-ui-theme="light"] #menu-screen .menu-header p,
+:root[data-ui-theme="light"] #menu-screen [style*="color: #fff"],
+:root[data-ui-theme="light"] #menu-screen [style*="color:#fff"] {
+  color: #f4ead4 !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+:root[data-ui-theme="light"] #menu-screen #btn-solo p,
+:root[data-ui-theme="light"] #menu-screen #btn-online p,
+:root[data-ui-theme="light"] #menu-screen #btn-leaderboard p {
+  color: rgba(231,233,226,0.72) !important;
+}
+
+:root[data-ui-theme="light"] #bottom-nav {
+  background: rgba(8,18,18,0.93) !important;
+  border-color: rgba(185,149,95,0.22) !important;
+  box-shadow: inset 0 0 28px rgba(255,255,255,0.035), 0 12px 34px rgba(0,0,0,0.42) !important;
 }
 
 #btn-solo div[style*="SINIRSIZ"] {
