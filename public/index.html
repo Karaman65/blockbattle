@@ -8,7 +8,7 @@
   <title>Block Battle — Online Block Puzzle</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=6.2">
+  <link rel="stylesheet" href="css/style.css?v=6.3">
   <link rel="stylesheet" href="css/mobile-performance.css?v=1.0">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#05050f">
@@ -20,7 +20,7 @@
 <body>
 
   <!-- ═══ AUTH: LOGIN SCREEN ═══ -->
-  <div id="login-screen" class="screen">
+  <div id="login-screen" class="screen active">
     <div class="auth-arena-bg" aria-hidden="true">
       <div class="auth-tile tile-a"></div>
       <div class="auth-tile tile-b"></div>
@@ -695,14 +695,14 @@
 
   <!-- ═══ ONLINE LOBBY SCREEN ═══ -->
   <div id="online-screen" class="screen">
-    <div class="panel glass-panel">
+    <div class="panel glass-panel online-arena-panel">
       <h2 class="panel-title">Online Arena</h2>
       <div class="mode-selector" style="display: flex; gap: 10px; margin-bottom: 20px;">
         <button class="mode-btn active" data-mode="score">Skor Yarışı</button>
         <button class="mode-btn" data-mode="time">Zamana Karşı</button>
       </div>
       <button id="btn-quick-match" class="btn btn-primary btn-large btn-full">⚡ HIZLI MAÇ</button>
-      <div style="margin: 15px 0; color: var(--text-muted); font-size: 0.8rem;">Oda kur veya koda katıl</div>
+      <div class="online-room-divider" style="margin: 15px 0; color: var(--text-muted); font-size: 0.8rem;">Oda kur veya koda katıl</div>
       <button id="btn-create-room" class="btn btn-secondary btn-full">🏠 ODA OLUŞTUR</button>
       <div id="room-info" style="margin-top: 15px;">
         <div class="input-group">
@@ -740,6 +740,14 @@
 
   <!-- ═══ GAME SCREEN ═══ -->
   <div id="game-screen" class="screen">
+    <div id="game-boot-overlay" class="game-boot-overlay hidden" aria-live="polite">
+      <div class="game-boot-mark" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <strong id="game-boot-title">Arena hazırlanıyor</strong>
+      <small id="game-boot-subtitle">Bloklar diziliyor...</small>
+    </div>
+
     <div id="game-header">
       <div class="header-left">
         <div class="stat-box" id="score-box">
@@ -871,22 +879,22 @@
   <!-- ═══ BOTTOM NAVIGATION BAR ═══ -->
   <button id="global-back" class="global-back hidden" type="button">← Geri</button>
 
-  <nav id="bottom-nav" class="bottom-nav">
+  <nav id="bottom-nav" class="bottom-nav hidden">
     <button class="nav-item active" data-target="menu-screen">
       <div class="nav-icon">⌂</div>
-      <span>ANA</span>
+      <span class="nav-label">ANA</span>
     </button>
     <button class="nav-item" data-target="map-screen">
       <div class="nav-icon">🗺️</div>
-      <span>LEVEL</span>
+      <span class="nav-label">LEVEL</span>
     </button>
     <button class="nav-item" data-target="quests-screen">
       <div class="nav-icon">📋</div>
-      <span>GÖREV</span>
+      <span class="nav-label">GÖREV</span>
     </button>
     <button class="nav-item" data-target="store-screen">
       <div class="nav-icon">🛒</div>
-      <span>MARKET</span>
+      <span class="nav-label">MARKET</span>
     </button>
   </nav>
 
@@ -911,7 +919,7 @@
   <script src="js/game.js?v=6.2"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=80').catch(() => { });
+      navigator.serviceWorker.register('/sw.js?v=89').catch(() => { });
     }
   </script>
 </body>
