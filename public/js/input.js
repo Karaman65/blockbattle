@@ -20,6 +20,10 @@ class InputHandler {
     this._lastGhostX = 0;
     this._lastGhostY = 0;
     this._lastMoveTime = 0;
+    this._lastDragTx = null;
+    this._lastDragTy = null;
+    this._lastBombTx = null;
+    this._lastBombTy = null;
   }
 
   init() {
@@ -120,6 +124,9 @@ class InputHandler {
 
     this.dragging = true;
     this.dragPieceIndex = idx;
+    this._lastGhostX = 0;
+    this._lastGhostY = 0;
+    this.game.clearGhost();
 
     const pos = this._getPos(e);
     this.currentX = pos.x;
@@ -161,8 +168,7 @@ class InputHandler {
       const w = shape[0].length * (dragCellSize + 2);
       const h = shape.length * (dragCellSize + 2);
 
-      this.dragEl.style.left = (centerX - w / 2) + 'px';
-      this.dragEl.style.top = (centerY - h / 2) + 'px';
+      this._setDragTransform(centerX - w / 2, centerY - h / 2);
     }
 
     this.game.updateGhost(centerX, centerY, this.dragPieceIndex);
@@ -195,6 +201,8 @@ class InputHandler {
     this.game.clearGhost();
     this.dragging = false;
     this.dragPieceIndex = -1;
+    this._lastGhostX = 0;
+    this._lastGhostY = 0;
   }
 
   _createDragElement(pieceIndex, startPos) {
@@ -232,11 +240,22 @@ class InputHandler {
     const centerX = startPos.x;
     const centerY = startPos.y - yOffset;
 
-    el.style.left = (centerX - w / 2) + 'px';
-    el.style.top = (centerY - h / 2) + 'px';
+    el.style.left = '0';
+    el.style.top = '0';
+    this._lastDragTx = centerX - w / 2;
+    this._lastDragTy = centerY - h / 2;
+    el.style.transform = `translate3d(${this._lastDragTx}px, ${this._lastDragTy}px, 0)`;
 
     document.body.appendChild(el);
     this.dragEl = el;
+  }
+
+  _setDragTransform(x, y) {
+    if (!this.dragEl) return;
+    if (this._lastDragTx !== null && Math.abs(x - this._lastDragTx) < 0.5 && Math.abs(y - this._lastDragTy) < 0.5) return;
+    this._lastDragTx = x;
+    this._lastDragTy = y;
+    this.dragEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }
 
   _onBombStart(e) {
@@ -258,8 +277,12 @@ class InputHandler {
     this.currentY = pos.y;
     this.lastEvent = { clientX: pos.x, clientY: pos.y };
     if (!this.bombDragEl) return;
-    this.bombDragEl.style.left = `${pos.x}px`;
-    this.bombDragEl.style.top = `${pos.y - 72}px`;
+    const x = pos.x;
+    const y = pos.y - 72;
+    if (this._lastBombTx !== null && Math.abs(x - this._lastBombTx) < 0.5 && Math.abs(y - this._lastBombTy) < 0.5) return;
+    this._lastBombTx = x;
+    this._lastBombTy = y;
+    this.bombDragEl.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
   }
 
   _endBombDrag(e) {
@@ -278,6 +301,8 @@ class InputHandler {
       this.bombDragEl = null;
     }
     this.bombDragging = false;
+    this._lastBombTx = null;
+    this._lastBombTy = null;
     this.suppressBombClick = true;
     setTimeout(() => { this.suppressBombClick = false; }, 250);
   }
@@ -287,6 +312,10 @@ class InputHandler {
     const el = document.createElement('div');
     el.className = 'drag-bomb';
     el.textContent = '💣';
+    el.style.left = '0';
+    el.style.top = '0';
+    this._lastBombTx = null;
+    this._lastBombTy = null;
     document.body.appendChild(el);
     this.bombDragEl = el;
     this._moveBombDrag(startPos);

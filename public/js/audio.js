@@ -6,6 +6,9 @@ class AudioManager {
   constructor() {
     this.ctx = null;
     this.enabled = true;
+    this.musicEnabled = false;
+    this.musicTimer = null;
+    this.musicStep = 0;
     this.initialized = false;
   }
 
@@ -31,8 +34,36 @@ class AudioManager {
     return this.enabled;
   }
 
+  setMusic(enabled) {
+    this.musicEnabled = enabled;
+    if (enabled) this.startMusic();
+    else this.stopMusic();
+  }
+
+  startMusic() {
+    if (!this.musicEnabled || !this.ctx || this.musicTimer) return;
+    const notes = [196, 246.94, 293.66, 246.94, 220, 261.63, 329.63, 261.63];
+    this.musicTimer = setInterval(() => {
+      if (!this.musicEnabled || !this.ctx) return;
+      const note = notes[this.musicStep % notes.length];
+      this._playRawTone(note, 0.32, 'triangle', 0.025);
+      if (this.musicStep % 2 === 0) this._playRawTone(note / 2, 0.42, 'sine', 0.018);
+      this.musicStep++;
+    }, 560);
+  }
+
+  stopMusic() {
+    if (this.musicTimer) clearInterval(this.musicTimer);
+    this.musicTimer = null;
+  }
+
   _playTone(freq, duration, type = 'sine', volume = 0.15, delay = 0) {
     if (!this.enabled || !this.ctx) return;
+    this._playRawTone(freq, duration, type, volume, delay);
+  }
+
+  _playRawTone(freq, duration, type = 'sine', volume = 0.15, delay = 0) {
+    if (!this.ctx) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = type;

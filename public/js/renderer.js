@@ -14,19 +14,25 @@ class Renderer {
 
     // Performance: Particle limits
     this.MAX_PARTICLES = this.game.isMobile ? 0 : 50;
-    this.MAX_FLASH_CELLS = 50;
-    this.MAX_SHOCKWAVES = 20;
+    this.MAX_FLASH_CELLS = this.game.isMobile ? 24 : 50;
+    this.MAX_SHOCKWAVES = this.game.isMobile ? 6 : 20;
   }
 
   drawGrid(ctx, grid, cellSize, offsetX, offsetY, ghost) {
     const G = 9;
     const totalSize = G * cellSize;
+    const boardImage = this.game.boardBackgroundImage;
+    const hasBoardImage = boardImage && boardImage.complete && boardImage.naturalWidth > 0;
 
     // Background
-    ctx.fillStyle = '#041814';
+    ctx.fillStyle = '#071226';
     ctx.beginPath();
     ctx.roundRect(offsetX - 4, offsetY - 4, totalSize + 8, totalSize + 8, 10);
     ctx.fill();
+
+    if (hasBoardImage) {
+      this.drawGridBackgroundImage(ctx, boardImage, offsetX, offsetY, totalSize);
+    }
 
     // Grid cells
     for (let r = 0; r < G; r++) {
@@ -37,7 +43,9 @@ class Renderer {
 
         // Cell background
         const is3x3 = (Math.floor(r / 3) + Math.floor(c / 3)) % 2 === 0;
-        ctx.fillStyle = is3x3 ? '#073528' : '#05241f';
+        ctx.fillStyle = hasBoardImage
+          ? (is3x3 ? 'rgba(16, 32, 58, 0.38)' : 'rgba(5, 14, 30, 0.34)')
+          : (is3x3 ? '#10203a' : '#0b172d');
         ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
 
         // Filled cell
@@ -69,23 +77,21 @@ class Renderer {
     for (const fc of this.flashCells) {
       const x = offsetX + fc.c * cellSize;
       const y = offsetY + fc.r * cellSize;
-      ctx.fillStyle = `rgba(255, 255, 255, ${fc.alpha})`;
+      ctx.fillStyle = `rgba(96, 255, 218, ${fc.alpha * 0.45})`;
       ctx.fillRect(x, y, cellSize, cellSize);
     }
 
-    // Grid lines
-    ctx.strokeStyle = 'rgba(90, 239, 171, 0.18)';
-    ctx.lineWidth = 1;
+    // Grid lines — Performance: tüm çizgileri tek path'te birleştir (20x daha az stroke() çağrısı)
+    ctx.strokeStyle = hasBoardImage ? 'rgba(96, 255, 218, 0.50)' : 'rgba(52, 211, 153, 0.18)';
+    ctx.lineWidth = hasBoardImage ? 1.35 : 1;
+    ctx.beginPath();
     for (let i = 0; i <= G; i++) {
-      ctx.beginPath();
       ctx.moveTo(offsetX + i * cellSize, offsetY);
       ctx.lineTo(offsetX + i * cellSize, offsetY + totalSize);
-      ctx.stroke();
-      ctx.beginPath();
       ctx.moveTo(offsetX, offsetY + i * cellSize);
       ctx.lineTo(offsetX + totalSize, offsetY + i * cellSize);
-      ctx.stroke();
     }
+    ctx.stroke(); // tek seferde çiz
 
     // Bomb Mode Overlay
     if (this.game.bombMode) {
@@ -93,6 +99,34 @@ class Renderer {
     }
 
     this.drawShockwaves(ctx);
+  }
+
+  drawGridBackgroundImage(ctx, image, offsetX, offsetY, totalSize) {
+    const imgRatio = image.naturalWidth / image.naturalHeight;
+    const boardRatio = 1;
+    let sw = image.naturalWidth;
+    let sh = image.naturalHeight;
+    let sx = 0;
+    let sy = 0;
+
+    if (imgRatio > boardRatio) {
+      sw = image.naturalHeight * boardRatio;
+      sx = (image.naturalWidth - sw) / 2;
+    } else {
+      sh = image.naturalWidth / boardRatio;
+      sy = (image.naturalHeight - sh) / 2;
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(offsetX, offsetY, totalSize, totalSize, 8);
+    ctx.clip();
+    ctx.globalAlpha = 0.72;
+    ctx.drawImage(image, sx, sy, sw, sh, offsetX, offsetY, totalSize, totalSize);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(2, 8, 20, 0.28)';
+    ctx.fillRect(offsetX, offsetY, totalSize, totalSize);
+    ctx.restore();
   }
 
   drawBombPreview(ctx, cellSize, offsetX, offsetY) {
@@ -133,32 +167,38 @@ class Renderer {
   }
 
   drawBlock(ctx, x, y, w, h, color) {
-    // Main color
+    // Ana renk her zaman
     ctx.fillStyle = color.base;
     ctx.fillRect(x, y, w, h);
 
-    // Performance: Cached gradient
-    const gradKey = `${color.base}-${h}`;
-    let grad = this.gradientCache.get(gradKey);
-    if (!grad) {
-      grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, color.light);
-      grad.addColorStop(0.4, color.base);
-      grad.addColorStop(1, color.dark);
-      this.gradientCache.set(gradKey, grad);
+    if (this.game.isMobile) {
+      // Performance: Mobile'da gradient + save/restore atlatılıyor (en büyük GPU tasarrufu)
+      // Sadece basit bir parlama efekti — görünüm neredeyse aynı
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.fillRect(x + 1, y + 1, w - 2, Math.floor(h * 0.38));
+    } else {
+      // Desktop: tam gradient (cache ile)
+      const gradKey = `${color.base}-${h}`;
+      let grad = this.gradientCache.get(gradKey);
+      if (!grad) {
+        grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, color.light);
+        grad.addColorStop(0.4, color.base);
+        grad.addColorStop(1, color.dark);
+        this.gradientCache.set(gradKey, grad);
+      }
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+
+      // İç parlama
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(x + 2, y + 2, w - 4, h * 0.35);
     }
 
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
-
-    // Inner shine
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.fillRect(x + 2, y + 2, w - 4, h * 0.35);
-
-    // Bottom shadow
+    // Alt gölge (mobile dahil, çok hafif)
     ctx.fillStyle = 'rgba(0,0,0,0.15)';
     ctx.fillRect(x, y + h - 3, w, 3);
   }
@@ -167,7 +207,7 @@ class Renderer {
     const G = 9;
     const totalSize = G * cellSize;
 
-    ctx.fillStyle = '#041814';
+    ctx.fillStyle = '#071226';
     ctx.beginPath();
     ctx.roundRect(offsetX - 2, offsetY - 2, totalSize + 4, totalSize + 4, 6);
     ctx.fill();
@@ -182,7 +222,7 @@ class Renderer {
           ctx.fillStyle = BLOCK_COLORS[(val - 1) % BLOCK_COLORS.length].base;
           ctx.fillRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
         } else {
-          ctx.fillStyle = '#05241f';
+          ctx.fillStyle = '#0b172d';
           ctx.fillRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
         }
       }
@@ -218,12 +258,14 @@ class Renderer {
 
   addFlashCells(cells) {
     for (const { r, c } of cells) {
-      this.flashCells.push({ r, c, alpha: 0.9, time: 0 });
+      if (this.flashCells.length >= this.MAX_FLASH_CELLS) break;
+      this.flashCells.push({ r, c, alpha: 0.58, time: 0 });
     }
   }
 
   addClearWave(rows, cols, cellSize, offsetX, offsetY) {
     for (const r of rows) {
+      if (this.shockwaves.length >= this.MAX_SHOCKWAVES) break;
       this.shockwaves.push({
         kind: 'line-h',
         x: offsetX + 4.5 * cellSize,
@@ -238,6 +280,7 @@ class Renderer {
       });
     }
     for (const c of cols) {
+      if (this.shockwaves.length >= this.MAX_SHOCKWAVES) break;
       this.shockwaves.push({
         kind: 'line-v',
         x: offsetX + (c + 0.5) * cellSize,
@@ -317,6 +360,7 @@ class Renderer {
     const canvasRect = canvas.getBoundingClientRect();
     const cx = trayRect.left - canvasRect.left + trayRect.width / 2;
     const cy = trayRect.top - canvasRect.top + trayRect.height / 2;
+    if (this.shockwaves.length >= this.MAX_SHOCKWAVES) return;
     this.shockwaves.push({
       kind: 'circle',
       x: cx,
@@ -351,7 +395,7 @@ class Renderer {
     for (let i = this.flashCells.length - 1; i >= 0; i--) {
       const fc = this.flashCells[i];
       fc.time += dt;
-      fc.alpha = Math.max(0, 0.9 - fc.time * 3);
+      fc.alpha = Math.max(0, 0.58 - fc.time * 5.8);
       if (fc.alpha <= 0) {
         this.flashCells.splice(i, 1);
       }

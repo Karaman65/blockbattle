@@ -1,10 +1,13 @@
-const CACHE_NAME = 'block-battle-v80';
+const CACHE_NAME = 'block-battle-v102';
 const ASSETS = [
   '/',
   '/index.html',
+  '/privacy.html',
   '/reset-password.html',
   '/delete-account.html',
   '/css/style.css',
+  '/css/mobile-performance.css',
+  '/css/figma-ui.css',
   '/js/firebase-config.js',
   '/js/blocks.js',
   '/js/audio.js',
@@ -48,7 +51,7 @@ self.addEventListener('fetch', (e) => {
   const isHtmlRequest = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
   if (isHtmlRequest) {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put('/index.html', copy)).catch(() => {});
@@ -59,8 +62,23 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  const url = new URL(req.url);
+  if (url.origin === self.location.origin && /\.(css|js)$/.test(url.pathname)) {
+    e.respondWith(
+      fetch(req, { cache: 'no-store' })
+        .then(response => {
+          if (!response || response.status !== 200 || response.type !== 'basic') return response;
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, copy)).catch(() => {});
+          return response;
+        })
+        .catch(() => caches.match(req, { ignoreSearch: true }))
+    );
+    return;
+  }
+
   e.respondWith(
-    caches.match(req).then(cached => {
+    caches.match(req, { ignoreSearch: true }).then(cached => {
       if (cached) return cached;
       return fetch(req).then(response => {
         if (!response || response.status !== 200 || response.type !== 'basic') return response;

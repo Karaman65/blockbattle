@@ -232,7 +232,10 @@ class AuthManager {
         }
       }
 
-      await auth.signInWithEmailAndPassword(email, password);
+      const cred = await auth.signInWithEmailAndPassword(email, password);
+      this.user = cred.user;
+      this.isGuest = false;
+      await this.ensureUserProfile(cred.user);
       return { success: true };
     } catch (err) {
       let msg = err.message;

@@ -1,159 +1,170 @@
-/* ═══════════════════════════════════════════
-   BLOCK BATTLE — Mobile Performance CSS
-   ═══════════════════════════════════════════ */
+/* BLOCK BATTLE - Mobile performance layer
+   Keep this file small and conservative. Gameplay logic, routes and ad layout
+   are controlled elsewhere. */
 
-/* Performance: Mobilde tüm animasyonları kapat */
 @media (max-width: 768px) {
+  .auth-tile,
+  .auth-spark,
+  .menu-block,
+  .floating-block,
+  .auth-crest-outline,
+  #btn-premium-menu,
+  .level-card.pulse-active,
+  .combo-popup.show,
+  .score-pop {
+    animation: none !important;
+  }
 
-    /* Animasyonları devre dışı bırak */
-    .auth-tile,
-    .auth-spark,
-    .menu-block,
-    .floating-block,
-    .auth-crest-outline,
-    #btn-premium-menu,
-    .level-card.pulse-active {
-        animation: none !important;
-    }
+  * {
+    transition: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 
-    /* Transition'ları minimize et - sadece kritik olanları tut */
-    * {
-        transition: none !important;
-    }
+  body {
+    background: var(--bg-primary) !important;
+  }
 
-    /* Sadece piece slot'lar için minimal transition (oynanabilirlik için gerekli) */
-    .piece-slot {
-        transition: transform 0.1s ease, opacity 0.15s ease !important;
-    }
+  .btn {
+    transition: transform 0.1s ease !important;
+  }
 
-    /* Button feedback için minimal transition */
-    .btn {
-        transition: transform 0.1s ease !important;
-    }
+  .piece-slot {
+    transition: transform 0.1s ease, opacity 0.15s ease !important;
+  }
 
-    /* Box-shadow'ları kaldır (GPU intensive) */
-    * {
-        box-shadow: none !important;
-    }
+  .piece-slot,
+  .btn,
+  .level-card,
+  .nav-item {
+    will-change: auto !important;
+  }
 
-    /* Text-shadow'ları kaldır */
-    * {
-        text-shadow: none !important;
-    }
-
-    /* Filter effects'leri kaldır */
-    * {
-        filter: none !important;
-        backdrop-filter: none !important;
-    }
-
-    /* Gradient'ları basitleştir */
-    body {
-        background: var(--bg-primary) !important;
-    }
+  .drag-piece,
+  .drag-bomb {
+    will-change: transform;
+    backface-visibility: hidden;
+  }
 }
 
-/* Performance: Desktop için will-change optimizasyonları */
 @media (min-width: 769px) {
+  .auth-tile,
+  .auth-spark,
+  .menu-block,
+  .floating-block {
+    will-change: transform;
+  }
 
-    /* Sürekli animasyonlu elementler */
-    .auth-tile,
-    .auth-spark,
-    .menu-block,
-    .floating-block {
-        will-change: transform;
-    }
+  .piece-slot.dragging,
+  .piece-slot:active,
+  .combo-popup.show,
+  .score-pop {
+    will-change: transform, opacity;
+  }
 
-    /* Drag sırasında optimize edilecek elementler */
-    .piece-slot.dragging {
-        will-change: transform, opacity;
-    }
+  .screen.overlay,
+  .quick-shop-modal,
+  .game-menu-drawer {
+    will-change: opacity;
+  }
 
-    /* Hover'da değil, sadece active state'de */
-    .piece-slot:active {
-        will-change: transform;
-    }
-
-    /* Modal ve overlay'ler */
-    .screen.overlay,
-    .quick-shop-modal,
-    .game-menu-drawer {
-        will-change: opacity;
-    }
-
-    /* Animating elements */
-    .combo-popup.show {
-        will-change: transform, opacity;
-    }
-
-    /* Score pop animations */
-    .score-pop {
-        will-change: transform, opacity;
-    }
-}
-
-/* Performance: Box-shadow alternatifleri (pseudo-element glow) */
-@media (min-width: 769px) {
-    .piece-slot {
-        position: relative;
-    }
-
-    .piece-slot::after {
-        content: '';
-        position: absolute;
-        inset: -8px;
-        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-        opacity: 0;
-        transition: opacity 0.2s;
-        pointer-events: none;
-        z-index: -1;
-    }
-
-    .piece-slot:hover::after {
-        opacity: 1;
-    }
-}
-
-/* Performance: GPU acceleration için 3D transforms */
-.piece-slot,
-.btn,
-.level-card,
-.nav-item {
+  .piece-slot,
+  .btn,
+  .level-card,
+  .nav-item {
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     -webkit-font-smoothing: antialiased;
+  }
+
+  .piece-slot {
+    position: relative;
+  }
+
+  .piece-slot::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    transition: opacity 0.2s;
+  }
+
+  .piece-slot:hover::after {
+    opacity: 1;
+  }
 }
 
-/* Performance: Reduce motion için accessibility */
 @media (prefers-reduced-motion: reduce) {
-    * {
-        animation: none !important;
-        transition: none !important;
-    }
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
-/* Performance: Touch action optimizasyonları */
 .piece-slot,
 .btn,
 .level-card {
-    touch-action: manipulation;
+  touch-action: manipulation;
 }
 
 #game-canvas,
 #opponent-canvas {
-    touch-action: none;
+  touch-action: none;
+  contain: layout style paint;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
-/* Performance: Contain layout shifts */
 .piece-slot,
 .level-card,
 .nav-item {
-    contain: layout style paint;
+  contain: layout style paint;
 }
 
-/* Performance: Canvas rendering hints */
-#game-canvas,
-#opponent-canvas {
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
+@media (max-width: 768px) {
+  #game-screen,
+  #game-screen .game-layout,
+  #game-screen .mobile-game-layout,
+  #game-screen #game-area,
+  #game-screen #power-ups,
+  #game-screen #piece-tray {
+    contain: layout paint;
+  }
+
+  #game-screen::before,
+  #game-screen::after,
+  #gameover-screen::before,
+  #gameover-screen::after,
+  #menu-screen .home-mode-card::before,
+  #menu-screen .home-mode-card::after {
+    display: none !important;
+  }
+
+  #game-screen .game-board,
+  #game-screen .power-up,
+  #game-screen .power-up-btn,
+  #game-screen .stat-box,
+  #game-screen .combo-display,
+  #game-screen .score-pop,
+  #quick-shop-modal .quick-shop-panel,
+  #pause-overlay .glass-panel,
+  #gameover-screen .gameover-panel,
+  #account-required-modal .account-required-panel {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  #game-screen .combo-display,
+  #game-screen .score-pop {
+    animation: none !important;
+  }
 }

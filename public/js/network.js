@@ -21,12 +21,19 @@ class NetworkManager {
     const actions = document.getElementById('room-share-actions');
     const title = document.getElementById('waiting-title');
     const subtitle = document.getElementById('waiting-subtitle');
+    const waitingScreen = document.getElementById('waiting-screen');
     const isQuick = type === 'quick';
     const isConnecting = type === 'connecting';
+    const isRoom = !isQuick && !isConnecting;
     const modeLabel = this.gameMode === 'time'
       ? 'Zamana Karşı: 90 saniye sonunda yüksek skor kazanır.'
       : 'Skor Yarışı: 1000 puana ilk ulaşan kazanır.';
 
+    if (waitingScreen) {
+      waitingScreen.classList.toggle('room-ready', isRoom);
+      waitingScreen.classList.toggle('waiting-quick', isQuick);
+      waitingScreen.classList.toggle('waiting-connecting', isConnecting);
+    }
     if (quickInfo) quickInfo.classList.toggle('hidden', !isQuick);
     if (roomCode) roomCode.classList.toggle('hidden', isQuick || isConnecting);
     if (actions) actions.classList.toggle('hidden', isQuick || isConnecting);
@@ -129,6 +136,7 @@ class NetworkManager {
 
     this.socket.on('opponent-update', (data) => {
       this.game.opponentBoard = data.board;
+      this.game.opponentBoardDirty = true;
       this.game.opponentScore = data.score;
       const el = document.getElementById('opponent-score-value');
       if (el) el.textContent = data.score;

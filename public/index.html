@@ -5,11 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
   <meta name="description" content="Block Battle - Online çok oyunculu blok bulmaca oyunu. Arkadaşlarınla yarış!">
-  <title>Block Battle — Online Block Puzzle</title>
+  <title>Block Battle — Online Blok Bulmaca</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=6.4">
-  <link rel="stylesheet" href="css/mobile-performance.css?v=1.0">
+  <link rel="stylesheet" href="css/style.css?v=7.1">
+  <link rel="stylesheet" href="css/mobile-performance.css?v=1.2">
+  <link rel="stylesheet" href="css/figma-ui.css?v=6.5">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#05050f">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -59,24 +60,39 @@
             autocomplete="current-password">
           <span class="auth-eye" aria-hidden="true">◉</span>
         </div>
+        <div class="auth-switch forgot-row">
+          <a href="#" id="forgot-password" class="auth-link">Şifremi unuttum?</a>
+        </div>
         <button type="submit" id="btn-login" class="btn btn-primary btn-large btn-full auth-login-btn">
           <span class="auth-login-badge" aria-hidden="true">♛</span>
-          <span>GİRİŞ YAP</span>
+          <span>Giriş Yap</span>
         </button>
       </form>
       <div class="auth-divider auth-divider-royal"><span>VEYA</span></div>
       <div class="social-auth-actions">
         <button type="button" id="btn-google-login" class="btn btn-secondary btn-large btn-full auth-google-btn">
-          <span class="google-mark" aria-hidden="true">G</span>
+          <span class="google-mark auth-provider-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M21 12.2c0-.72-.06-1.26-.18-1.82H12v3.45h5.18a4.42 4.42 0 0 1-1.92 2.9v2.24h3.1C20.1 17.32 21 14.9 21 12.2Z"></path>
+              <path d="M12 21c2.52 0 4.63-.79 6.17-2.14l-3.1-2.24c-.83.55-1.94.88-3.07.88-2.36 0-4.36-1.52-5.08-3.57H3.72v2.3A9.4 9.4 0 0 0 12 21Z"></path>
+              <path d="M6.92 13.93A5.4 5.4 0 0 1 6.63 12c0-.67.1-1.31.29-1.93v-2.3h-3.2A8.6 8.6 0 0 0 2.75 12c0 1.52.36 2.95.98 4.23l3.19-2.3Z"></path>
+              <path d="M12 6.5c1.37 0 2.3.56 2.83 1.04l2.4-2.24C15.75 3.95 13.62 3 12 3a9.4 9.4 0 0 0-8.28 5.23l3.2 2.3C7.64 8.02 9.64 6.5 12 6.5Z"></path>
+            </svg>
+          </span>
           <span>Google ile giriş</span>
         </button>
         <button type="button" id="btn-guest-login" class="btn btn-guest btn-large btn-full auth-guest-btn">
-          <span class="guest-mark" aria-hidden="true">🎮</span>
+          <span class="guest-mark auth-provider-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 12h4"></path>
+              <path d="M8 10v4"></path>
+              <path d="M15 13h.01"></path>
+              <path d="M18 11h.01"></path>
+              <path d="M17.32 6H6.68a4 4 0 0 0-3.95 3.34l-1.16 7A3 3 0 0 0 6.35 19L8 17h8l1.65 2a3 3 0 0 0 4.78-2.66l-1.16-7A4 4 0 0 0 17.32 6Z"></path>
+            </svg>
+          </span>
           <span>Misafir olarak oyna</span>
         </button>
-      </div>
-      <div class="auth-switch forgot-row">
-        <a href="#" id="forgot-password" class="auth-link">Şifremi unuttum</a>
       </div>
       <div class="auth-switch auth-create-row">
         Yeni misin? <a href="#" id="goto-register" class="auth-link">Hesap oluştur</a>
@@ -102,8 +118,21 @@
 
   <div id="account-required-modal" class="quick-shop-modal hidden">
     <div class="quick-shop-panel account-required-panel">
-      <button id="account-required-close" class="quick-shop-close">×</button>
-      <div class="quick-shop-title">Hesap Gerekli</div>
+      <button id="account-required-close" class="quick-shop-close" aria-label="Kapat">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 6 6 18"></path>
+          <path d="m6 6 12 12"></path>
+        </svg>
+      </button>
+      <div class="account-required-icon" aria-hidden="true">
+        <div>
+          <svg viewBox="0 0 24 24">
+            <rect x="4" y="11" width="16" height="9" rx="2"></rect>
+            <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="quick-shop-title">Hesap<br>Gerekli</div>
       <p id="account-required-message" class="account-required-copy">Bu bölüm için giriş yap veya hesap oluştur.</p>
       <div class="account-required-actions">
         <button id="account-required-login" class="btn btn-primary btn-large btn-full">Giriş yap</button>
@@ -143,7 +172,13 @@
           <input type="password" id="reg-password" class="input-field auth-input" placeholder="En az 6 karakter"
             required minlength="6" autocomplete="new-password">
         </div>
-        <button type="submit" id="btn-register" class="btn btn-accent btn-large btn-full">🚀 KAYIT OL</button>
+        <button type="submit" id="btn-register" class="btn btn-accent btn-large btn-full">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+          <span>KAYIT OL</span>
+        </button>
       </form>
       <div class="auth-switch">
         Zaten hesabın var mı? <a href="#" id="goto-login" class="auth-link">GİRİŞ YAP</a>
@@ -221,110 +256,210 @@
       </aside>
     </div>
 
-    <!-- Top Header Bar -->
-    <div class="cyber-header">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <button id="btn-open-game-menu" class="hamburger-menu-btn" type="button" aria-label="Menüyü aç">
-          <span></span>
-          <span></span>
-          <span></span>
+    <div class="cyber-header figma-player-header">
+      <div class="figma-player-left">
+        <button id="btn-open-game-menu" class="figma-avatar-btn" type="button" aria-label="Menüyü aç">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
         </button>
-        <div
-          style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--neon-purple); padding: 2px; overflow: hidden;">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar"
-            style="width: 100%; height: 100%; border-radius: 50%;">
+        <div class="figma-player-copy">
+          <strong id="header-username">Oyuncu</strong>
+          <span>Level <b id="header-level">1</b></span>
         </div>
-        <span id="header-username"
-          style="font-size: 1.2rem; font-weight: 900; letter-spacing: 2px; font-style: italic; color: var(--neon-cyan);">Oyuncu</span>
       </div>
-      <div class="header-stats-capsule">
-        <div class="stat-item">
-          <span class="stat-label-mini">LVL</span>
-          <span class="stat-value-mini" id="header-level">1</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label-mini" style="color: var(--neon-cyan);" id="header-xp">0/500</span>
-          <span class="stat-value-mini">XP</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label-mini" id="menu-coins">500</span>
-          <span class="stat-value-mini">$</span>
-        </div>
+      <div class="figma-player-stats">
+        <span class="figma-stat coin-stat">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="8" cy="8" r="6"></circle>
+            <path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path>
+            <path d="M7 6h1v4"></path>
+            <path d="m16.71 13.88.7.71-2.82 2.82"></path>
+          </svg>
+          <b id="menu-coins">500</b>
+        </span>
+        <button id="btn-header-settings" class="figma-settings-btn" type="button" aria-label="Ayarlar">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
       </div>
     </div>
 
-    <div class="menu-content" style="padding: 30px 20px; max-width: 500px; margin: 0 auto;">
-      <div class="menu-header" style="text-align: center; margin-bottom: 30px;">
-        <h1 class="logo" style="display: flex; flex-direction: column; align-items: center; line-height: 0.9;">
-          <span style="font-size: 3.5rem; font-weight: 900; color: #fff; letter-spacing: 2px;">KONTROL</span>
-          <span
-            style="font-size: 3.5rem; font-weight: 900; background: linear-gradient(90deg, #9d00ff, #00f3ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 2px;">MERKEZİ</span>
-        </h1>
-        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 15px;">Sisteme hoş geldin, <span
-            id="menu-username">operatör</span>. Hedefini seç.</p>
-      </div>
-
-      <div class="menu-grid" style="display: flex; flex-direction: column; gap: 20px;">
-        <!-- SONSUZ OYNA -->
-        <button id="btn-solo" class="card-btn cyber-card"
-          style="padding: 0; height: 200px; overflow: hidden; border: 1px solid rgba(0, 243, 255, 0.18); background: linear-gradient(135deg, rgba(30,30,60,0.8), rgba(10,10,26,1));">
-          <div class="menu-card-cubes" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-          <div
-            style="position: absolute; right: 20%; top: -20%; width: 180px; height: 180px; background: rgba(157, 0, 255, 0.16); border-radius: 50%; filter: blur(40px);">
-          </div>
-          <div
-            style="position: absolute; right: 20px; top: 20px; width: 60px; height: 60px; background: rgba(0, 243, 255, 0.12); border: 2px solid rgba(0, 243, 255, 0.28); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--neon-cyan);">
-            ▶</div>
-          <div
-            style="position: relative; z-index: 1; padding: 40px 30px; display: flex; flex-direction: column; gap: 10px;">
-            <div
-              style="display: flex; align-items: center; gap: 8px; color: var(--neon-purple); font-size: 0.8rem; font-weight: 800; letter-spacing: 1px;">
-              <span>∞</span> SINIRSIZ
-            </div>
-            <h2 style="font-size: 2.2rem; font-weight: 900; color: #fff; letter-spacing: 1px;">SONSUZ</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af; margin-top: 4px;">Sınır yok, süre yok.<br>En iyi skoru sen
-              belirle.</p>
-          </div>
+    <div class="menu-content home-shell">
+      <section class="home-mode-grid" aria-label="Oyun modları">
+        <button id="btn-online" class="home-mode-card mode-battle" type="button">
+          <span class="mode-glow"></span>
+          <span class="mode-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline>
+              <line x1="13" x2="19" y1="19" y2="13"></line>
+              <line x1="16" x2="20" y1="16" y2="20"></line>
+              <line x1="19" x2="21" y1="21" y2="19"></line>
+              <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"></polyline>
+              <line x1="5" x2="9" y1="14" y2="18"></line>
+              <line x1="7" x2="4" y1="17" y2="20"></line>
+              <line x1="3" x2="5" y1="19" y2="21"></line>
+            </svg>
+          </span>
+          <span class="mode-title"><span>1v1</span><span>Savaş</span></span>
+          <span class="mode-copy">Online rekabet et</span>
         </button>
 
-        <!-- ONLINE & SIRALAMA -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          <button id="btn-online" class="card-btn cyber-card"
-            style="height: 180px; padding: 0; overflow: hidden; border: 1px solid rgba(0, 243, 255, 0.18); background: linear-gradient(135deg, rgba(20,40,60,0.8), rgba(5,5,15,1));">
-            <div class="menu-gamepad" aria-hidden="true">
-              <span class="pad-body"></span><span class="pad-cross"></span><span class="pad-stick"></span><span
-                class="pad-dot d1"></span><span class="pad-dot d2"></span><span class="pad-dot d3"></span>
-            </div>
-            <div style="position: absolute; inset: 0; opacity: 0.1;">
-            </div>
-            <div
-              style="position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; text-align: center; padding: 20px;">
-              <div
-                style="width: 60px; height: 60px; background: rgba(0, 243, 255, 0.12); border: 2px solid rgba(0, 243, 255, 0.28); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem;">
-                👥</div>
-              <h2 style="font-size: 1.2rem; font-weight: 900; color: #fff; line-height: 1.3;">Online<br>Oyna</h2>
-              <p style="font-size: 0.75rem; color: #9ca3af;">Gerçek oyuncularla<br>hemen oyna!</p>
-            </div>
-          </button>
+        <button id="btn-solo" class="home-mode-card mode-infinite" type="button">
+          <span class="mode-glow"></span>
+          <span class="mode-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8"></path>
+            </svg>
+          </span>
+          <span class="mode-title"><span>Sonsuz</span><span>Mod</span></span>
+          <span class="mode-copy">Sınırsız hayatta kal</span>
+        </button>
+      </section>
 
-          <button id="btn-leaderboard" class="card-btn cyber-card"
-            style="height: 180px; padding: 0; overflow: hidden; border: 1px solid rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(58, 35, 15, 0.6), rgba(20, 15, 10, 1));">
-            <div class="menu-podium" aria-hidden="true"><span></span><span></span><span></span><em>♛</em></div>
-            <div
-              style="position: absolute; top: 15px; right: 15px; background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: 900; color: #fbbf24;">
-              TOP 100</div>
-            <div
-              style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; padding: 20px;">
-              <div
-                style="width: 60px; height: 60px; background: rgba(245, 158, 11, 0.15); border: 2px solid rgba(245, 158, 11, 0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem;">
-                📊</div>
-              <h2 style="font-size: 1.2rem; font-weight: 900; color: #fff;">Sıralama</h2>
-              <p style="font-size: 0.75rem; color: #9ca3af;">En iyi oyuncular<br>arasında yerini al!</p>
-            </div>
-          </button>
+      <section class="home-card daily-reward-card" aria-label="Günlük ödül">
+        <div class="home-section-head">
+          <div>
+            <span class="home-kicker home-kicker-gift">Günlük Ödüller</span>
+            <h2>
+              <svg class="home-card-title-icon icon-pink" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="8" width="18" height="4" rx="1"></rect>
+                <path d="M12 8v13"></path>
+                <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path>
+                <path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path>
+              </svg>
+              <span>Günlük Ödüller</span>
+            </h2>
+          </div>
         </div>
+        <div id="daily-reward-track" class="reward-track">
+          <span class="claimed"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>100</span>
+          <span class="claimed"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>200</span>
+          <span class="active"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>300</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>400</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>500</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>600</span>
+          <span><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>700</span>
+        </div>
+      </section>
 
-      </div>
+      <section class="home-card level-progress-card" aria-label="Level ilerlemesi">
+        <div class="home-section-head">
+          <div>
+            <span class="home-kicker home-kicker-progress">Level İlerlemesi</span>
+            <h2>
+              <svg class="home-card-title-icon icon-emerald" viewBox="0 0 24 24" aria-hidden="true">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                <polyline points="16 7 22 7 22 13"></polyline>
+              </svg>
+              <span>Level İlerlemesi</span>
+            </h2>
+          </div>
+          <span class="home-level-pill">Level <b id="home-level">1</b></span>
+        </div>
+        <div class="home-progress-bar">
+          <span id="home-xp-bar" style="width: 0%;"></span>
+        </div>
+        <div class="home-progress-meta">
+          <span id="home-xp-current">0 XP</span>
+          <span id="home-xp-next">500 XP kaldı</span>
+        </div>
+      </section>
+
+      <section class="home-card quests-preview-card" aria-label="Görev önizleme">
+        <div class="home-section-head">
+          <div>
+            <span class="home-kicker home-kicker-tasks">Günlük Görevler</span>
+            <h2>
+              <svg class="home-card-title-icon icon-purple" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m3 17 2 2 4-4"></path>
+                <path d="m3 7 2 2 4-4"></path>
+                <path d="M13 6h8"></path>
+                <path d="M13 12h8"></path>
+                <path d="M13 18h8"></path>
+              </svg>
+              <span>Günlük Görevler</span>
+            </h2>
+          </div>
+          <div class="home-card-actions">
+            <span id="home-quest-count">0/0</span>
+            <button class="home-text-action" type="button" data-back-target="quests-screen">Tümünü Gör →</button>
+          </div>
+        </div>
+        <div id="home-quest-list" class="home-quest-list"></div>
+      </section>
+
+      <section class="home-card featured-power-card" aria-label="Öne çıkan güçlendirici">
+        <div class="home-section-head">
+          <div>
+            <span class="home-kicker home-kicker-power">Öne Çıkan Güç</span>
+            <h2>
+              <svg class="home-card-title-icon icon-amber" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path>
+              </svg>
+              <span>Öne Çıkan Güç</span>
+            </h2>
+          </div>
+          <svg class="featured-star" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path>
+          </svg>
+        </div>
+        <div class="featured-power-row">
+          <div class="featured-power-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 4.5 7.2v9.6L12 21l7.5-4.2V7.2L12 3Z"></path>
+              <path d="M4.8 7.4 12 11.5l7.2-4.1M12 11.5V21"></path>
+            </svg>
+          </div>
+          <div>
+            <strong>Kalkan Takviyesi</strong>
+            <span>Bloklarını 30 saniye koru</span>
+            <b><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>250</b>
+          </div>
+          <button type="button" data-back-target="store-screen" data-store-tab="items">Satın Al</button>
+        </div>
+      </section>
+
+      <section class="home-quick-access" aria-label="Hızlı erişim">
+        <h3>Hızlı Erişim</h3>
+        <button type="button" data-back-target="map-screen">
+          <svg class="quick-access-icon quick-access-levels" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="6"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+          </svg>
+          <span>Leveller</span>
+        </button>
+        <button type="button" data-back-target="store-screen" data-store-tab="currency">
+          <svg class="quick-access-icon quick-access-shop" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
+            <path d="M3 6h18"></path>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span>Market</span>
+        </button>
+        <button type="button" data-back-target="store-screen" data-store-tab="cosmetics">
+          <svg class="quick-access-icon quick-access-items" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+            <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+            <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" x2="12" y1="22.08" y2="12"></line>
+          </svg>
+          <span>Eşyalar</span>
+        </button>
+        <button id="btn-leaderboard" type="button">
+          <svg class="quick-access-icon quick-access-ranks" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path>
+            <path d="M5 21h14"></path>
+          </svg>
+          <span>Sıralama</span>
+        </button>
+      </section>
     </div>
   </div>
 
@@ -346,250 +481,477 @@
     </div>
   </div>
 
+  <div id="avatar-picker-modal" class="quick-shop-modal hidden">
+    <div class="quick-shop-panel avatar-picker-panel">
+      <button id="avatar-picker-close" class="quick-shop-close" type="button" aria-label="Avatar seçimini kapat">×</button>
+      <div class="quick-shop-title">Avatar Seç</div>
+      <p class="avatar-picker-help">Hazır avatarlardan birini seç veya kendi fotoğrafını ekle.</p>
+      <div id="avatar-picker-grid" class="avatar-picker-grid"></div>
+      <label class="avatar-upload-card" for="avatar-file-input">
+        <span>Telefondan Fotoğraf Ekle</span>
+        <small>PNG, JPG veya WEBP</small>
+      </label>
+      <input id="avatar-file-input" class="avatar-file-input" type="file" accept="image/*">
+      <div id="avatar-picker-status" class="avatar-picker-status"></div>
+    </div>
+  </div>
+
   <div id="settings-modal" class="quick-shop-modal hidden">
     <div class="quick-shop-panel settings-panel">
-      <button id="settings-close" class="quick-shop-close">×</button>
-      <div class="quick-shop-title">Ayarlar</div>
-      <div class="settings-list">
-        <button id="btn-theme-toggle" class="settings-row" type="button">
-          <span>☀</span>
-          <div><strong>Tema</strong><small>Açık / koyu görünüm</small></div>
-          <em>LIGHT</em>
-        </button>
-        <button id="btn-sound-toggle" class="settings-row" type="button">
-          <span>♪</span>
-          <div><strong>Ses</strong><small>Efekt seslerini aç veya kapat</small></div>
-          <em>SES</em>
-        </button>
-        <button id="btn-vibration-toggle" class="settings-row" type="button">
-          <span>≈</span>
-          <div><strong>Titreşim</strong><small>Mobil dokunsal geri bildirim</small></div>
-          <em>AÇIK</em>
-        </button>
-        <button id="settings-tutorial" class="settings-row" type="button">
-          <span>?</span>
-          <div><strong>Nasıl oynanır?</strong><small>Kuralları ve ipuçlarını göster</small></div>
-        </button>
-        <a class="settings-row" href="privacy.html">
-          <span>i</span>
-          <div><strong>Gizlilik politikası</strong><small>Veri ve gizlilik bilgileri</small></div>
-        </a>
-        <a class="settings-row" href="delete-account.html">
-          <span>!</span>
-          <div><strong>Hesabı sil</strong><small>Hesap silme talimatları</small></div>
-        </a>
-        <button id="btn-logout" class="settings-row danger" type="button">
-          <span>⎋</span>
-          <div><strong>Çıkış yap</strong><small>Bu oturumdan ayrıl</small></div>
-        </button>
+      <div class="settings-page-head">
+        <div>
+          <h2>Ayarlar</h2>
+          <p>Tercihlerini yönet</p>
+        </div>
+        <button id="settings-close" class="settings-back-btn" type="button" aria-label="Ayarları kapat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+      </div>
+
+      <div class="settings-scroll">
+        <section class="settings-section">
+          <h3>SES</h3>
+          <div class="settings-card">
+            <button id="btn-sound-toggle" class="settings-row toggle-row" type="button">
+              <span class="settings-icon green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span>
+              <div><strong>Ses Efektleri</strong><small>Oyun sesleri ve efektler</small></div>
+              <em>SES</em>
+            </button>
+            <button id="btn-music-toggle" class="settings-row toggle-row" type="button">
+              <span class="settings-icon purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><path d="M9 9 21 7"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></span>
+              <div><strong>Müzik</strong><small>Arka plan müziği</small></div>
+              <em>AÇIK</em>
+            </button>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>OYUN</h3>
+          <div class="settings-card">
+            <button id="btn-vibration-toggle" class="settings-row toggle-row" type="button">
+              <span class="settings-icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10H7z"></path><path d="M3 8v8"></path><path d="M21 8v8"></path><path d="M1 10v4"></path><path d="M23 10v4"></path></svg></span>
+              <div><strong>Titreşim</strong><small>Dokunsal geri bildirim</small></div>
+              <em>AÇIK</em>
+            </button>
+            <button id="btn-notifications-toggle" class="settings-row toggle-row" type="button">
+              <span class="settings-icon yellow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg></span>
+              <div><strong>Bildirimler</strong><small>Oyun uyarıları ve güncellemeler</small></div>
+              <em>AÇIK</em>
+            </button>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>TERCİHLER</h3>
+          <div class="settings-card single">
+            <button id="btn-theme-toggle" class="settings-row arrow-row" type="button">
+              <span class="settings-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg></span>
+              <div><strong>Tema</strong><small>Koyu neon</small></div>
+              <em>LIGHT</em>
+            </button>
+            <button class="settings-row arrow-row" type="button">
+              <span class="settings-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 0 20"></path><path d="M12 2a15.3 15.3 0 0 0 0 20"></path></svg></span>
+              <div><strong>Dil</strong><small>Türkçe</small></div>
+              <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></i>
+            </button>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>DESTEK & BİLGİ</h3>
+          <div class="settings-card">
+            <a class="settings-row arrow-row" href="privacy.html">
+              <span class="settings-icon green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+              <div><strong>Gizlilik Politikası</strong><small>Veri ve gizlilik bilgileri</small></div>
+              <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></i>
+            </a>
+            <a class="settings-row arrow-row" href="privacy.html">
+              <span class="settings-icon purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M8 13h8"></path><path d="M8 17h5"></path></svg></span>
+              <div><strong>Kullanım Şartları</strong><small>Kurallar ve koşullar</small></div>
+              <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></i>
+            </a>
+            <button id="settings-tutorial" class="settings-row arrow-row" type="button">
+              <span class="settings-icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 1 1 5.13 2.12c-.82.71-1.22 1.1-1.22 2.38"></path><path d="M12 17h.01"></path></svg></span>
+              <div><strong>Yardım</strong><small>Nasıl oynanır ve ipuçları</small></div>
+              <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></i>
+            </button>
+            <button id="settings-feedback" class="settings-row arrow-row" type="button">
+              <span class="settings-icon yellow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path></svg></span>
+              <div><strong>Destek</strong><small>Hata bildir veya öneri gönder</small></div>
+              <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></i>
+            </button>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>HESAP</h3>
+          <div class="settings-card single">
+            <a class="settings-row arrow-row" href="delete-account.html">
+              <span class="settings-icon green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
+              <div><strong>Hesap Ayarları</strong><small>Hesap silme seçenekleri</small></div>
+              <i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></i>
+            </a>
+          </div>
+        </section>
+
+        <button id="btn-logout" class="settings-logout-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg><span>Çıkış Yap</span></button>
+        <p class="settings-version">Block Battle v1.0.0</p>
       </div>
     </div>
   </div>
 
   <!-- ═══ STORE SCREEN ═══ -->
   <div id="store-screen" class="screen">
-    <div class="panel glass-panel store-panel"
-      style="background: var(--bg-primary); border: none; height: 100vh; width: 100vw; max-width: none; border-radius: 0; padding: 0;">
-      <div class="cyber-header screen-topbar store-topbar">
-        <button class="screen-back-btn" type="button" data-back-target="menu-screen"
-          aria-label="Ana sayfaya dön">←</button>
-        <div class="screen-title-wrap">
-          <span class="mini-crown" aria-hidden="true">♛</span>
-          <span class="screen-title-main">MAĞAZA</span>
+    <div class="shop-player-header">
+      <div class="figma-player-left">
+        <div class="figma-avatar-btn battle-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="3.4"></circle>
+            <path d="M5.8 20c.8-4.1 3-6.2 6.2-6.2s5.4 2.1 6.2 6.2"></path>
+          </svg>
         </div>
-        <div class="screen-balance-pill">
-          <span class="coin-mark" aria-hidden="true">C</span>
-          <span id="store-coins">500</span>
-          <span class="plus-mark" aria-hidden="true">+</span>
+        <div class="figma-player-copy">
+          <strong id="store-header-username">Oyuncu</strong>
+          <span>Level <b id="store-header-level">1</b></span>
         </div>
       </div>
-
-      <div class="cyber-scroll-area themed-scroll store-themed-scroll">
-        <div class="store-section">
-          <div class="section-header"
-            style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
-            <div class="section-titles">
-              <h3 class="section-title-cyber">GÜNÜN FIRSATLARI</h3>
-              <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Her gün yenilenen özel
-                paketler!</p>
-            </div>
-          </div>
-
-          <div class="store-grid-large" style="display: flex; flex-direction: column; gap: 20px;">
-            <!-- Savaş Paketi -->
-            <div class="shop-item-card cyber-card campaign-card" style="padding: 0;">
-              <div
-                style="height: 170px; background: radial-gradient(circle at 20% 20%, rgba(0,243,255,0.25), transparent 35%), #05050f; position: relative; overflow: hidden; padding: 22px; display: flex; align-items: center; justify-content: center;">
-                <span class="campaign-ribbon">FIRSAT</span>
-                <div class="store-pack-icons">
-                  <span>Bomb x2</span><span>Turn x3</span><span>Skip x2</span>
-                </div>
-              </div>
-              <div class="shop-item-details"
-                style="padding: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                  <span style="font-size: 1.1rem; font-weight: 800; color: #fff;">Savaş Paketi</span>
-                  <span style="font-size: 0.85rem; color: var(--text-secondary);">2 bomba, 3 döndürme, 2 pas geç</span>
-                  <span class="campaign-price"><s>1380 coin</s> <strong>1280 coin</strong></span>
-                </div>
-                <button class="btn btn-primary btn-buy" data-type="bundle" data-bomb="2" data-rotate="3" data-skip="2"
-                  data-price="1280">AL</button>
-              </div>
-            </div>
-
-            <div class="shop-item-card cyber-card campaign-card" style="padding: 0;">
-              <div
-                style="height: 150px; background: radial-gradient(circle at 78% 20%, rgba(255,204,0,0.22), transparent 34%), radial-gradient(circle at 15% 80%, rgba(0,255,136,0.16), transparent 32%), #05050f; position: relative; overflow: hidden; padding: 22px; display: flex; align-items: center; justify-content: center;">
-                <span class="campaign-ribbon">KAMPANYA</span>
-                <div class="store-pack-icons">
-                  <span>Bomb x1</span><span>Turn x5</span><span>Skip x3</span>
-                </div>
-              </div>
-              <div class="shop-item-details"
-                style="padding: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                  <span style="font-size: 1.1rem; font-weight: 800; color: #fff;">Strateji Paketi</span>
-                  <span style="font-size: 0.85rem; color: var(--text-secondary);">1 bomba, 5 döndürme, 3 pas geç</span>
-                  <span class="campaign-price"><s>1600 coin</s> <strong>1450 coin</strong></span>
-                </div>
-                <button class="btn btn-primary btn-buy" data-type="bundle" data-bomb="1" data-rotate="5" data-skip="3"
-                  data-price="1450">AL</button>
-              </div>
-            </div>
-
-            <div class="shop-item-card cyber-card campaign-card" style="padding: 0;">
-              <div
-                style="height: 150px; background: radial-gradient(circle at 25% 20%, rgba(255,0,122,0.2), transparent 34%), radial-gradient(circle at 82% 76%, rgba(0,243,255,0.18), transparent 34%), #05050f; position: relative; overflow: hidden; padding: 22px; display: flex; align-items: center; justify-content: center;">
-                <span class="campaign-ribbon">AVANTAJLI</span>
-                <div class="store-pack-icons">
-                  <span>Bomb x4</span><span>Turn x4</span><span>Skip x4</span>
-                </div>
-              </div>
-              <div class="shop-item-details"
-                style="padding: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                  <span style="font-size: 1.1rem; font-weight: 800; color: #fff;">Arena Paketi</span>
-                  <span style="font-size: 0.85rem; color: var(--text-secondary);">4 bomba, 4 döndürme, 4 pas geç</span>
-                  <span class="campaign-price"><s>2500 coin</s> <strong>2150 coin</strong></span>
-                </div>
-                <button class="btn btn-primary btn-buy" data-type="bundle" data-bomb="4" data-rotate="4" data-skip="4"
-                  data-price="2150">AL</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="store-section" style="margin-top: 34px;">
-          <h3 class="section-title-cyber">GÜÇLENDİRMELER</h3>
-          <div class="store-power-grid">
-            <div class="cyber-card power-shop-card power-bomb">
-              <div class="power-shop-icon">Bomb</div>
-              <strong>Bomba</strong>
-              <span>3x3 alanı temizler.</span>
-              <button class="btn btn-buy" data-type="bomb" data-price="280">280 coin</button>
-            </div>
-            <div class="cyber-card power-shop-card power-rotate">
-              <div class="power-shop-icon">Turn</div>
-              <strong>Döndür</strong>
-              <span>Elindeki parçaları çevirir.</span>
-              <button class="btn btn-buy" data-type="rotate" data-price="150">150 coin</button>
-            </div>
-            <div class="cyber-card power-shop-card power-skip">
-              <div class="power-shop-icon">Skip</div>
-              <strong>Pas Geç</strong>
-              <span>Zor parçaları yeniler.</span>
-              <button class="btn btn-buy" data-type="skip" data-price="220">220 coin</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="store-section" style="margin-top: 40px;">
-          <h3 class="section-title-cyber">BLOK GÖRÜNÜMLERİ</h3>
-          <div id="store-themes" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="cyber-card accent-cyan theme-card theme-matrix" style="padding: 20px; text-align: center;">
-              <div
-                style="width: 40px; height: 40px; background: var(--neon-cyan); margin: 0 auto 12px auto; transform: rotate(15deg);">
-              </div>
-              <span style="font-size: 0.9rem; font-weight: 800; color: #fff;">Matrix Blue</span>
-              <button class="btn btn-buy" data-type="theme" data-id="matrix" data-price="7200"
-                style="width: 100%; margin-top: 10px; font-size: 0.7rem;">7200 💰</button>
-            </div>
-            <div class="cyber-card accent-purple theme-card theme-nebula" style="padding: 20px; text-align: center;">
-              <div
-                style="width: 40px; height: 40px; background: var(--neon-purple); margin: 0 auto 12px auto; transform: rotate(-10deg);">
-              </div>
-              <span style="font-size: 0.9rem; font-weight: 800; color: #fff;">Nebula</span>
-              <button class="btn btn-buy" data-type="theme" data-id="nebula" data-price="1150"
-                style="width: 100%; margin-top: 10px; font-size: 0.7rem;">1150 💎</button>
-            </div>
-            <div class="cyber-card accent-pink theme-card theme-lava" style="padding: 20px; text-align: center;">
-              <div
-                style="width: 40px; height: 40px; background: #ff4757; margin: 0 auto 12px auto; transform: rotate(10deg); box-shadow: 0 0 16px rgba(255,71,87,0.45);">
-              </div>
-              <span style="font-size: 0.9rem; font-weight: 800; color: #fff;">Lava Core</span>
-              <button class="btn btn-buy" data-type="theme" data-id="lava" data-price="1800"
-                style="width: 100%; margin-top: 10px; font-size: 0.7rem;">1800 coin</button>
-            </div>
-            <div class="cyber-card accent-cyan theme-card theme-toxic" style="padding: 20px; text-align: center;">
-              <div
-                style="width: 40px; height: 40px; background: #00ff88; margin: 0 auto 12px auto; transform: rotate(-14deg); box-shadow: 0 0 16px rgba(0,255,136,0.45);">
-              </div>
-              <span style="font-size: 0.9rem; font-weight: 800; color: #fff;">Toxic Green</span>
-              <button class="btn btn-buy" data-type="theme" data-id="toxic" data-price="2450"
-                style="width: 100%; margin-top: 10px; font-size: 0.7rem;">2450 coin</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="store-section" style="margin-top: 40px;">
-          <h3 class="section-title-cyber">PATLAMA EFEKTLERİ</h3>
-          <div id="store-bomb-effects" class="cosmetic-grid">
-            <div class="cyber-card cosmetic-card">
-              <div class="cosmetic-preview classic"><span></span></div>
-              <strong>Klasik Patlama</strong>
-              <small>Sıcak ve sade patlama izi.</small>
-              <button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="classic"
-                data-price="0">Seç</button>
-            </div>
-            <div class="cyber-card cosmetic-card">
-              <div class="cosmetic-preview smoke"><span></span></div>
-              <strong>Kara Duman</strong>
-              <small>Daha koyu bomba hissi.</small>
-              <button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="smoke"
-                data-price="1000">1000 coin</button>
-            </div>
-            <div class="cyber-card cosmetic-card">
-              <div class="cosmetic-preview neon"><span></span></div>
-              <strong>Neon Şok</strong>
-              <small>Cyber arena parlaması.</small>
-              <button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="neon"
-                data-price="1450">1450 coin</button>
-            </div>
-            <div class="cyber-card cosmetic-card">
-              <div class="cosmetic-preview frost"><span></span></div>
-              <strong>Buz Kırığı</strong>
-              <small>Soğuk, cam gibi kırılım.</small>
-              <button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="frost"
-                data-price="1800">1800 coin</button>
-            </div>
-          </div>
-        </div>
+      <div class="figma-player-stats">
+        <span class="figma-stat coin-stat">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="8" cy="8" r="6"></circle>
+            <path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path>
+            <path d="M7 6h1v4"></path>
+            <path d="m16.71 13.88.7.71-2.82 2.82"></path>
+          </svg>
+          <b id="store-coins">500</b>
+        </span>
+        <button id="store-settings-shortcut" class="figma-settings-btn" type="button" aria-label="Ayarlar">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
       </div>
     </div>
+
+    <div class="cyber-scroll-area themed-scroll store-themed-scroll">
+      <div class="shop-title-block">
+        <h2>Market</h2>
+        <p>Coin, güçlendirici ve görünümleri kolayca bul</p>
+        <small id="iap-status">Google Play ödeme Android uygulamasında açılır.</small>
+      </div>
+
+      <section class="shop-hero-pack">
+        <span class="shop-best-value">EN İYİ DEĞER</span>
+        <div class="shop-hero-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path>
+            <path d="M5 21h14"></path>
+          </svg>
+        </div>
+        <div class="shop-hero-copy">
+          <h3>Premium Üyelik</h3>
+          <p>Reklamsız oyun, VIP rozet ve başlangıç coinleri</p>
+        </div>
+        <div class="shop-perk-grid">
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>Reklamsız oyun</span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>2.000 Coin</span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>VIP rozet</span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>Kalıcı erişim</span>
+        </div>
+        <div class="shop-hero-price">
+          <span><strong>₺99,99</strong></span>
+          <button class="btn btn-primary btn-buy" data-iap-product="blockbattle_premium_lifetime">Şimdi Al</button>
+        </div>
+      </section>
+
+      <nav class="shop-tabs" aria-label="Market kategorileri">
+        <button class="active" type="button" data-shop-tab="currency">Coin</button>
+        <button type="button" data-shop-tab="items">Güçler</button>
+        <button type="button" data-shop-tab="bundles">Setler</button>
+        <button type="button" data-shop-tab="cosmetics">Görünüm</button>
+      </nav>
+
+      <section class="shop-tab-panel active" data-shop-panel="currency">
+        <div class="shop-product-grid">
+          <article class="shop-product-card coin-card">
+            <div class="shop-product-art orange">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="8" cy="8" r="6"></circle>
+                <path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path>
+                <path d="M7 6h1v4"></path>
+                <path d="m16.71 13.88.7.71-2.82 2.82"></path>
+              </svg>
+            </div>
+            <h3>500</h3>
+            <p>Başlangıç coin paketi</p>
+            <button class="btn btn-buy" data-iap-product="blockbattle_coins_500">₺19,99</button>
+          </article>
+          <article class="shop-product-card coin-card">
+            <div class="shop-product-art orange">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="8" cy="8" r="6"></circle>
+                <path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path>
+                <path d="M7 6h1v4"></path>
+                <path d="m16.71 13.88.7.71-2.82 2.82"></path>
+              </svg>
+            </div>
+            <h3>1.500</h3>
+            <p>Orta coin paketi</p>
+            <button class="btn btn-buy" data-iap-product="blockbattle_coins_1500">₺49,99</button>
+          </article>
+          <article class="shop-product-card coin-card">
+            <div class="shop-product-art orange">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="8" cy="8" r="6"></circle>
+                <path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path>
+                <path d="M7 6h1v4"></path>
+                <path d="m16.71 13.88.7.71-2.82 2.82"></path>
+              </svg>
+            </div>
+            <h3>5.000</h3>
+            <p>En iyi coin değeri</p>
+            <button class="btn btn-buy" data-iap-product="blockbattle_coins_5000">₺129,99</button>
+          </article>
+          <article class="shop-product-card coin-card">
+            <div class="shop-product-art orange">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"></path>
+                <path d="M5 21h14"></path>
+              </svg>
+            </div>
+            <h3>Premium</h3>
+            <p>Reklamsız + 2.000 coin</p>
+            <button class="btn btn-buy" data-iap-product="blockbattle_premium_lifetime">₺99,99</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="shop-tab-panel" data-shop-panel="items">
+        <div class="shop-product-grid">
+          <article class="shop-product-card item-card">
+            <span class="rarity epic">epik</span>
+            <div class="shop-product-art purple">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3 4.5 7.2v9.6L12 21l7.5-4.2V7.2L12 3Z"></path>
+                <path d="M4.8 7.4 12 11.5l7.2-4.1M12 11.5V21"></path>
+              </svg>
+            </div>
+            <h3>Güç Bombası</h3>
+            <p>3x3 alanı temizler</p>
+            <div class="shop-card-foot"><span class="coin-price">280</span><button class="btn btn-buy" data-type="bomb" data-price="280">Al</button></div>
+          </article>
+          <article class="shop-product-card item-card">
+            <span class="rarity rare">nadir</span>
+            <div class="shop-product-art blue">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path>
+              </svg>
+            </div>
+            <h3>Döndür</h3>
+            <p>Elindeki parçaları çevirir</p>
+            <div class="shop-card-foot"><span class="coin-price">150</span><button class="btn btn-buy" data-type="rotate" data-price="150">Al</button></div>
+          </article>
+          <article class="shop-product-card item-card">
+            <span class="rarity legendary">efsanevi</span>
+            <div class="shop-product-art orange">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path>
+              </svg>
+            </div>
+            <h3>Pas Geç</h3>
+            <p>Yeni parça seti getirir</p>
+            <div class="shop-card-foot"><span class="coin-price">220</span><button class="btn btn-buy" data-type="skip" data-price="220">Al</button></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="shop-tab-panel" data-shop-panel="bundles">
+        <div class="shop-product-grid">
+          <article class="shop-product-card bundle-card">
+            <div class="shop-product-art gradient">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
+                <path d="M3 6h18"></path>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+            </div>
+            <h3>Başlangıç Paketi</h3>
+            <p>1 bomba, 2 döndür, 1 pas geç</p>
+            <div class="shop-card-foot"><span class="coin-price">600 <b>-25%</b></span><button class="btn btn-buy" data-type="bundle" data-bomb="1" data-rotate="2" data-skip="1" data-price="600">Al</button></div>
+          </article>
+          <article class="shop-product-card bundle-card">
+            <div class="shop-product-art gradient">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
+                <path d="M3 6h18"></path>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+            </div>
+            <h3>Pro Paket</h3>
+            <p>3 bomba, 3 döndür, 2 pas geç</p>
+            <div class="shop-card-foot"><span class="coin-price">1.250 <b>-28%</b></span><button class="btn btn-buy" data-type="bundle" data-bomb="3" data-rotate="3" data-skip="2" data-price="1250">Al</button></div>
+          </article>
+          <article class="shop-product-card bundle-card">
+            <div class="shop-product-art gradient">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
+                <path d="M3 6h18"></path>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+            </div>
+            <h3>Arena Paketi</h3>
+            <p>4 bomba, 4 döndür, 3 pas geç</p>
+            <div class="shop-card-foot"><span class="coin-price">1.700 <b>-29%</b></span><button class="btn btn-buy" data-type="bundle" data-bomb="4" data-rotate="4" data-skip="3" data-price="1700">Al</button></div>
+          </article>
+          <article class="shop-product-card bundle-card">
+            <div class="shop-product-art gradient">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
+                <path d="M3 6h18"></path>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+            </div>
+            <h3>Strateji Paketi</h3>
+            <p>1 bomba, 5 döndür, 2 pas geç</p>
+            <div class="shop-card-foot"><span class="coin-price">1.050 <b>-29%</b></span><button class="btn btn-buy" data-type="bundle" data-bomb="1" data-rotate="5" data-skip="2" data-price="1050">Al</button></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="shop-tab-panel" data-shop-panel="cosmetics">
+        <div id="store-themes" class="shop-product-grid">
+          <article class="shop-product-card theme-card">
+            <span class="rarity epic">epik</span>
+            <div class="shop-product-art purple">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.064 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.064a2 2 0 0 0-1.437 1.436l-1.582 6.135a.5.5 0 0 1-.962 0z"></path>
+              </svg>
+            </div>
+            <h3>Neon Kaplama</h3>
+            <p>Blok Kaplaması</p>
+            <div class="shop-card-foot"><span class="coin-price">800</span><button class="btn btn-buy" data-type="theme" data-id="nebula" data-price="800">Al</button></div>
+          </article>
+          <article class="shop-product-card theme-card">
+            <span class="rarity legendary">efsanevi</span>
+            <div class="shop-product-art orange">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.064 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.064a2 2 0 0 0-1.437 1.436l-1.582 6.135a.5.5 0 0 1-.962 0z"></path>
+              </svg>
+            </div>
+            <h3>Lav Kaplama</h3>
+            <p>Blok Kaplaması</p>
+            <div class="shop-card-foot"><span class="coin-price">950</span><button class="btn btn-buy" data-type="theme" data-id="lava" data-price="950">Al</button></div>
+          </article>
+          <article class="shop-product-card theme-card">
+            <div class="shop-product-art blue">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.064 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.064a2 2 0 0 0-1.437 1.436l-1.582 6.135a.5.5 0 0 1-.962 0z"></path>
+              </svg>
+            </div>
+            <h3>Matrix Mavisi</h3>
+            <p>Blok Kaplaması</p>
+            <div class="shop-card-foot"><span class="coin-price">1.100</span><button class="btn btn-buy" data-type="theme" data-id="matrix" data-price="1100">Al</button></div>
+          </article>
+          <article class="shop-product-card theme-card">
+            <div class="shop-product-art green">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.064 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.064a2 2 0 0 0-1.437 1.436l-1.582 6.135a.5.5 0 0 1-.962 0z"></path>
+              </svg>
+            </div>
+            <h3>Toksik Yeşil</h3>
+            <p>Blok Kaplaması</p>
+            <div class="shop-card-foot"><span class="coin-price">1.400</span><button class="btn btn-buy" data-type="theme" data-id="toxic" data-price="1400">Al</button></div>
+          </article>
+        </div>
+        <div id="store-bomb-effects" class="shop-product-grid shop-cosmetic-effects">
+          <article class="shop-product-card cosmetic-card">
+            <div class="shop-product-art orange">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8.5 14.5A2.5 2.5 0 1 0 5 18"></path>
+                <path d="M15.5 14.5A2.5 2.5 0 1 1 19 18"></path>
+                <path d="M12 2v4"></path>
+                <path d="m4.93 4.93 2.83 2.83"></path>
+                <path d="M2 12h4"></path>
+                <path d="m19.07 4.93-2.83 2.83"></path>
+                <path d="M22 12h-4"></path>
+                <path d="M8 22h8"></path>
+                <path d="M12 17v5"></path>
+              </svg>
+            </div>
+            <h3>Klasik Patlama</h3>
+            <p>Sıcak patlama izi</p>
+            <div class="shop-card-foot"><span class="coin-price free">Ücretsiz</span><button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="classic" data-price="0">Seç</button></div>
+          </article>
+          <article class="shop-product-card cosmetic-card">
+            <div class="shop-product-art slate">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 10h1a3 3 0 0 1 0 6h-1"></path>
+                <path d="M6 10H5a3 3 0 0 0 0 6h1"></path>
+                <path d="M8 7h8"></path>
+                <path d="M8 20h8"></path>
+                <path d="M8 7a5 5 0 0 0 0 10"></path>
+                <path d="M16 7a5 5 0 0 1 0 10"></path>
+              </svg>
+            </div>
+            <h3>Duman Patlaması</h3>
+            <p>Koyu bomba efekti</p>
+            <div class="shop-card-foot"><span class="coin-price">1.000</span><button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="smoke" data-price="1000">Al</button></div>
+          </article>
+          <article class="shop-product-card cosmetic-card">
+            <div class="shop-product-art cyan">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M13 2 3 14h8l-1 8 10-12h-8l1-8Z"></path>
+              </svg>
+            </div>
+            <h3>Neon Şok</h3>
+            <p>Elektrikli patlama izi</p>
+            <div class="shop-card-foot"><span class="coin-price">1.450</span><button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="neon" data-price="1450">Al</button></div>
+          </article>
+          <article class="shop-product-card cosmetic-card">
+            <div class="shop-product-art blue">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 2v20"></path>
+                <path d="m4.93 4.93 14.14 14.14"></path>
+                <path d="M2 12h20"></path>
+                <path d="m19.07 4.93-14.14 14.14"></path>
+              </svg>
+            </div>
+            <h3>Buz Kırığı</h3>
+            <p>Soğuk patlama izi</p>
+            <div class="shop-card-foot"><span class="coin-price">1.800</span><button class="btn btn-buy" data-type="cosmetic" data-category="bombEffect" data-id="frost" data-price="1800">Al</button></div>
+          </article>
+        </div>
+      </section>
+      </div>
   </div>
 
   <!-- ═══ MAP SCREEN ═══ -->
   <div id="map-screen" class="screen">
     <div class="panel glass-panel store-panel"
       style="background: var(--bg-primary); border: none; height: 100vh; width: 100vw; max-width: none; border-radius: 0; padding: 0;">
-      <div class="cyber-header screen-topbar map-topbar">
-        <button class="screen-back-btn" type="button" data-back-target="menu-screen"
-          aria-label="Ana sayfaya dön">←</button>
-        <div class="screen-avatar-chip">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar">
+      <div class="battle-player-header map-player-header">
+        <div class="figma-player-left">
+          <div class="figma-avatar-btn battle-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="8" r="3.4"></circle>
+              <path d="M5.8 20c.8-4.1 3-6.2 6.2-6.2s5.4 2.1 6.2 6.2"></path>
+            </svg>
+          </div>
+          <div class="figma-player-copy">
+            <strong id="map-header-username">Oyuncu</strong>
+            <span>Level <b id="map-header-level">1</b></span>
+          </div>
         </div>
-        <span class="screen-kicker">HARİTA</span>
-        <button class="screen-bell-btn" type="button" aria-label="Bildirimler">♧</button>
+        <div class="figma-player-stats">
+          <span class="figma-stat coin-stat">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="8" cy="8" r="6"></circle>
+              <path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path>
+              <path d="M7 6h1v4"></path>
+              <path d="m16.71 13.88.7.71-2.82 2.82"></path>
+            </svg>
+            <b id="map-coins">500</b>
+          </span>
+        </div>
       </div>
 
       <div class="cyber-scroll-area themed-scroll map-themed-scroll">
@@ -611,17 +973,29 @@
   <div id="quests-screen" class="screen">
     <div class="panel glass-panel store-panel"
       style="background: var(--bg-primary); border: none; height: 100vh; width: 100vw; max-width: none; border-radius: 0; padding: 0;">
-      <div class="cyber-header screen-topbar quests-topbar">
-        <button class="screen-back-btn" type="button" data-back-target="menu-screen"
-          aria-label="Ana sayfaya dön">←</button>
-        <span class="screen-title-main">GÖREVLER</span>
-        <div class="screen-xp-pill">
-          <span aria-hidden="true">★</span>
-          <span id="quests-xp">2.5K XP</span>
+      <div class="battle-player-header quests-player-header">
+        <div class="figma-player-left">
+          <div class="figma-avatar-btn battle-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="8" r="3.4"></circle>
+              <path d="M5.8 20c.8-4.1 3-6.2 6.2-6.2s5.4 2.1 6.2 6.2"></path>
+            </svg>
+          </div>
+          <div class="figma-player-copy">
+            <strong id="quests-header-username">Oyuncu</strong>
+            <span>Level <b id="quests-header-level">1</b></span>
+          </div>
+        </div>
+        <div class="figma-player-stats">
+          <span class="figma-stat coin-stat"><b id="quests-coins">500</b></span>
         </div>
       </div>
 
       <div class="cyber-scroll-area themed-scroll quests-themed-scroll">
+        <div class="quests-title-block">
+          <h2>Görevler</h2>
+          <p>Günlük, haftalık ve aylık hedefleri tamamla</p>
+        </div>
         <div id="quest-summary" class="quest-summary-card"></div>
         <div id="quests-list" class="quest-board"></div>
       </div>
@@ -630,87 +1004,214 @@
 
   <!-- ═══ LEADERBOARD SCREEN ═══ -->
   <div id="leaderboard-screen" class="screen">
-    <div class="panel glass-panel store-panel"
-      style="background: var(--bg-primary); border: none; height: 100vh; width: 100vw; max-width: none; border-radius: 0; padding: 0;">
-      <div class="cyber-header screen-topbar leaderboard-topbar">
-        <button class="screen-back-btn" type="button" data-back-target="menu-screen"
-          aria-label="Ana sayfaya dön">←</button>
-        <div class="screen-title-wrap">
-          <span class="leaderboard-cup" aria-hidden="true">♕</span>
-          <span class="screen-title-main">SIRALAMA</span>
+    <div class="leaderboard-player-header">
+      <div class="figma-player-left">
+        <div class="figma-avatar-btn battle-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="3.4"></circle>
+            <path d="M5.8 20c.8-4.1 3-6.2 6.2-6.2s5.4 2.1 6.2 6.2"></path>
+          </svg>
+        </div>
+        <div class="figma-player-copy">
+          <strong id="leaderboard-header-username">Oyuncu</strong>
+          <span>Level <b id="leaderboard-header-level">1</b></span>
         </div>
       </div>
-      <div class="cyber-scroll-area themed-scroll leaderboard-themed-scroll">
-        <div id="leaderboard-list" class="cyber-list"></div>
+      <div class="figma-player-stats">
+        <span class="figma-stat coin-stat"><b id="leaderboard-coins">500</b></span>
+        <button id="leaderboard-settings-shortcut" class="figma-settings-btn" type="button" aria-label="Ayarlar">⚙</button>
       </div>
+    </div>
+
+    <div class="cyber-scroll-area themed-scroll leaderboard-themed-scroll">
+      <div class="leaderboard-title-block">
+        <h2>Sıralama</h2>
+        <p>Diğer oyunculara göre yerini gör</p>
+      </div>
+      <div class="leaderboard-tabs">
+        <button class="active" type="button">Genel</button>
+      </div>
+      <div id="leaderboard-list" class="cyber-list"></div>
     </div>
   </div>
 
   <!-- ═══ PROFILE SCREEN ═══ -->
   <div id="profile-screen" class="screen">
-    <div class="panel glass-panel store-panel"
-      style="background: var(--bg-primary); border: none; height: 100vh; width: 100vw; max-width: none; border-radius: 0; padding: 0;">
-      <div class="cyber-header screen-topbar profile-topbar">
-        <button class="screen-back-btn" type="button" data-back-target="menu-screen"
-          aria-label="Ana sayfaya dön">←</button>
-        <div class="screen-title-wrap">
-          <span class="profile-title-icon" aria-hidden="true">♟</span>
-          <span class="screen-title-main">PROFİL</span>
+    <div class="profile-hero">
+      <button id="profile-settings-btn" class="profile-settings-btn" type="button" aria-label="Ayarlar">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </button>
+    </div>
+    <div class="cyber-scroll-area themed-scroll profile-themed-scroll">
+      <section class="profile-identity">
+        <button id="profile-avatar-button" class="profile-avatar-xl" type="button" aria-label="Avatar seç">
+          <svg viewBox="0 0 24 24">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </button>
+        <h2><span id="profile-username">BlockMaster</span> <b id="profile-premium-badge" class="hidden">VIP</b></h2>
+        <button id="profile-id-copy" class="profile-id-copy" type="button" aria-label="Oyuncu ID kopyala">
+          <span id="profile-email">ID: #BM789542</span>
+          <small>Kopyala</small>
+        </button>
+        <div class="profile-rank-line">
+          <span class="profile-rank-pill">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+              <path d="M4 22h16"></path>
+              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+              <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+              <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+            </svg>
+            <span id="profile-rank-label">0 Galibiyet</span>
+          </span>
+          <span id="profile-level-pill" class="profile-level-pill">Level 1</span>
         </div>
-      </div>
-      <div class="cyber-scroll-area themed-scroll profile-themed-scroll">
-        <h3 class="section-title-cyber">HESAP BİLGİLERİ</h3>
-        <div class="cyber-card profile-account-card">
-          <h2 id="profile-username" style="font-size: 1.5rem; font-weight: 900; color: #fff;">Oyuncu</h2>
-          <p id="profile-email" style="font-size: 0.8rem; color: var(--text-muted);"></p>
+        <button id="profile-logout-btn" class="profile-logout-action" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" x2="9" y1="12" y2="12"></line>
+          </svg>
+          <span>Çıkış Yap</span>
+        </button>
+      </section>
+
+      <section class="profile-card profile-level-card">
+        <div class="profile-card-head">
+          <h3>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+              <polyline points="16 7 22 7 22 13"></polyline>
+            </svg>
+            <span>Level İlerlemesi</span>
+          </h3>
+          <span id="profile-level-title">Level 1</span>
         </div>
-        <h3 class="section-title-cyber">MAÇ BİLGİLERİ</h3>
+        <div class="profile-progress-track">
+          <div id="profile-progress-fill" class="profile-progress-fill"></div>
+        </div>
+        <div class="profile-progress-meta">
+          <span id="profile-xp-current">0 XP</span>
+          <span id="profile-xp-next">Level 2 için 500 kaldı</span>
+        </div>
+      </section>
+
+      <section class="profile-card profile-career-card">
+        <h3>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 21h8"></path>
+            <path d="M12 17v4"></path>
+            <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"></path>
+            <path d="M7 6H4a3 3 0 0 0 3 3"></path>
+            <path d="M17 6h3a3 3 0 0 1-3 3"></path>
+          </svg>
+          <span>Kariyer İstatistikleri</span>
+        </h3>
         <div class="profile-stats-grid">
-          <div class="cyber-card" style="text-align: center;">
-            <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">EN YÜKSEK</span>
-            <span id="p-high-score" style="font-size: 1.2rem; font-weight: 900; color: var(--neon-cyan);">0</span>
-          </div>
-          <div class="cyber-card" style="text-align: center;">
-            <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">TOPLAM MAÇ</span>
-            <span id="p-total-games" style="font-size: 1.2rem; font-weight: 900; color: var(--neon-purple);">0</span>
-          </div>
-          <div class="cyber-card" style="text-align: center;">
-            <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">GALİBİYET</span>
-            <span id="p-total-wins" style="font-size: 1.2rem; font-weight: 900; color: var(--success);">0</span>
-          </div>
-          <div class="cyber-card" style="text-align: center;">
-            <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">BERABERE</span>
-            <span id="p-total-draws" style="font-size: 1.2rem; font-weight: 900; color: var(--warning);">0</span>
-          </div>
-          <div class="cyber-card" style="text-align: center;">
-            <span style="display: block; font-size: 0.7rem; color: var(--text-muted);">MAĞLUBİYET</span>
-            <span id="p-total-losses" style="font-size: 1.2rem; font-weight: 900; color: var(--danger);">0</span>
-          </div>
+          <div><strong id="p-total-games">487</strong><span>Toplam Maç</span></div>
+          <div><strong id="p-total-wins">326</strong><span>Galibiyet</span></div>
+          <div><strong id="p-total-losses">161</strong><span>Mağlubiyet</span></div>
+          <div><strong id="p-win-rate">67%</strong><span>Kazanma Oranı</span></div>
+          <div><strong id="p-high-score">0</strong><span>En İyi Skor</span></div>
+          <div><strong id="p-total-draws">0</strong><span>Beraberlik</span></div>
         </div>
-        <h3 class="section-title-cyber">MAÇ GEÇMİŞİ</h3>
+      </section>
+
+      <section class="profile-card profile-history-card">
+        <h3>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 6h13"></path>
+            <path d="M8 12h13"></path>
+            <path d="M8 18h13"></path>
+            <path d="M3 6h.01"></path>
+            <path d="M3 12h.01"></path>
+            <path d="M3 18h.01"></path>
+          </svg>
+          <span>Maç Geçmişi</span>
+        </h3>
         <div id="match-history" class="cyber-list"></div>
-      </div>
+      </section>
     </div>
   </div>
 
   <!-- ═══ ONLINE LOBBY SCREEN ═══ -->
   <div id="online-screen" class="screen">
-    <div class="panel glass-panel online-arena-panel">
-      <h2 class="panel-title">Online Arena</h2>
-      <div class="mode-selector" style="display: flex; gap: 10px; margin-bottom: 20px;">
-        <button class="mode-btn active" data-mode="score">Skor Yarışı</button>
-        <button class="mode-btn" data-mode="time">Zamana Karşı</button>
-      </div>
-      <button id="btn-quick-match" class="btn btn-primary btn-large btn-full">⚡ HIZLI MAÇ</button>
-      <div class="online-room-divider" style="margin: 15px 0; color: var(--text-muted); font-size: 0.8rem;">Oda kur veya koda katıl</div>
-      <button id="btn-create-room" class="btn btn-secondary btn-full">🏠 ODA OLUŞTUR</button>
-      <div id="room-info" style="margin-top: 15px;">
-        <div class="input-group">
-          <input type="text" id="room-code-input" class="input-field" placeholder="Oda Kodu">
-          <button id="btn-join-room" class="btn btn-accent" style="margin-top: 10px; width: 100%;">KATIL</button>
+    <div class="battle-player-header">
+      <div class="figma-player-left">
+        <div class="figma-avatar-btn battle-avatar" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="8" r="3.4"></circle>
+            <path d="M5.8 20c.8-4.1 3-6.2 6.2-6.2s5.4 2.1 6.2 6.2"></path>
+          </svg>
+        </div>
+        <div class="figma-player-copy">
+          <strong id="online-header-username">Oyuncu</strong>
+          <span>Level <b id="online-header-level">1</b></span>
         </div>
       </div>
-      <button id="online-back" class="btn btn-ghost" style="margin-top: 15px;">GERİ</button>
+      <div class="figma-player-stats">
+        <span class="figma-stat coin-stat">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="9" cy="9" r="4"></circle>
+            <circle cx="15" cy="15" r="4"></circle>
+            <path d="M8 9h2M14 15h2"></path>
+          </svg>
+          <b id="online-coins">500</b>
+        </span>
+      </div>
+    </div>
+
+    <div class="panel glass-panel online-arena-panel battle-screen-panel">
+      <div class="battle-title-block">
+        <h2>Online Savaş</h2>
+        <p>Rakiple eşleş veya oda koduyla arkadaşınla oyna</p>
+      </div>
+
+      <section class="battle-card battle-online-card">
+        <div class="battle-card-head">
+          <div class="battle-card-icon swords-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M7 17 17 7"></path>
+              <path d="M14 4h6v6"></path>
+              <path d="M17 17 7 7"></path>
+              <path d="M10 4H4v6"></path>
+              <circle cx="12" cy="12" r="3.2"></circle>
+            </svg>
+          </div>
+          <div>
+            <h3>1v1 Online Savaş</h3>
+            <p>Aynı tahtada daha yüksek skora ulaşmak için yarış</p>
+          </div>
+        </div>
+
+        <button id="btn-quick-match" class="btn btn-primary btn-large btn-full battle-primary-action">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"></path><path d="m13 19 6-6"></path><path d="m16 16 4 4"></path><path d="m19 21 2-2"></path><path d="M14.5 6.5 17 4l3 3-2.5 2.5"></path><path d="m5 19 4-4"></path><path d="m7 21-4-4"></path></svg><span>Hızlı Maç</span>
+        </button>
+        <div class="mode-selector battle-mode-selector">
+          <button class="mode-btn active" data-mode="score">1000 Puan</button>
+          <button class="mode-btn" data-mode="time">90 Saniye</button>
+        </div>
+      </section>
+
+      <section class="battle-card battle-room-card">
+        <h3>Özel Oda</h3>
+        <p class="online-room-divider">Oda oluştur veya kodla katıl</p>
+        <button id="btn-create-room" class="btn btn-secondary btn-full">Oda Oluştur</button>
+        <div id="room-info">
+          <div class="input-group">
+            <input type="text" id="room-code-input" class="input-field" placeholder="Oda Kodu">
+            <button id="btn-join-room" class="btn btn-accent">Odaya Katıl</button>
+          </div>
+        </div>
+      </section>
+
+      <button id="online-back" class="btn btn-ghost battle-hidden-back">Geri</button>
     </div>
   </div>
 
@@ -731,8 +1232,8 @@
           style="font-size: 1.5rem; font-weight: 900; letter-spacing: 4px; color: var(--neon-cyan);">----</div>
       </div>
       <div id="room-share-actions" style="display: flex; gap: 10px; margin-bottom: 20px;">
-        <button id="btn-copy-code" class="btn btn-secondary btn-small" style="flex: 1;">📋 KOPYALA</button>
-        <button id="btn-copy-link" class="btn btn-secondary btn-small" style="flex: 1;">🔗 LİNK</button>
+        <button id="btn-copy-code" class="btn btn-secondary btn-small" style="flex: 1;">KOPYALA</button>
+        <button id="btn-copy-link" class="btn btn-secondary btn-small" style="flex: 1;">LİNK</button>
       </div>
       <button id="waiting-back" class="btn btn-ghost">AYRIL</button>
     </div>
@@ -754,6 +1255,14 @@
           <span class="stat-label">SKOR</span>
           <span class="stat-value" id="score-value">0</span>
         </div>
+        <button id="btn-board-bg" class="board-bg-btn" type="button" aria-label="Izgara arka planı seç">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+            <circle cx="8.5" cy="10.5" r="1.5"></circle>
+            <path d="m21 15-5-5L5 21"></path>
+          </svg>
+        </button>
+        <input id="board-bg-input" class="board-bg-input" type="file" accept="image/*">
       </div>
       <div class="header-center">
         <div class="level-badge hidden" id="level-badge">
@@ -816,6 +1325,7 @@
         <div id="quick-shop-balance" class="quick-shop-balance">0 coin</div>
         <div id="quick-shop-items" class="quick-shop-items"></div>
         <div id="quick-shop-status" class="quick-shop-status"></div>
+        <div id="quick-shop-coin-panel" class="quick-shop-coin-panel hidden"></div>
       </div>
     </div>
   </div>
@@ -837,11 +1347,31 @@
       <div id="gameover-result" class="gameover-result hidden"></div>
       <div id="gameover-detail" class="gameover-detail hidden"></div>
       <div class="gameover-buttons">
-        <button id="btn-reward-continue" class="btn btn-accent btn-large hidden">Reklam izle, +1 bomba ile devam
-          et</button>
-        <button id="btn-next-level" class="btn btn-accent btn-large hidden">Sonraki Level</button>
-        <button id="btn-play-again" class="btn btn-primary btn-large">🔄 Tekrar Oyna</button>
-        <button id="btn-go-menu" class="btn btn-ghost">Ana Menü</button>
+        <button id="btn-reward-continue" class="btn btn-accent btn-large hidden">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m22 8-6 4 6 4V8Z"></path>
+            <rect x="2" y="6" width="14" height="12" rx="2"></rect>
+          </svg>
+          <span>Reklam izle, +1 bomba ile devam et</span>
+        </button>
+        <button id="btn-next-level" class="btn btn-accent btn-large hidden">Sonraki Bölüm</button>
+        <button id="btn-play-again" class="btn btn-primary btn-large">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+            <path d="M3 21v-5h5"></path>
+            <path d="M3 12a9 9 0 0 1 15.74-6.26L21 8"></path>
+            <path d="M21 3v5h-5"></path>
+          </svg>
+          <span>Tekrar Oyna</span>
+        </button>
+        <button id="btn-go-menu" class="btn btn-ghost">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m3 9 9-7 9 7"></path>
+            <path d="M9 22V12h6v10"></path>
+            <path d="M5 10v12h14V10"></path>
+          </svg>
+          <span>Ana Menü</span>
+        </button>
       </div>
     </div>
   </div>
@@ -849,9 +1379,29 @@
   <!-- ═══ PAUSE OVERLAY ═══ -->
   <div id="pause-overlay" class="screen overlay hidden">
     <div class="panel glass-panel">
+      <div class="pause-modal-icon" aria-hidden="true">
+        <div>
+          <svg viewBox="0 0 24 24">
+            <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+            <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+          </svg>
+        </div>
+      </div>
       <h2 id="pause-title" class="panel-title">Duraklatıldı</h2>
-      <button id="btn-resume" class="btn btn-primary">▶ Devam Et</button>
-      <button id="btn-quit" class="btn btn-ghost">🚪 Çık</button>
+      <button id="btn-resume" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <polygon points="6 3 20 12 6 21 6 3"></polygon>
+        </svg>
+        <span>DEVAM ET</span>
+      </button>
+      <button id="btn-quit" class="btn btn-ghost">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <path d="M16 17l5-5-5-5"></path>
+          <path d="M21 12H9"></path>
+        </svg>
+        <span>ÇIKIŞ</span>
+      </button>
     </div>
   </div>
 
@@ -881,20 +1431,59 @@
 
   <nav id="bottom-nav" class="bottom-nav hidden">
     <button class="nav-item active" data-target="menu-screen">
-      <div class="nav-icon">⌂</div>
-      <span class="nav-label">ANA</span>
+      <div class="nav-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path>
+          <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        </svg>
+      </div>
+      <span class="nav-label">Ana Sayfa</span>
     </button>
     <button class="nav-item" data-target="map-screen">
-      <div class="nav-icon">🗺️</div>
-      <span class="nav-label">LEVEL</span>
+      <div class="nav-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"></path>
+          <path d="M15 5.764v15"></path>
+          <path d="M9 3.236v15"></path>
+        </svg>
+      </div>
+      <span class="nav-label">Leveller</span>
+    </button>
+    <button class="nav-item" data-target="online-screen">
+      <div class="nav-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline>
+          <line x1="13" x2="19" y1="19" y2="13"></line>
+          <line x1="16" x2="20" y1="16" y2="20"></line>
+          <line x1="19" x2="21" y1="21" y2="19"></line>
+          <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"></polyline>
+          <line x1="5" x2="9" y1="14" y2="18"></line>
+          <line x1="7" x2="4" y1="17" y2="20"></line>
+          <line x1="3" x2="5" y1="19" y2="21"></line>
+        </svg>
+      </div>
+      <span class="nav-label">Savaş</span>
     </button>
     <button class="nav-item" data-target="quests-screen">
-      <div class="nav-icon">📋</div>
-      <span class="nav-label">GÖREV</span>
+      <div class="nav-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m3 17 2 2 4-4"></path>
+          <path d="m3 7 2 2 4-4"></path>
+          <path d="M13 6h8"></path>
+          <path d="M13 12h8"></path>
+          <path d="M13 18h8"></path>
+        </svg>
+      </div>
+      <span class="nav-label">Görevler</span>
     </button>
-    <button class="nav-item" data-target="store-screen">
-      <div class="nav-icon">🛒</div>
-      <span class="nav-label">MARKET</span>
+    <button class="nav-item" data-target="profile-screen">
+      <div class="nav-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+      <span class="nav-label">Profil</span>
     </button>
   </nav>
 
@@ -907,19 +1496,21 @@
   <script src="js/socket.io.min.js?v=5.0"></script>
 
   <!-- Game Scripts -->
+  <script src="capacitor.js"></script>
   <script src="js/firebase-config.js?v=5.0"></script>
   <script src="js/blocks.js?v=5.0"></script>
   <script src="js/audio.js?v=5.0"></script>
-  <script src="js/renderer.js?v=5.7"></script>
+  <script src="js/renderer.js?v=5.8"></script>
   <script src="js/input.js?v=5.0"></script>
   <script src="js/network.js?v=5.0"></script>
-  <script src="js/auth.js?v=6.2"></script>
+  <script src="js/auth.js?v=6.3"></script>
   <script src="js/db.js?v=5.0"></script>
-  <script src="js/ad.js?v=5.0"></script>
-  <script src="js/game.js?v=6.2"></script>
+  <script src="js/ad.js?v=5.3"></script>
+  <script src="js/iap.js?v=1.1"></script>
+  <script src="js/game.js?v=7.6"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=89').catch(() => { });
+      navigator.serviceWorker.register('/sw.js?v=102').catch(() => { });
     }
   </script>
 </body>

@@ -243,7 +243,7 @@ io.on('connection', (socket) => {
     if (isRateLimited(socket, 'join-room')) return;
     removeFromQueues(socket);
     if (!data || typeof data.roomId !== 'string' || data.roomId.trim().length < 4) {
-      socket.emit('error', { message: 'Gecersiz oda kodu.' });
+      socket.emit('error', { message: 'Geçersiz oda kodu.' });
       return;
     }
     const roomId = data.roomId.toUpperCase();
@@ -311,7 +311,7 @@ io.on('connection', (socket) => {
       if (!safeBoard) return;
       if (!validateScoreTransition(player.score, data.score, room.mode)) {
         console.warn(`Suspicious score from ${socket.id} in room ${room.id}`);
-        socket.emit('error', { message: 'Gecersiz skor guncellemesi algilandi.' });
+        socket.emit('error', { message: 'Geçersiz skor güncellemesi algılandı.' });
         return;
       }
       player.score = Math.trunc(Number(data.score));

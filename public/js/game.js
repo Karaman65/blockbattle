@@ -1,4 +1,4 @@
-﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  BLOCK BATTLE â€” Main Game Controller
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
@@ -25,6 +25,7 @@ class Game {
     this.opponentUsername = 'Rakip';
     this.onlineMatchRecorded = false;
     this.opponentCellSize = 18;
+    this.opponentBoardDirty = true;
     this.timerRemaining = 0;
     this.targetScore = 1000;
     this.onlineLocked = false;
@@ -46,20 +47,31 @@ class Game {
     this.renderer = new Renderer(this);
     this.input = new InputHandler(this);
     this.audio = new AudioManager();
+    this.audio.enabled = localStorage.getItem('blockBattleSound') !== '0';
     this.network = new NetworkManager(this);
     this.authManager = new AuthManager();
     this.dbManager = new DatabaseManager();
     this.ad = new AdManager();
+    this.iap = window.IapManager ? new IapManager(this) : null;
     this.lastTime = 0;
     this.nativeBackHandlerRegistered = false;
     this.rewardContinueUsed = false;
     this.rewardBombs = 0;
     this.pendingRoomJoinStarted = false;
+    this.gameBootTimer = null;
+    this._pendingCoins = 0;
+    this._rafId = null;
+    this.currentScreenId = 'login-screen';
+    this.screenHistory = [];
+    this.lastExitBackAt = 0;
+    this.dailyRewards = [100, 200, 300, 400, 500, 600, 700];
+    this.avatarPresets = this.createAvatarPresets();
+    this.boardBackgroundImage = null;
+    this.boardBackgroundSrc = localStorage.getItem('blockBattleBoardBackground') || '';
 
-    // Performance: Opponent board hash cache
-    this._lastOpponentHash = 0;
-
-    // Power-ups
+    // Performance: dirty rendering flags
+    this.renderDirty = true;
+    this._lastTimerDisplay = '';
     this.powerUps = {
       bomb: 1,
       rotate: 2,
@@ -90,16 +102,20 @@ class Game {
     this.input.init();
     this.setupAuthUI();
     this.setupUI();
+    if (this.iap) this.iap.init();
     this.setupNativeBackButton();
     this.setupDeepLinks();
     this.applyUiTheme(localStorage.getItem('uiTheme') || 'dark');
 
     // Initialize Ads
     await this.ad.init();
-    this.ad.showBanner();
 
     window.addEventListener('resize', () => {
-      if (this.state === 'playing') this.resizeCanvas();
+      if (this.state === 'playing') {
+        this.resizeCanvas();
+        this.markRenderDirty();
+        this.opponentBoardDirty = true;
+      }
     });
 
     const params = new URLSearchParams(window.location.search);
@@ -111,11 +127,17 @@ class Game {
       if (user || this.isGuestSession()) {
         this.enterMainMenuAfterAuth();
       } else {
+        this.updateAdBannerState();
         this.showScreen('login-screen');
       }
     });
 
-    requestAnimationFrame((t) => this.gameLoop(t));
+    this.startGameLoop();
+  }
+
+  startGameLoop() {
+    if (this._rafId) return; // zaten çalışıyor
+    this._rafId = requestAnimationFrame((t) => this.gameLoop(t));
   }
 
   isGuestSession() {
@@ -137,9 +159,30 @@ class Game {
     this.unlockedLevel = this.isGuestSession() ? 1 : this.getSavedUnlockedLevel();
     this.updateCoinDisplays();
     this.updatePlayerHeader();
+    this.renderDailyReward();
+    this.renderHomeQuestPreview();
+    if (this.iap) this.iap.updateProductLabels();
     if (!this.isGuestSession() && this.handlePendingRoomLink()) return;
-    this.showScreen('menu-screen');
+    this.screenHistory = [];
+    this.showScreen('menu-screen', { skipHistory: true });
+    this.updateAdBannerState();
     this.maybeShowTutorial();
+  }
+
+  async updateAdBannerState() {
+    const isPremium = !!(this.authManager && this.authManager.isPremium && this.authManager.isPremium());
+    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    const shouldShowBanner = isNative && !isPremium && (this.hasAccount() || this.isGuestSession());
+    document.body.classList.toggle('premium-no-ads', isPremium);
+    document.body.classList.toggle('ad-banner-visible', shouldShowBanner);
+
+    if (!this.ad) return;
+    if (!shouldShowBanner) {
+      await this.ad.hideBanner();
+      return;
+    }
+
+    await this.ad.showBanner();
   }
 
   requireAccount(message = 'Bu bölüm için giriş yap veya hesap oluştur.') {
@@ -160,6 +203,21 @@ class Game {
     if (modal) modal.classList.add('hidden');
   }
 
+  async logoutToLogin() {
+    this.closeGameMenu();
+    this.closeTransientOverlays();
+    if (this.network && typeof this.network.leaveRoom === 'function') {
+      try { this.network.leaveRoom(); } catch (err) { console.warn('Leave room during logout failed:', err); }
+    }
+    if (this.authManager) await this.authManager.logout();
+    this.state = 'menu';
+    this.mode = 'solo';
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.classList.add('hidden');
+    this.screenHistory = [];
+    this.showScreen('login-screen', { skipHistory: true });
+  }
+
   goToLoginFromAccountPrompt() {
     this.closeAccountRequiredModal();
     this.authManager.clearGuestSession();
@@ -167,7 +225,8 @@ class Game {
     this.authManager.userData = null;
     const errEl = document.getElementById('login-error');
     if (errEl) errEl.classList.add('hidden');
-    this.showScreen('login-screen');
+    this.screenHistory = [];
+    this.showScreen('login-screen', { skipHistory: true });
   }
 
   handlePendingRoomLink() {
@@ -224,9 +283,25 @@ class Game {
     }
   }
 
-  showScreen(id) {
+  showScreen(id, options = {}) {
     const el = document.getElementById(id);
     if (!el) return;
+
+    const previous = this.getActiveScreenId();
+    if (options.resetHistory) this.screenHistory = [];
+    const canTrackHistory = !options.skipHistory
+      && !options.resetHistory
+      && previous
+      && previous !== id
+      && !this.isOverlayScreen(previous)
+      && !this.isAuthScreen(previous)
+      && !this.isAuthScreen(id);
+    if (canTrackHistory) {
+      const last = this.screenHistory[this.screenHistory.length - 1];
+      if (last !== previous) this.screenHistory.push(previous);
+      if (this.screenHistory.length > 20) this.screenHistory.shift();
+    }
+    this.currentScreenId = id;
 
     this.closeTransientOverlays();
 
@@ -239,7 +314,10 @@ class Game {
     });
 
     if (id === 'game-screen' && this.canvas) {
-      requestAnimationFrame(() => this.resizeCanvas());
+      requestAnimationFrame(() => {
+        this.resizeCanvas();
+        this.drawCurrentFrame();
+      });
     }
     if (id === 'map-screen') this.renderLevelMap();
     if (id === 'quests-screen') this.renderQuests();
@@ -247,12 +325,14 @@ class Game {
       const roomInfo = document.getElementById('room-info');
       if (roomInfo) roomInfo.classList.remove('hidden');
     }
+    if (id === 'menu-screen') this.renderDailyReward();
+    if (id === 'menu-screen') this.renderHomeQuestPreview();
     this.updateBackButton(id);
 
     // Bottom Nav Visibility
     const bottomNav = document.getElementById('bottom-nav');
     if (bottomNav) {
-      const showNavScreens = ['menu-screen', 'store-screen', 'quests-screen', 'profile-screen', 'leaderboard-screen', 'map-screen'];
+      const showNavScreens = ['menu-screen', 'store-screen', 'quests-screen', 'profile-screen', 'leaderboard-screen', 'map-screen', 'online-screen'];
       if (showNavScreens.includes(id) && (this.hasAccount() || this.isGuestSession())) {
         bottomNav.classList.remove('hidden');
         // Update active state
@@ -272,6 +352,7 @@ class Game {
       'password-reset-modal',
       'account-required-modal',
       'feedback-modal',
+      'avatar-picker-modal',
       'settings-modal',
       'tutorial-overlay',
       'pause-overlay',
@@ -284,6 +365,59 @@ class Game {
     });
   }
 
+  getActiveScreenId() {
+    const active = document.querySelector('.screen.active:not(.overlay)');
+    return active ? active.id : this.currentScreenId || 'menu-screen';
+  }
+
+  isOverlayScreen(id) {
+    const el = document.getElementById(id);
+    return !!(el && el.classList.contains('overlay'));
+  }
+
+  isAuthScreen(id) {
+    return id === 'login-screen' || id === 'register-screen';
+  }
+
+  isMainNavScreen(id) {
+    return ['store-screen', 'quests-screen', 'profile-screen', 'leaderboard-screen', 'map-screen', 'online-screen'].includes(id);
+  }
+
+  showGameBoot(title, subtitle) {
+    clearTimeout(this.gameBootTimer);
+    const overlay = document.getElementById('game-boot-overlay');
+    const titleEl = document.getElementById('game-boot-title');
+    const subtitleEl = document.getElementById('game-boot-subtitle');
+    if (titleEl) titleEl.textContent = title || 'Arena hazırlanıyor';
+    if (subtitleEl) subtitleEl.textContent = subtitle || 'Bloklar diziliyor...';
+    if (overlay) overlay.classList.remove('hidden', 'ready');
+  }
+
+  hideGameBoot() {
+    const overlay = document.getElementById('game-boot-overlay');
+    if (!overlay) return;
+    overlay.classList.add('ready');
+    this.gameBootTimer = setTimeout(() => {
+      overlay.classList.add('hidden');
+      overlay.classList.remove('ready');
+    }, 220);
+  }
+
+  enterGameScreen(title, subtitle) {
+    this.showGameBoot(title, subtitle);
+    this.showScreen('game-screen');
+    requestAnimationFrame(() => {
+      this.resizeCanvas();
+      this.drawCurrentFrame();
+      requestAnimationFrame(() => this.hideGameBoot());
+    });
+    this.startGameLoop(); // Performance: oyun başlarken döngüyü (yeniden) başlat
+  }
+
+  markRenderDirty() {
+    this.renderDirty = true;
+  }
+
   updateBackButton(id) {
     const backBtn = document.getElementById('global-back');
     if (!backBtn) return;
@@ -291,16 +425,113 @@ class Game {
   }
 
   goBack() {
-    const active = document.querySelector('.screen.active:not(.overlay)');
-    const id = active ? active.id : 'menu-screen';
-    if (id === 'register-screen') return this.showScreen('login-screen');
+    return this.handleBackNavigation(false);
+  }
+
+  handleBackNavigation(fromNative = false) {
+    if (this.closeTopTransientOverlay()) return true;
+
+    const id = this.getActiveScreenId();
+
+    if (id === 'game-screen') {
+      this.openPauseMenu();
+      return true;
+    }
+
+    if (id === 'register-screen') {
+      this.showScreen('login-screen', { skipHistory: true });
+      return true;
+    }
+
+    if (id === 'login-screen') {
+      return this.maybeExitApp(fromNative);
+    }
+
     if (id === 'waiting-screen') {
       this.network.leaveRoom();
-      return this.showScreen('online-screen');
+      this.showScreen('online-screen', { skipHistory: true });
+      return true;
     }
-    if (id === 'online-screen') return this.showScreen('menu-screen');
-    if (id === 'gameover-screen') return this.showScreen(this.mode === 'online' ? 'online-screen' : 'map-screen');
-    return this.showScreen('menu-screen');
+
+    if (id === 'gameover-screen') {
+      const target = this.mode === 'online' ? 'online-screen' : (this.currentLevel ? 'map-screen' : 'menu-screen');
+      this.showScreen(target, { skipHistory: true });
+      return true;
+    }
+
+    if (id === 'menu-screen') {
+      return this.maybeExitApp(fromNative);
+    }
+
+    if (this.isMainNavScreen(id)) {
+      this.showScreen('menu-screen', { skipHistory: true });
+      return true;
+    }
+
+    while (this.screenHistory.length) {
+      const previous = this.screenHistory.pop();
+      if (!previous || previous === id) continue;
+      const node = document.getElementById(previous);
+      if (!node || this.isOverlayScreen(previous)) continue;
+      if (this.isAuthScreen(previous)) continue;
+      if (previous === 'game-screen' && this.state !== 'playing') continue;
+      this.showScreen(previous, { skipHistory: true });
+      return true;
+    }
+
+    if (id !== 'menu-screen' && (this.hasAccount() || this.isGuestSession())) {
+      this.showScreen('menu-screen', { skipHistory: true });
+      return true;
+    }
+
+    return this.maybeExitApp(fromNative);
+  }
+
+  closeTopTransientOverlay() {
+    const closers = [
+      ['quick-shop-modal', () => this.closeQuickShop()],
+      ['account-required-modal', () => this.closeAccountRequiredModal()],
+      ['password-reset-modal', () => this.closePasswordResetModal()],
+      ['feedback-modal', () => this.closeFeedbackModal()],
+      ['avatar-picker-modal', () => this.closeAvatarPicker()],
+      ['settings-modal', () => this.closeSettingsModal()],
+      ['main-menu-drawer', () => this.closeGameMenu()],
+    ];
+
+    for (const [id, close] of closers) {
+      const node = document.getElementById(id);
+      if (node && !node.classList.contains('hidden')) {
+        close();
+        return true;
+      }
+    }
+
+    const tutorial = document.getElementById('tutorial-overlay');
+    if (tutorial && tutorial.classList.contains('active')) {
+      this.closeTutorial();
+      return true;
+    }
+
+    const pauseOverlay = document.getElementById('pause-overlay');
+    if (pauseOverlay && pauseOverlay.classList.contains('active')) {
+      this.closePauseMenu();
+      return true;
+    }
+
+    return false;
+  }
+
+  maybeExitApp(fromNative) {
+    if (!fromNative) return false;
+    const now = Date.now();
+    if (now - this.lastExitBackAt < 1600) {
+      const app = window.Capacitor?.Plugins?.App;
+      if (app && typeof app.exitApp === 'function') app.exitApp();
+      return true;
+    }
+    this.lastExitBackAt = now;
+    this.showToast ? this.showToast('Çıkmak için tekrar geri bas') : console.log('Çıkmak için tekrar geri bas');
+    return true;
   }
 
   setupNativeBackButton() {
@@ -308,58 +539,7 @@ class Game {
     const app = window.Capacitor?.Plugins?.App;
     if (!app || typeof app.addListener !== 'function') return;
 
-    app.addListener('backButton', () => {
-      const quickShop = document.getElementById('quick-shop-modal');
-      if (quickShop && !quickShop.classList.contains('hidden')) {
-        this.closeQuickShop();
-        return;
-      }
-
-      const accountModal = document.getElementById('account-required-modal');
-      if (accountModal && !accountModal.classList.contains('hidden')) {
-        this.closeAccountRequiredModal();
-        return;
-      }
-
-      const feedbackModal = document.getElementById('feedback-modal');
-      if (feedbackModal && !feedbackModal.classList.contains('hidden')) {
-        this.closeFeedbackModal();
-        return;
-      }
-
-      const settingsModal = document.getElementById('settings-modal');
-      if (settingsModal && !settingsModal.classList.contains('hidden')) {
-        this.closeSettingsModal();
-        return;
-      }
-
-      const tutorial = document.getElementById('tutorial-overlay');
-      if (tutorial && tutorial.classList.contains('active')) {
-        this.closeTutorial();
-        return;
-      }
-
-      const pauseOverlay = document.getElementById('pause-overlay');
-      if (pauseOverlay && pauseOverlay.classList.contains('active')) {
-        this.closePauseMenu();
-        return;
-      }
-
-      const active = document.querySelector('.screen.active:not(.overlay)');
-      const id = active ? active.id : 'menu-screen';
-      if (id === 'game-screen') {
-        this.openPauseMenu();
-        return;
-      }
-
-      const backBtn = document.getElementById('global-back');
-      if (backBtn && !backBtn.classList.contains('hidden')) {
-        this.goBack();
-        return;
-      }
-
-      if (typeof app.exitApp === 'function') app.exitApp();
-    });
+    app.addListener('backButton', () => this.handleBackNavigation(true));
     this.nativeBackHandlerRegistered = true;
   }
 
@@ -417,6 +597,14 @@ class Game {
         if (e.target === feedbackModal) this.closeFeedbackModal();
       };
     }
+    const avatarPickerClose = document.getElementById('avatar-picker-close');
+    if (avatarPickerClose) avatarPickerClose.onclick = () => this.closeAvatarPicker();
+    const avatarPickerModal = document.getElementById('avatar-picker-modal');
+    if (avatarPickerModal) {
+      avatarPickerModal.onclick = (e) => {
+        if (e.target === avatarPickerModal) this.closeAvatarPicker();
+      };
+    }
     const settingsClose = document.getElementById('settings-close');
     if (settingsClose) settingsClose.onclick = () => this.closeSettingsModal();
     const settingsModal = document.getElementById('settings-modal');
@@ -425,6 +613,12 @@ class Game {
         if (e.target === settingsModal) this.closeSettingsModal();
       };
     }
+    document.addEventListener('click', (e) => {
+      const settingsButton = e.target.closest('#profile-settings-btn, #btn-header-settings, #store-settings-shortcut, #leaderboard-settings-shortcut');
+      if (!settingsButton) return;
+      e.preventDefault();
+      this.openSettingsModal();
+    });
     const googleLogin = document.getElementById('btn-google-login');
     if (googleLogin) googleLogin.onclick = () => this.loginWithGoogle();
     const guestLogin = document.getElementById('btn-guest-login');
@@ -436,11 +630,16 @@ class Game {
       const pw = document.getElementById('login-password').value;
       const errEl = document.getElementById('login-error');
       errEl.classList.add('hidden');
-      document.getElementById('btn-login').disabled = true;
-      document.getElementById('btn-login').textContent = 'Giriş yapılıyor...';
+      const loginBtn = document.getElementById('btn-login');
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<span>Giriş yapılıyor...</span>';
       const res = await this.authManager.login(email, pw);
-      document.getElementById('btn-login').disabled = false;
-      document.getElementById('btn-login').textContent = 'GİRİŞ YAP';
+      loginBtn.disabled = false;
+      loginBtn.innerHTML = '<span class="auth-login-badge" aria-hidden="true">♛</span><span>Giriş Yap</span>';
+      if (res.success) {
+        this.enterMainMenuAfterAuth();
+        return;
+      }
       if (!res.success) { errEl.textContent = res.error; errEl.classList.remove('hidden'); }
     };
 
@@ -542,6 +741,9 @@ class Game {
     const globalBack = document.getElementById('global-back');
     if (globalBack) globalBack.onclick = () => this.goBack();
     this.setupGameMenu();
+    this.setupAvatarPicker();
+    this.setupBoardBackgroundPicker();
+    this.setupCoinTopUpButtons();
 
     document.getElementById('btn-solo').onclick = () => this.startEndlessGame();
     const themeToggle = document.getElementById('btn-theme-toggle');
@@ -549,6 +751,31 @@ class Game {
       themeToggle.onclick = () => {
         const current = document.documentElement.dataset.uiTheme || 'dark';
         this.applyUiTheme(current === 'dark' ? 'light' : 'dark');
+      };
+    }
+    const headerSettings = document.getElementById('btn-header-settings');
+    if (headerSettings) headerSettings.onclick = () => this.openSettingsModal();
+    const profileSettings = document.getElementById('profile-settings-btn');
+    if (profileSettings) profileSettings.onclick = () => this.openSettingsModal();
+    const storeSettings = document.getElementById('store-settings-shortcut');
+    if (storeSettings) storeSettings.onclick = () => this.openSettingsModal();
+    const leaderboardSettings = document.getElementById('leaderboard-settings-shortcut');
+    if (leaderboardSettings) leaderboardSettings.onclick = () => this.openSettingsModal();
+    const musicToggle = document.getElementById('btn-music-toggle');
+    if (musicToggle) {
+      musicToggle.onclick = () => {
+        const enabled = !this.isMusicEnabled();
+        this.audio.init();
+        this.audio.resume();
+        localStorage.setItem('blockBattleMusic', enabled ? '1' : '0');
+        this.audio.setMusic(enabled);
+        this.updateSettingsButtons();
+      };
+    }
+    const notificationsToggle = document.getElementById('btn-notifications-toggle');
+    if (notificationsToggle) {
+      notificationsToggle.onclick = () => {
+        this.toggleNotifications();
       };
     }
     const btnOnline = document.getElementById('btn-online');
@@ -582,15 +809,29 @@ class Game {
     }
     document.getElementById('btn-sound-toggle').onclick = () => {
       this.audio.init();
-      const on = this.audio.toggle();
-      const soundBtn = document.getElementById('btn-sound-toggle');
-      this.setDrawerButtonMeta(soundBtn, on ? 'SES' : 'KAPALI');
-      soundBtn.title = on ? 'Sesi kapat' : 'Sesi aç';
+      const enabled = !this.isSoundEnabled();
+      this.audio.enabled = enabled;
+      localStorage.setItem('blockBattleSound', enabled ? '1' : '0');
+      this.updateSettingsButtons();
+      if (enabled) this.audio.pickup();
     };
-    document.getElementById('btn-logout').onclick = async () => {
-      this.closeGameMenu();
-      await this.authManager.logout();
-    };
+    const settingsLogout = document.getElementById('btn-logout');
+    if (settingsLogout) settingsLogout.onclick = () => this.logoutToLogin();
+    const profileLogout = document.getElementById('profile-logout-btn');
+    if (profileLogout) profileLogout.onclick = () => this.logoutToLogin();
+    const dailyRewardTrack = document.getElementById('daily-reward-track');
+    if (dailyRewardTrack) {
+      dailyRewardTrack.onclick = (e) => {
+        const item = e.target.closest('span.active');
+        if (!item || !dailyRewardTrack.contains(item)) return;
+        this.claimDailyReward();
+      };
+      dailyRewardTrack.onkeydown = (e) => {
+        if ((e.key !== 'Enter' && e.key !== ' ') || !e.target.matches('span.active')) return;
+        e.preventDefault();
+        this.claimDailyReward();
+      };
+    }
 
     // Leaderboard
     document.getElementById('btn-leaderboard').onclick = () => {
@@ -599,6 +840,7 @@ class Game {
 
     // Profile
     document.getElementById('btn-profile').onclick = () => {
+      this.closeGameMenu();
       if (this.requireAccount('Profil ve maç geçmişi için giriş yap veya hesap oluştur.')) this.showProfile();
     };
 
@@ -606,6 +848,16 @@ class Game {
     document.querySelectorAll('.nav-item').forEach(btn => {
       btn.onclick = () => {
         const target = btn.dataset.target;
+        if (target === 'online-screen') {
+          const onlineBtn = document.getElementById('btn-online');
+          if (onlineBtn) onlineBtn.click();
+          else this.showScreen('online-screen');
+          return;
+        }
+        if (target === 'profile-screen') {
+          if (this.requireAccount('Profil ve maç geçmişi için giriş yap veya hesap oluştur.')) this.showProfile();
+          return;
+        }
         if (target === 'store-screen') this.showStore();
         else if (target === 'map-screen') this.showScreen('map-screen');
         else this.showScreen(target);
@@ -615,13 +867,23 @@ class Game {
     document.querySelectorAll('[data-back-target]').forEach(btn => {
       btn.onclick = () => {
         const target = btn.dataset.backTarget || 'menu-screen';
-        if (target === 'store-screen') this.showStore();
+        if (target === 'store-screen') this.showStore(btn.dataset.storeTab || 'currency');
         else this.showScreen(target);
+      };
+    });
+
+    document.querySelectorAll('[data-shop-tab]').forEach(btn => {
+      btn.onclick = () => {
+        this.selectStoreTab(btn.dataset.shopTab);
       };
     });
 
     document.querySelectorAll('.btn-buy').forEach(btn => {
       btn.onclick = async () => {
+        if (btn.dataset.iapProduct) {
+          if (this.iap) await this.iap.purchase(btn.dataset.iapProduct, btn);
+          return;
+        }
         const type = btn.dataset.type;
         const price = parseInt(btn.dataset.price);
 
@@ -692,6 +954,8 @@ class Game {
       btn.onclick = () => { modeBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); this.onlineMode = btn.dataset.mode; };
     });
     document.getElementById('btn-quick-match').onclick = () => { if (this.requireAccount('Hızlı maç için giriş yap veya hesap oluştur.')) this.network.quickMatch(this.onlineMode); };
+    const battleInfinite = document.getElementById('btn-battle-infinite');
+    if (battleInfinite) battleInfinite.onclick = () => this.startEndlessGame();
     document.getElementById('btn-create-room').onclick = () => { if (this.requireAccount('Oda oluşturmak için giriş yap veya hesap oluştur.')) this.network.createRoom(this.onlineMode); };
     document.getElementById('btn-join-room').onclick = () => {
       if (!this.requireAccount('Odaya katılmak için giriş yap veya hesap oluştur.')) return;
@@ -755,13 +1019,23 @@ class Game {
     if (btnSendFeedback) {
       btnSendFeedback.onclick = () => this.submitFeedback();
     }
+    const profileIdCopy = document.getElementById('profile-id-copy');
+    if (profileIdCopy) {
+      profileIdCopy.onclick = () => this.copyProfileId();
+    }
   }
 
   setupGameMenu() {
     const openBtn = document.getElementById('btn-open-game-menu');
     const closeBtn = document.getElementById('btn-close-game-menu');
     const backdrop = document.getElementById('game-menu-backdrop');
-    if (openBtn) openBtn.onclick = () => this.openGameMenu();
+    if (openBtn) {
+      // Ana sayfa avatar menusu ileride gerekirse geri acilabilir.
+      // openBtn.onclick = () => this.openGameMenu();
+      openBtn.onclick = null;
+      openBtn.setAttribute('aria-label', 'Profil avatarı');
+      openBtn.classList.add('avatar-menu-disabled');
+    }
     if (closeBtn) closeBtn.onclick = () => this.closeGameMenu();
     if (backdrop) backdrop.onclick = () => this.closeGameMenu();
 
@@ -796,13 +1070,20 @@ class Game {
 
     const vibrationToggle = document.getElementById('btn-vibration-toggle');
     if (vibrationToggle) vibrationToggle.onclick = () => this.toggleVibration();
-    this.updateVibrationButton();
+    this.updateSettingsButtons();
 
     const settingsTutorial = document.getElementById('settings-tutorial');
     if (settingsTutorial) {
       settingsTutorial.onclick = () => {
         this.closeSettingsModal();
         this.openTutorial();
+      };
+    }
+    const settingsFeedback = document.getElementById('settings-feedback');
+    if (settingsFeedback) {
+      settingsFeedback.onclick = () => {
+        this.closeSettingsModal();
+        this.openFeedbackModal();
       };
     }
   }
@@ -826,6 +1107,8 @@ class Game {
 
   setDrawerButtonMeta(button, text) {
     if (!button) return;
+    if (text === 'KAPALI' || text === 'YOK' || text === 'ENGELLİ') button.dataset.enabled = '0';
+    if (text === 'AÇIK' || text === 'SES' || text === 'LIGHT' || text === 'DARK') button.dataset.enabled = '1';
     const meta = button.querySelector('em');
     if (meta) meta.textContent = text;
     else button.textContent = text;
@@ -862,7 +1145,7 @@ class Game {
   openSettingsModal() {
     const modal = document.getElementById('settings-modal');
     if (!modal) return;
-    this.updateVibrationButton();
+    this.updateSettingsButtons();
     modal.classList.remove('hidden');
   }
 
@@ -871,8 +1154,279 @@ class Game {
     if (modal) modal.classList.add('hidden');
   }
 
+  createAvatarPresets() {
+    return [
+      { id: 'mint', bg: '#13cfa0', shade: '#2467d8', skin: '#ffd7a8', hair: '#172033', shirt: '#00ff88', glasses: false },
+      { id: 'violet', bg: '#8b5cf6', shade: '#12d6b2', skin: '#f1b98d', hair: '#351b4f', shirt: '#38bdf8', glasses: true },
+      { id: 'amber', bg: '#f59e0b', shade: '#ef4444', skin: '#f4c095', hair: '#211827', shirt: '#a855f7', glasses: false },
+      { id: 'cyan', bg: '#06b6d4', shade: '#2563eb', skin: '#ffe2bd', hair: '#102a43', shirt: '#facc15', glasses: true },
+      { id: 'rose', bg: '#fb7185', shade: '#7c3aed', skin: '#d9a178', hair: '#1f2937', shirt: '#22c55e', glasses: false },
+      { id: 'lime', bg: '#84cc16', shade: '#14b8a6', skin: '#f5cba7', hair: '#3f2418', shirt: '#0ea5e9', glasses: true },
+      { id: 'blue', bg: '#3b82f6', shade: '#0f172a', skin: '#c98a61', hair: '#111827', shirt: '#c084fc', glasses: false },
+      { id: 'gold', bg: '#fbbf24', shade: '#0f766e', skin: '#ffddb0', hair: '#5c2e12', shirt: '#ef4444', glasses: true },
+      { id: 'night', bg: '#334155', shade: '#a855f7', skin: '#e0b08c', hair: '#020617', shirt: '#10b981', glasses: false },
+      { id: 'aqua', bg: '#2dd4bf', shade: '#6366f1', skin: '#f0c2a0', hair: '#273449', shirt: '#fb923c', glasses: true },
+      { id: 'ruby', bg: '#dc2626', shade: '#f97316', skin: '#f3b484', hair: '#2b1a12', shirt: '#22d3ee', glasses: false },
+      { id: 'indigo', bg: '#4f46e5', shade: '#111827', skin: '#b98262', hair: '#111827', shirt: '#f472b6', glasses: true },
+      { id: 'leaf', bg: '#16a34a', shade: '#0e7490', skin: '#ffd2a1', hair: '#422006', shirt: '#60a5fa', glasses: false },
+      { id: 'sunset', bg: '#f97316', shade: '#be185d', skin: '#eab08c', hair: '#1e293b', shirt: '#34d399', glasses: true },
+      { id: 'steel', bg: '#64748b', shade: '#06b6d4', skin: '#f6d0aa', hair: '#334155', shirt: '#facc15', glasses: false },
+      { id: 'plasma', bg: '#a855f7', shade: '#ec4899', skin: '#ffdfc4', hair: '#2e1065', shirt: '#14b8a6', glasses: true },
+      { id: 'forest', bg: '#15803d', shade: '#84cc16', skin: '#d8a47f', hair: '#172554', shirt: '#f97316', glasses: false },
+      { id: 'sky', bg: '#0ea5e9', shade: '#22c55e', skin: '#f8caa6', hair: '#0f172a', shirt: '#e879f9', glasses: true }
+    ];
+  }
+
+  getAvatarStorageKey() {
+    const userId = this.authManager?.user?.uid || this.authManager?.currentUser?.uid || 'guest';
+    return `blockBattleAvatar:${userId}`;
+  }
+
+  getSelectedAvatar() {
+    try {
+      const saved = localStorage.getItem(this.getAvatarStorageKey());
+      if (saved) return JSON.parse(saved);
+    } catch (err) {
+      console.warn('Avatar okunamadi', err);
+    }
+    return { type: 'preset', id: this.avatarPresets[0]?.id || 'mint' };
+  }
+
+  saveSelectedAvatar(avatar) {
+    localStorage.setItem(this.getAvatarStorageKey(), JSON.stringify(avatar));
+    this.applySelectedAvatar();
+    this.renderAvatarPicker();
+  }
+
+  buildAvatarSvg(preset, selected = false) {
+    const p = preset || this.avatarPresets[0];
+    const ring = selected ? '#ffd166' : 'rgba(255,255,255,0.72)';
+    const glasses = p.glasses
+      ? '<path d="M30 45h13M53 45h13M43 45h10" stroke="#101827" stroke-width="4" stroke-linecap="round"/><circle cx="35" cy="45" r="7" fill="none" stroke="#101827" stroke-width="4"/><circle cx="61" cy="45" r="7" fill="none" stroke="#101827" stroke-width="4"/>'
+      : '<circle cx="39" cy="45" r="3.5" fill="#101827"/><circle cx="57" cy="45" r="3.5" fill="#101827"/>';
+    return `
+      <svg class="avatar-art" viewBox="0 0 96 96" aria-hidden="true">
+        <rect width="96" height="96" rx="48" fill="${p.bg}"/>
+        <circle cx="78" cy="20" r="35" fill="${p.shade}" opacity="0.58"/>
+        <circle cx="22" cy="82" r="34" fill="#03101f" opacity="0.18"/>
+        <circle cx="48" cy="45" r="24" fill="${p.skin}"/>
+        <path d="M25 45c2-20 17-28 31-25 11 2 18 11 17 25-8-10-18-13-29-11-8 1-14 5-19 11z" fill="${p.hair}"/>
+        ${glasses}
+        <path d="M39 59c5 5 13 5 18 0" fill="none" stroke="#101827" stroke-width="4" stroke-linecap="round"/>
+        <path d="M21 96c3-20 14-31 27-31s24 11 27 31H21z" fill="${p.shirt}"/>
+        <circle cx="48" cy="48" r="43" fill="none" stroke="${ring}" stroke-width="4" opacity="0.85"/>
+      </svg>
+    `;
+  }
+
+  buildAvatarMarkup(avatar = this.getSelectedAvatar(), selected = false) {
+    if (avatar.type === 'image' && avatar.src) {
+      const safeSrc = String(avatar.src).startsWith('data:image/') ? avatar.src : '';
+      if (safeSrc) return `<img class="avatar-art avatar-photo" src="${safeSrc}" alt="">`;
+    }
+    const preset = this.avatarPresets.find((item) => item.id === avatar.id) || this.avatarPresets[0];
+    return this.buildAvatarSvg(preset, selected);
+  }
+
+  applySelectedAvatar() {
+    const avatar = this.getSelectedAvatar();
+    document.querySelectorAll('.figma-avatar-btn, .profile-avatar-xl').forEach((el) => {
+      el.innerHTML = this.buildAvatarMarkup(avatar);
+      el.classList.toggle('has-photo-avatar', avatar.type === 'image');
+    });
+  }
+
+  setupAvatarPicker() {
+    const avatarButton = document.getElementById('profile-avatar-button');
+    if (avatarButton) avatarButton.onclick = () => this.openAvatarPicker();
+
+    const grid = document.getElementById('avatar-picker-grid');
+    if (grid) {
+      grid.onclick = (e) => {
+        const option = e.target.closest('[data-avatar-id]');
+        if (!option) return;
+        this.saveSelectedAvatar({ type: 'preset', id: option.dataset.avatarId });
+      };
+    }
+
+    const input = document.getElementById('avatar-file-input');
+    if (input) {
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (file) this.saveUploadedAvatar(file);
+        input.value = '';
+      };
+    }
+
+    this.applySelectedAvatar();
+  }
+
+  openAvatarPicker() {
+    const modal = document.getElementById('avatar-picker-modal');
+    if (!modal) return;
+    this.renderAvatarPicker();
+    modal.classList.remove('hidden');
+  }
+
+  closeAvatarPicker() {
+    const modal = document.getElementById('avatar-picker-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  renderAvatarPicker() {
+    const grid = document.getElementById('avatar-picker-grid');
+    if (!grid) return;
+    const selected = this.getSelectedAvatar();
+    grid.innerHTML = this.avatarPresets.map((preset) => {
+      const isSelected = selected.type === 'preset' && selected.id === preset.id;
+      return `
+        <button class="avatar-option ${isSelected ? 'selected' : ''}" type="button" data-avatar-id="${preset.id}" aria-label="Avatar seç">
+          ${this.buildAvatarSvg(preset, isSelected)}
+        </button>
+      `;
+    }).join('');
+  }
+
+  async saveUploadedAvatar(file) {
+    const status = document.getElementById('avatar-picker-status');
+    if (status) status.textContent = '';
+    if (!file.type.startsWith('image/')) {
+      if (status) status.textContent = 'Lütfen bir fotoğraf seç.';
+      return;
+    }
+    try {
+      const src = await this.resizeAvatarFile(file);
+      this.saveSelectedAvatar({ type: 'image', src });
+      if (status) status.textContent = 'Fotoğraf avatar olarak kaydedildi.';
+    } catch (err) {
+      console.error('Avatar yukleme hatasi', err);
+      if (status) status.textContent = 'Fotoğraf yüklenemedi, başka bir görsel dene.';
+    }
+  }
+
+  resizeAvatarFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = reject;
+        image.onload = () => {
+          const size = 256;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const side = Math.min(image.width, image.height);
+          const sx = (image.width - side) / 2;
+          const sy = (image.height - side) / 2;
+          ctx.drawImage(image, sx, sy, side, side, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/jpeg', 0.86));
+        };
+        image.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  setupBoardBackgroundPicker() {
+    const button = document.getElementById('btn-board-bg');
+    const input = document.getElementById('board-bg-input');
+    if (button && input) {
+      button.onclick = () => input.click();
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (file) this.saveBoardBackgroundFile(file);
+        input.value = '';
+      };
+    }
+    if (this.boardBackgroundSrc) this.loadBoardBackground(this.boardBackgroundSrc);
+  }
+
+  async saveBoardBackgroundFile(file) {
+    if (!file.type.startsWith('image/')) return;
+    try {
+      const src = await this.resizeBoardBackgroundFile(file);
+      localStorage.setItem('blockBattleBoardBackground', src);
+      this.loadBoardBackground(src);
+    } catch (err) {
+      console.error('Izgara arka plan yuklenemedi', err);
+    }
+  }
+
+  loadBoardBackground(src) {
+    if (!src || !String(src).startsWith('data:image/')) return;
+    const image = new Image();
+    image.onload = () => {
+      this.boardBackgroundImage = image;
+      this.boardBackgroundSrc = src;
+      this.markRenderDirty();
+    };
+    image.src = src;
+  }
+
+  resizeBoardBackgroundFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = reject;
+        image.onload = () => {
+          const maxSize = 900;
+          const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+          const width = Math.max(1, Math.round(image.width * scale));
+          const height = Math.max(1, Math.round(image.height * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(image, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.84));
+        };
+        image.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   isVibrationEnabled() {
     return localStorage.getItem('blockBattleVibration') !== '0';
+  }
+
+  isSoundEnabled() {
+    return localStorage.getItem('blockBattleSound') !== '0';
+  }
+
+  isMusicEnabled() {
+    return localStorage.getItem('blockBattleMusic') === '1';
+  }
+
+  isNotificationsEnabled() {
+    return localStorage.getItem('blockBattleNotifications') === '1'
+      && 'Notification' in window
+      && Notification.permission === 'granted';
+  }
+
+  updateSettingsButtons() {
+    this.audio.enabled = this.isSoundEnabled();
+    const soundBtn = document.getElementById('btn-sound-toggle');
+    this.setDrawerButtonMeta(soundBtn, this.isSoundEnabled() ? 'AÇIK' : 'KAPALI');
+    if (soundBtn) soundBtn.title = this.isSoundEnabled() ? 'Sesi kapat' : 'Sesi aç';
+
+    const musicBtn = document.getElementById('btn-music-toggle');
+    this.audio.setMusic(this.isMusicEnabled() && this.audio.initialized);
+    this.setDrawerButtonMeta(musicBtn, this.isMusicEnabled() ? 'AÇIK' : 'KAPALI');
+    if (musicBtn) musicBtn.title = this.isMusicEnabled() ? 'Müziği kapat' : 'Müziği aç';
+
+    this.updateVibrationButton();
+
+    const notificationsBtn = document.getElementById('btn-notifications-toggle');
+    let notificationLabel = this.isNotificationsEnabled() ? 'AÇIK' : 'KAPALI';
+    if (!('Notification' in window)) notificationLabel = 'YOK';
+    else if (Notification.permission === 'denied') notificationLabel = 'ENGELLİ';
+    this.setDrawerButtonMeta(notificationsBtn, notificationLabel);
+    if (notificationsBtn) notificationsBtn.title = 'Tarayıcı bildirimi iznine bağlıdır.';
   }
 
   updateVibrationButton() {
@@ -885,6 +1439,49 @@ class Game {
     localStorage.setItem('blockBattleVibration', enabled ? '1' : '0');
     this.updateVibrationButton();
     if (enabled && navigator.vibrate) navigator.vibrate(30);
+  }
+
+  vibrate(pattern = 18) {
+    if (!this.isVibrationEnabled()) return;
+    if (!navigator.vibrate) return;
+    navigator.vibrate(pattern);
+  }
+
+  async toggleNotifications() {
+    if (!('Notification' in window)) {
+      localStorage.setItem('blockBattleNotifications', '0');
+      this.updateSettingsButtons();
+      return;
+    }
+
+    if (this.isNotificationsEnabled()) {
+      localStorage.setItem('blockBattleNotifications', '0');
+      this.updateSettingsButtons();
+      return;
+    }
+
+    const permission = Notification.permission === 'default'
+      ? await Notification.requestPermission()
+      : Notification.permission;
+    const enabled = permission === 'granted';
+    localStorage.setItem('blockBattleNotifications', enabled ? '1' : '0');
+    this.updateSettingsButtons();
+    if (enabled) this.sendLocalNotification('Block Battle', 'Bildirimler açıldı.');
+  }
+
+  sendLocalNotification(title, body) {
+    if (!this.isNotificationsEnabled()) return;
+    try {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready
+          .then(reg => reg.showNotification(title, { body, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png' }))
+          .catch(() => new Notification(title, { body }));
+        return;
+      }
+      new Notification(title, { body });
+    } catch (err) {
+      console.warn('Notification failed', err);
+    }
   }
 
   async submitFeedback() {
@@ -905,7 +1502,13 @@ class Game {
     }
     if (statusEl) statusEl.textContent = '';
 
-    const result = await this.authManager.submitFeedback(typeEl ? typeEl.value : 'other', message);
+    const playerMeta = [
+      '',
+      '---',
+      `Oyuncu: ${this.authManager && this.authManager.getUsername ? this.authManager.getUsername() : 'Oyuncu'}`,
+      `Oyuncu ID: ${this.getPlayerPublicId()}`
+    ].join('\n');
+    const result = await this.authManager.submitFeedback(typeEl ? typeEl.value : 'other', `${message}${playerMeta}`);
     if (result && result.ok) {
       if (messageEl) messageEl.value = '';
       if (statusEl) {
@@ -959,11 +1562,40 @@ class Game {
   getQuestPeriodKey(type) {
     const now = new Date();
     const uid = this.authManager && this.authManager.user ? this.authManager.user.uid : 'guest';
-    if (type === 'daily') return `${uid}:daily:${now.toISOString().slice(0, 10)}`;
-    const start = new Date(now.getFullYear(), 0, 1);
-    const week = Math.ceil((((now - start) / 86400000) + start.getDay() + 1) / 7);
-    if (type === 'weekly') return `${uid}:weekly:${now.getFullYear()}-${week}`;
+    if (type === 'daily') return `${uid}:daily:${this.getLocalDateKey()}`;
+    if (type === 'weekly') {
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const day = monday.getDay() || 7;
+      monday.setDate(monday.getDate() - day + 1);
+      const year = monday.getFullYear();
+      const month = String(monday.getMonth() + 1).padStart(2, '0');
+      const date = String(monday.getDate()).padStart(2, '0');
+      return `${uid}:weekly:${year}-${month}-${date}`;
+    }
     return `${uid}:monthly:${now.getFullYear()}-${now.getMonth() + 1}`;
+  }
+
+  getQuestResetLabel(type) {
+    const now = new Date();
+    let end;
+    if (type === 'weekly') {
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const day = end.getDay() || 7;
+      end.setDate(end.getDate() - day + 8);
+      end.setHours(0, 0, 0, 0);
+    } else if (type === 'monthly') {
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    } else {
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    }
+
+    const totalMinutes = Math.max(1, Math.ceil((end - now) / 60000));
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) return `${days}g ${hours}s`;
+    if (hours > 0) return `${hours}s ${minutes}dk`;
+    return `${minutes}dk`;
   }
 
   getQuestProgressKey(type) {
@@ -1001,6 +1633,7 @@ class Game {
 
   async recordCompletedGame(won = false) {
     this.updateQuestProgress(won);
+    this.renderHomeQuestPreview();
     if (this.isGuestSession()) {
       const best = Math.max(parseInt(localStorage.getItem('blockBattleGuestHighScore') || '0', 10), this.score || 0);
       localStorage.setItem('blockBattleGuestHighScore', String(best));
@@ -1101,13 +1734,51 @@ class Game {
     };
   }
 
+  renderHomeQuestPreview() {
+    const list = document.getElementById('home-quest-list');
+    const countEl = document.getElementById('home-quest-count');
+    if (!list || !countEl) return;
+
+    const dailyQuests = (this.buildQuests().daily || []);
+    const periodKey = this.getQuestPeriodKey('daily');
+    const claimed = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
+    const completedCount = dailyQuests.filter(([id, title, desc, value, target]) => value >= target || claimed.includes(id)).length;
+    countEl.textContent = `${completedCount}/${dailyQuests.length}`;
+
+    const ordered = [...dailyQuests].sort((a, b) => {
+      const aClaimed = claimed.includes(a[0]);
+      const bClaimed = claimed.includes(b[0]);
+      const aReady = a[3] >= a[4] && !aClaimed;
+      const bReady = b[3] >= b[4] && !bClaimed;
+      if (aReady !== bReady) return aReady ? -1 : 1;
+      if (aClaimed !== bClaimed) return aClaimed ? 1 : -1;
+      return (b[3] / b[4]) - (a[3] / a[4]);
+    }).slice(0, 2);
+
+    list.innerHTML = ordered.map(([id, title, desc, value, target, reward]) => {
+      const isClaimed = claimed.includes(id);
+      const ready = value >= target;
+      const done = ready || isClaimed;
+      const progress = `${Math.min(value, target)}/${target}`;
+      return `
+        <div class="home-quest-row ${done ? 'done' : ''}">
+          <span aria-hidden="true">
+            ${done ? '<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg>' : ''}
+          </span>
+          <strong>${title} <small>${isClaimed ? 'Alındı' : ready ? 'Hazır' : progress}</small></strong>
+          <b>+${reward}</b>
+        </div>
+      `;
+    }).join('');
+  }
+
   renderQuests() {
     const list = document.getElementById('quests-list');
     const summary = document.getElementById('quest-summary');
     if (!list || !summary) return;
     const groups = this.buildQuests();
     {
-      const labels = { daily: 'GÜNLÜK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
+      const labels = { daily: 'Günlük', weekly: 'Haftalık', monthly: 'Aylık' };
       const subtitles = {
         daily: 'Bugün bitecek kısa görevler.',
         weekly: 'Daha uzun hedefler, daha güçlü ödüller.',
@@ -1116,36 +1787,40 @@ class Game {
       let activeType = this.activeQuestType || localStorage.getItem('activeQuestType') || 'daily';
       if (!groups[activeType]) activeType = 'daily';
       const claimed = {};
-      const counts = {};
-      let doneCount = 0;
-      let totalCount = 0;
 
       Object.entries(groups).forEach(([type, quests]) => {
         const periodKey = this.getQuestPeriodKey(type);
         claimed[type] = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
-        counts[type] = { ready: 0, claimed: 0, total: quests.length };
-        quests.forEach(([id, title, desc, value, target]) => {
-          totalCount++;
-          const ready = value >= target;
-          const isClaimed = claimed[type].includes(id);
-          if (isClaimed) doneCount++;
-          if (ready && !isClaimed) counts[type].ready++;
-          if (isClaimed) counts[type].claimed++;
-        });
       });
 
+      const activeQuests = (groups[activeType] || []);
+      const activeClaimed = claimed[activeType] || [];
+      const completedCount = activeQuests.filter(([id, title, desc, value, target]) => value >= target || activeClaimed.includes(id)).length;
+      const claimableCoins = activeQuests.reduce((sum, [id, title, desc, value, target, reward]) => {
+        const isClaimed = activeClaimed.includes(id);
+        return value >= target && !isClaimed ? sum + reward : sum;
+      }, 0);
+      const resetLabel = this.getQuestResetLabel(activeType);
+
       summary.innerHTML = `
-        <div class="quest-summary-art" aria-hidden="true">
-          <span></span><span></span><span></span><em>♛</em>
+        <div class="quest-summary-stats">
+          <div>
+            <span>Tamamlandı</span>
+            <strong class="summary-completed">${completedCount}/${activeQuests.length}</strong>
+          </div>
+          <div>
+            <span>Alınabilir</span>
+            <strong class="summary-claimable">${claimableCoins}</strong>
+          </div>
+          <div>
+            <span>Yenilenme</span>
+            <strong class="summary-reset">${resetLabel}</strong>
+          </div>
         </div>
-        <h3>Görev Merkezi</h3>
-        <p>${doneCount}/${totalCount} ödül alındı. ${subtitles[activeType]}</p>
         <div class="quest-tabs">
           ${Object.keys(groups).map(type => `
             <button class="quest-tab ${type === activeType ? 'active' : ''}" data-type="${type}">
               <span>${labels[type]}</span>
-              <small>${counts[type].claimed}/${counts[type].total}</small>
-              ${counts[type].ready > 0 ? `<b>${counts[type].ready}</b>` : ''}
             </button>
           `).join('')}
         </div>`;
@@ -1162,27 +1837,48 @@ class Game {
       list.innerHTML = '';
       const section = document.createElement('section');
       section.className = `quest-section quest-${activeType}`;
-      groups[activeType].forEach(([id, title, desc, value, target, reward]) => {
+      activeQuests.forEach(([id, title, desc, value, target, reward]) => {
         const ready = value >= target;
         const isClaimed = claimed[activeType].includes(id);
         const pct = Math.min(100, Math.floor((value / target) * 100));
+        const progressText = `${Math.min(value, target).toLocaleString('tr-TR')}/${target.toLocaleString('tr-TR')}`;
+        const displayTitle = title;
+        const displayReward = `+${reward} coin`;
         const row = document.createElement('div');
         row.className = `quest-card ${ready ? 'ready' : ''} ${isClaimed ? 'claimed' : ''}`;
         row.innerHTML = `
-          <div class="quest-icon" aria-hidden="true">${this.getQuestIcon(id)}</div>
           <div class="quest-main">
-            <strong>${title}</strong>
-            <span>${desc}</span>
-            <div class="quest-bar"><div style="width:${pct}%"></div></div>
-            <small>${Math.min(value, target)} / ${target}</small>
+            <strong>${displayTitle}</strong>
+            <div class="quest-coin-line">
+              <span class="quest-coin-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="9" cy="9" r="5.5"></circle>
+                  <circle cx="15" cy="15" r="5.5"></circle>
+                  <path d="M8 7.5h1.5v4"></path>
+                  <path d="M14 13.5h1.5v4"></path>
+                  <path d="M7.25 9.5h4.25"></path>
+                  <path d="M13.25 15.5h4.25"></path>
+                </svg>
+              </span>
+              <b>${displayReward}</b>
+            </div>
+            ${ready ? `<div class="quest-complete-pill"><span aria-hidden="true">✓</span> Görev tamamlandı!</div>` : `
+              <div class="quest-bar"><div style="width:${pct}%"></div></div>
+              <small>${Math.round((value / target) * 100)}% tamamlandı</small>
+            `}
           </div>
           <div class="quest-reward">
-            <b>${reward}</b>
-            <span>coin</span>
-            <button class="btn btn-buy btn-small quest-claim" ${!ready || isClaimed ? 'disabled' : ''}>${isClaimed ? 'ALINDI' : 'AL'}</button>
+            <div class="quest-progress-status">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 7v5l3 2"></path>
+              </svg>
+              <span>${progressText}</span>
+            </div>
+            <button class="btn btn-buy btn-small quest-claim" ${!ready || isClaimed ? 'disabled' : ''}>${isClaimed ? 'Alındı' : 'Al'}</button>
           </div>`;
         const btn = row.querySelector('.quest-claim');
-        btn.onclick = async () => {
+        if (btn) btn.onclick = async () => {
           if (!ready || isClaimed) return;
           const success = await this.authManager.addCoins(reward);
           if (!success) return;
@@ -1192,64 +1888,39 @@ class Game {
           this.updateCoinDisplays();
           this.audio.pickup();
           this.renderQuests();
+          this.renderHomeQuestPreview();
         };
         section.appendChild(row);
       });
       list.appendChild(section);
       return;
     }
-    const labels = { daily: 'GÜNLÜK', weekly: 'HAFTALIK', monthly: 'AYLIK' };
-    const claimed = {};
-    let doneCount = 0;
-    let totalCount = 0;
+  }
 
-    list.innerHTML = '';
-    Object.entries(groups).forEach(([type, quests]) => {
-      const periodKey = this.getQuestPeriodKey(type);
-      claimed[type] = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
-      const section = document.createElement('section');
-      section.className = `quest-section quest-${type}`;
-      section.innerHTML = `<h3 class="section-title-cyber">${labels[type]} GÖREVLER</h3>`;
-      quests.forEach(([id, title, desc, value, target, reward]) => {
-        totalCount++;
-        const ready = value >= target;
-        const isClaimed = claimed[type].includes(id);
-        if (isClaimed) doneCount++;
-        const pct = Math.min(100, Math.floor((value / target) * 100));
-        const row = document.createElement('div');
-        row.className = `quest-card ${ready ? 'ready' : ''} ${isClaimed ? 'claimed' : ''}`;
-        row.innerHTML = `
-          <div class="quest-main">
-            <strong>${title}</strong>
-            <span>${desc}</span>
-            <div class="quest-bar"><div style="width:${pct}%"></div></div>
-            <small>${Math.min(value, target)} / ${target}</small>
-          </div>
-          <div class="quest-reward">
-            <b>${reward}</b>
-            <span>coin</span>
-            <button class="btn btn-buy btn-small quest-claim" ${!ready || isClaimed ? 'disabled' : ''}>${isClaimed ? 'ALINDI' : 'AL'}</button>
-          </div>`;
-        const btn = row.querySelector('.quest-claim');
-        btn.onclick = async () => {
-          if (!ready || isClaimed) return;
-          const success = await this.authManager.addCoins(reward);
-          if (!success) return;
-          const current = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
-          if (!current.includes(id)) current.push(id);
-          localStorage.setItem(`claimedQuests:${periodKey}`, JSON.stringify(current));
-          this.updateCoinDisplays();
-          this.audio.pickup();
-          this.renderQuests();
-        };
-        section.appendChild(row);
-      });
-      list.appendChild(section);
-    });
+  getPlayerPublicId() {
+    const uid = this.authManager && this.authManager.user ? this.authManager.user.uid : '';
+    const cleanUid = uid.replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase();
+    if (cleanUid) return `#BM${cleanUid}`;
+    return '#BM789542';
+  }
 
-    summary.innerHTML = `
-      <h3>Görev Merkezi</h3>
-      <p>${doneCount}/${totalCount} ödül alındı. Günlük görevler kolay, haftalıklar daha güçlü, aylık görevler en zor ve en yüksek ödüllü.</p>`;
+  async copyProfileId() {
+    const btn = document.getElementById('profile-id-copy');
+    const label = btn ? btn.querySelector('small') : null;
+    const original = label ? label.textContent : 'Kopyala';
+    try {
+      await this.copyText(this.getPlayerPublicId());
+      if (label) {
+        label.textContent = 'Kopyalandı';
+        setTimeout(() => { label.textContent = original; }, 1400);
+      }
+      if (this.showToast) this.showToast('Oyuncu ID kopyalandı.');
+    } catch (err) {
+      if (label) {
+        label.textContent = 'Olmadı';
+        setTimeout(() => { label.textContent = original; }, 1400);
+      }
+    }
   }
 
   getQuestIcon(id) {
@@ -1280,34 +1951,43 @@ class Game {
     const data = await this.dbManager.getLeaderboard(20);
     if (data.length === 0) { list.innerHTML = '<p class="text-muted">Henüz skor yok</p>'; return; }
     const uid = this.authManager.user ? this.authManager.user.uid : '';
-    const leader = data[0];
-    const rows = data.map((entry, i) => {
+    const padded = data.slice();
+    while (padded.length < 3) padded.push({ username: ['ProGamer', 'BlockKing', 'CubeNinja'][padded.length], highScore: [5420, 4892, 4201][padded.length], uid: `placeholder-${padded.length}` });
+    const podium = [padded[1], padded[0], padded[2]];
+    const rows = data.slice(3).map((entry, i) => {
       const rankVal = i + 1;
-      const rankClass = rankVal <= 3 ? ` rank-${rankVal}` : '';
-      const medal = rankVal <= 3 ? `TOP ${rankVal}` : `#${rankVal}`;
+      const actualRank = i + 4;
       const meClass = entry.uid === uid ? ' me' : '';
       const crown = entry.isPremium ? ' <span class="premium-icon" title="Premium">VIP</span>' : '';
       return `
-        <div class="leaderboard-item${rankClass}${meClass}">
-          <span class="rank${rankClass}">${medal}</span>
+        <div class="leaderboard-item${meClass}">
+          <span class="rank">#${actualRank}</span>
+          <span class="leaderboard-avatar-mini">🎮</span>
           <div class="player-info">
             <span class="player-name">${entry.username}${crown}</span>
-            <small>${entry.uid === uid ? 'Senin skorun' : 'Oyuncu skoru'}</small>
+            <small>♕ ${entry.highScore} kupa</small>
           </div>
-          <div class="player-score">
-            <span>${entry.highScore}</span>
-            <small>PUAN</small>
-          </div>
+          <div class="player-score"><span>↗</span></div>
         </div>`;
     }).join('');
 
     list.innerHTML = `
-      <div class="leaderboard-hero">
-        <span class="leaderboard-kicker">Haftanın zirvesi</span>
-        <strong>${leader.username}</strong>
-        <small>${leader.highScore} puanla lider</small>
+      <div class="leaderboard-podium" aria-label="Top three players">
+        <div class="podium-player second">
+          <div class="podium-avatar">👑</div>
+          <div class="podium-block"><strong>2</strong><b>${podium[0].username}</b><span>${podium[0].highScore}</span></div>
+        </div>
+        <div class="podium-player first">
+          <div class="podium-crown">♛</div>
+          <div class="podium-avatar">🏆</div>
+          <div class="podium-block"><strong>1</strong><b>${podium[1].username}</b><span>${podium[1].highScore}</span></div>
+        </div>
+        <div class="podium-player third">
+          <div class="podium-avatar">🥷</div>
+          <div class="podium-block"><strong>3</strong><b>${podium[2].username}</b><span>${podium[2].highScore}</span></div>
+        </div>
       </div>
-      <div class="leaderboard-list">${rows}</div>`;
+      <div class="leaderboard-list">${rows || '<p class="text-muted">İlk 3 dışı oyuncu henüz yok</p>'}</div>`;
   }
 
   // â”€â”€ Profile â”€â”€
@@ -1316,19 +1996,46 @@ class Game {
     this.showScreen('profile-screen');
     await this.authManager.loadUserData();
     const d = this.authManager.userData || {};
-    document.getElementById('profile-username').textContent = d.username || 'Oyuncu';
-    document.getElementById('profile-email').textContent = this.authManager.user ? this.authManager.user.email : '';
-    document.getElementById('p-high-score').textContent = d.highScore || 0;
+    const username = this.authManager.getUsername ? this.authManager.getUsername() : (d.username || 'Oyuncu');
+    const unlocked = this.unlockedLevel || this.getSavedUnlockedLevel();
+    const totalGames = d.totalGames || 0;
+    const highScore = d.highScore || this.highScore || 0;
+    const xp = Math.max(0, highScore + ((unlocked - 1) * 350) + (totalGames * 75));
+    const level = Math.max(1, Math.floor(xp / 500) + 1);
+    const currentXp = xp % 500;
+    const xpLeft = 500 - currentXp;
+    document.getElementById('profile-username').textContent = username;
+    const profileId = `ID: ${this.getPlayerPublicId()}`;
+    document.getElementById('profile-email').textContent = profileId;
+    const premiumBadge = document.getElementById('profile-premium-badge');
+    if (premiumBadge) premiumBadge.classList.toggle('hidden', !(this.authManager.isPremium && this.authManager.isPremium()));
+    const profileLevelPill = document.getElementById('profile-level-pill');
+    const profileLevelTitle = document.getElementById('profile-level-title');
+    const profileXpCurrent = document.getElementById('profile-xp-current');
+    const profileXpNext = document.getElementById('profile-xp-next');
+    const profileProgressFill = document.getElementById('profile-progress-fill');
+    if (profileLevelPill) profileLevelPill.textContent = `Level ${level}`;
+    if (profileLevelTitle) profileLevelTitle.textContent = `Level ${level}`;
+    if (profileXpCurrent) profileXpCurrent.textContent = `${currentXp.toLocaleString('tr-TR')} XP`;
+    if (profileXpNext) profileXpNext.textContent = `Level ${level + 1} için ${xpLeft.toLocaleString('tr-TR')} kaldı`;
+    if (profileProgressFill) profileProgressFill.style.setProperty('width', `${Math.min(100, Math.max(0, (currentXp / 500) * 100))}%`, 'important');
+    document.getElementById('p-high-score').textContent = highScore.toLocaleString('tr-TR');
     const onlineWins = d.quickWins || 0;
     const onlineLosses = d.quickLosses || 0;
     const onlineDraws = d.quickDraws || 0;
     const totalOnlineGames = d.quickOnlineGames || d.totalOnlineGames || onlineWins + onlineLosses + onlineDraws;
-    document.getElementById('p-total-games').textContent = totalOnlineGames;
-    document.getElementById('p-total-wins').textContent = onlineWins;
+    const rankLabel = document.getElementById('profile-rank-label');
+    if (rankLabel) rankLabel.textContent = `${onlineWins.toLocaleString('tr-TR')} Galibiyet`;
+    document.getElementById('p-total-games').textContent = totalOnlineGames.toLocaleString('tr-TR');
+    document.getElementById('p-total-wins').textContent = onlineWins.toLocaleString('tr-TR');
+    const winRateEl = document.getElementById('p-win-rate');
+    if (winRateEl) {
+      winRateEl.textContent = totalOnlineGames ? `${Math.round((onlineWins / totalOnlineGames) * 100)}%` : '0%';
+    }
     const drawsEl = document.getElementById('p-total-draws');
-    if (drawsEl) drawsEl.textContent = onlineDraws;
+    if (drawsEl) drawsEl.textContent = onlineDraws.toLocaleString('tr-TR');
     const lossesEl = document.getElementById('p-total-losses');
-    if (lossesEl) lossesEl.textContent = onlineLosses;
+    if (lossesEl) lossesEl.textContent = onlineLosses.toLocaleString('tr-TR');
     // Load match history
     const hist = document.getElementById('match-history');
     if (!this.authManager.user) { hist.innerHTML = '<p class="text-muted">Giriş yapılmadı</p>'; return; }
@@ -1343,9 +2050,9 @@ class Game {
       const oppScore = isP1 ? (m.player2 ? m.player2.score : 0) : (m.player1 ? m.player1.score : 0);
       const draw = !m.winnerUid;
       const won = !draw && m.winnerUid === uid;
-      const typeLabel = m.matchType === 'quick' ? 'Hizli Mac' : 'Oda Maci';
-      const resultLabel = draw ? 'Berabere' : won ? 'Zafer' : 'Maglubiyet';
-      const icon = draw ? 'DRAW' : won ? 'WIN' : 'LOSE';
+      const typeLabel = m.matchType === 'quick' ? 'Hızlı Maç' : 'Oda Maçı';
+      const resultLabel = draw ? 'Berabere' : won ? 'Zafer' : 'Mağlubiyet';
+      const icon = draw ? 'BER' : won ? 'GAL' : 'MAĞ';
       return `
         <div class="match-history-item ${draw ? 'draw' : won ? 'win' : 'lose'}">
           <div class="match-result-badge">${icon}</div>
@@ -1452,7 +2159,7 @@ class Game {
         <span class="level-card-art" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
         <div class="level-card-top">
           <span class="level-number">${level.id}</span>
-          <span class="level-state">${isCompleted ? 'OK' : isUnlocked ? 'PLAY' : 'LOCK'}</span>
+          <span class="level-state">${isCompleted ? 'BİTTİ' : isUnlocked ? 'OYNA' : 'KİLİT'}</span>
         </div>
         <div class="level-title">${level.title}</div>
         <div class="level-card-bottom">
@@ -1488,12 +2195,14 @@ class Game {
 
   async completeCurrentLevel() {
     if (!this.currentLevel) return;
+    await this._flushCoins(); // Performance: birikmiş coin'leri tek seferde yaz
     const nextLevel = Math.min(this.currentLevel.id + 1, this.levels.length + 1);
     if (this.currentLevel.id >= this.unlockedLevel) {
       await this.saveUnlockedLevel(nextLevel);
     }
     this.state = 'gameover';
     this.audio.win();
+    this.vibrate([30, 35, 55]);
     this.recordCompletedGame(true);
     if (this.hasAccount()) this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
     this.updatePlayerHeader();
@@ -1511,7 +2220,11 @@ class Game {
   }
 
   // â”€â”€ Game Start â”€â”€
-  resetGrid() { this.grid = []; for (let r = 0; r < this.GRID_SIZE; r++) this.grid.push(new Array(this.GRID_SIZE).fill(0)); }
+  resetGrid() {
+    this.grid = [];
+    for (let r = 0; r < this.GRID_SIZE; r++) this.grid.push(new Array(this.GRID_SIZE).fill(0));
+    this.markRenderDirty();
+  }
 
   startSoloGame(levelId = 1) {
     if (this.isGuestSession()) {
@@ -1526,13 +2239,14 @@ class Game {
     this.mode = 'solo'; this.state = 'playing'; this.score = 0; this.combo = 0; this.animatingClear = false;
     this.rewardContinueUsed = false; this.rewardBombs = 0;
     this.seed = Date.now(); this.rng = new SeededRandom(this.seed); this.blockSetIndex = 0;
-    this.resetGrid(); this.applyLevelSetup(this.currentLevel); this.generatePieces(); this.resizeCanvas();
+    this.resetGrid(); this.applyLevelSetup(this.currentLevel); this.generatePieces();
     this.resetPowerUps();
     document.getElementById('opponent-board-wrap').classList.add('hidden');
     document.getElementById('opponent-score-box').classList.add('hidden');
     document.getElementById('timer-box').classList.add('hidden');
     this.updateLevelBadge();
-    this.updateScoreDisplay(); this.showScreen('game-screen');
+    this.updateScoreDisplay();
+    this.enterGameScreen(`Level ${this.currentLevel.id}`, `${this.currentLevel.target} hedef skor`);
   }
 
   startEndlessGame() {
@@ -1551,14 +2265,13 @@ class Game {
     this.blockSetIndex = 0;
     this.resetGrid();
     this.generatePieces();
-    this.resizeCanvas();
     this.resetPowerUps();
     document.getElementById('opponent-board-wrap').classList.add('hidden');
     document.getElementById('opponent-score-box').classList.add('hidden');
     document.getElementById('timer-box').classList.add('hidden');
     this.updateLevelBadge();
     this.updateScoreDisplay();
-    this.showScreen('game-screen');
+    this.enterGameScreen('Sonsuz arena', 'En iyi skorunu kur');
   }
 
   startOnlineGame(seed, mode, timeLimit, targetScore) {
@@ -1567,10 +2280,10 @@ class Game {
     this.rewardContinueUsed = false; this.rewardBombs = 0;
     this.seed = seed; this.rng = new SeededRandom(seed); this.blockSetIndex = 0;
     this.timerRemaining = timeLimit || 90; this.targetScore = targetScore || 1000;
-    this.opponentBoard = null; this.opponentScore = 0;
+    this.opponentBoard = null; this.opponentScore = 0; this.opponentBoardDirty = true;
     this.onlineLocked = false;
     this.opponentUid = null; this.opponentUsername = 'Rakip'; this.onlineMatchRecorded = false;
-    this.resetGrid(); this.generatePieces(); this.resizeCanvas();
+    this.resetGrid(); this.generatePieces();
     const tray = document.getElementById('piece-tray');
     if (tray) tray.classList.remove('locked');
     this.resetPowerUps();
@@ -1586,7 +2299,8 @@ class Game {
       document.getElementById('timer-box').classList.add('hidden');
     }
     this.updateLevelBadge();
-    this.updateScoreDisplay(); this.showScreen('game-screen');
+    this.updateScoreDisplay();
+    this.enterGameScreen(this.onlineMode === 'time' ? 'Zamana karşı' : 'Skor yarışı', 'Rakip alanı bağlanıyor');
   }
 
   startOnlineTimer() {
@@ -1619,6 +2333,7 @@ class Game {
       : generatePieceSet(this.rng);
     this.blockSetIndex++;
     this.renderPieceTray();
+    this.markRenderDirty();
   }
 
   shouldUseEndlessFlow() {
@@ -1740,13 +2455,21 @@ class Game {
       }
       slot.appendChild(grid); tray.appendChild(slot);
     });
+    this.markRenderDirty();
   }
 
   // â”€â”€ Canvas â”€â”€
   resizeCanvas() {
     const ga = document.getElementById('game-area');
-    const availableWidth = ga.clientWidth - 4;
-    const availableHeight = ga.clientHeight - 4;
+    const fallbackWidth = Math.min(window.innerWidth || 360, 780);
+    const fallbackHeight = Math.max(280, (window.innerHeight || 640) - 270);
+    const mobileSolo = this.isMobile && this.mode !== 'online';
+    const measuredWidth = ga && ga.clientWidth ? ga.clientWidth : fallbackWidth;
+    const measuredHeight = ga && ga.clientHeight ? ga.clientHeight : fallbackHeight;
+    const mobileWidth = Math.min(window.innerWidth || fallbackWidth, 520) - 24;
+    const mobileHeight = Math.max(320, (window.innerHeight || fallbackHeight) - 330);
+    const availableWidth = Math.max((mobileSolo ? mobileWidth : measuredWidth) - 4, 240);
+    const availableHeight = Math.max((mobileSolo ? mobileHeight : measuredHeight) - 4, 240);
     let widthForMainBoard = availableWidth;
     if (this.mode === 'online') {
       const gap = window.innerWidth <= 480 ? 8 : 16;
@@ -1754,8 +2477,8 @@ class Game {
       widthForMainBoard = Math.max(onlineWidthLimitedCellSize * this.GRID_SIZE, 0);
     }
     let cs = Math.floor(Math.min(widthForMainBoard, availableHeight) / this.GRID_SIZE);
-    cs = Math.min(cs, this.mode === 'online' ? 68 : 82);
-    cs = Math.max(cs, this.mode === 'online' ? 20 : 30);
+    cs = Math.min(cs, this.mode === 'online' ? 68 : (mobileSolo ? 48 : 82));
+    cs = Math.max(cs, this.mode === 'online' ? 20 : (mobileSolo ? 34 : 30));
     this.cellSize = cs;
     const gp = this.GRID_SIZE * cs;
 
@@ -1764,6 +2487,7 @@ class Game {
     this.canvas.style.width = '';
     this.canvas.style.height = '';
     this.gridOffset = { x: 6, y: 6 };
+    this.markRenderDirty();
 
     if (this.mode === 'online') {
       this.opponentCellSize = Math.max(Math.floor(cs * 0.4), 12);
@@ -1772,13 +2496,36 @@ class Game {
       this.opponentCanvas.height = op + 8;
       this.opponentCanvas.style.width = '';
       this.opponentCanvas.style.height = '';
+      this.opponentBoardDirty = true;
+    }
+  }
+
+  drawCurrentFrame() {
+    if (!this.ctx || !this.canvas || !this.grid.length) return;
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.renderer.drawGrid(this.ctx, this.grid, this.cellSize, this.gridOffset.x, this.gridOffset.y, this.ghost);
+    this.renderDirty = false;
+    this.drawOpponentIfDirty();
+  }
+
+  drawOpponentIfDirty() {
+    if (this.mode === 'online' && this.opponentCtx && this.opponentBoardDirty) {
+      this.opponentCtx.clearRect(0, 0, this.opponentCanvas.width, this.opponentCanvas.height);
+      if (this.opponentBoard) {
+        this.renderer.drawOpponentGrid(this.opponentCtx, this.opponentBoard, this.opponentCellSize, 4, 4);
+      }
+      this.opponentBoardDirty = false;
     }
   }
 
   // â”€â”€ Ghost & Placement â”€â”€
   updateGhost(screenX, screenY, pieceIndex) {
     const piece = this.pieces[pieceIndex];
-    if (!piece || piece.placed) { this.ghost = null; return; }
+    if (!piece || piece.placed) {
+      if (this.ghost) this.markRenderDirty();
+      this.ghost = null;
+      return;
+    }
 
     // Performance: Debounce ghost updates (skip if moved less than threshold)
     if (this.input._lastGhostX && this.input._lastGhostY) {
@@ -1800,10 +2547,15 @@ class Game {
     const valid = this.canPlace(shape, gr, gc);
     const cells = [];
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (shape[r][c]) cells.push({ r: gr + r, c: gc + c });
+    const prev = this.ghost;
     this.ghost = { row: gr, col: gc, valid, cells };
+    if (!prev || prev.row !== gr || prev.col !== gc || prev.valid !== valid) this.markRenderDirty();
   }
 
-  clearGhost() { this.ghost = null; }
+  clearGhost() {
+    if (this.ghost) this.markRenderDirty();
+    this.ghost = null;
+  }
 
   canPlace(shape, sr, sc) {
     for (let r = 0; r < shape.length; r++) for (let c = 0; c < shape[r].length; c++) {
@@ -1818,13 +2570,19 @@ class Game {
   tryPlace(screenX, screenY, pieceIndex) {
     if (this.mode === 'online' && this.onlineLocked) {
       this.audio.invalid();
+      this.vibrate([30, 25, 30]);
       return false;
     }
-    if (!this.ghost || !this.ghost.valid) { this.audio.invalid(); return false; }
+    if (!this.ghost || !this.ghost.valid) {
+      this.audio.invalid();
+      this.vibrate([30, 25, 30]);
+      return false;
+    }
     const piece = this.pieces[pieceIndex]; const shape = piece.shape; const colorVal = piece.colorIndex + 1;
     for (let r = 0; r < shape.length; r++) for (let c = 0; c < shape[r].length; c++) if (shape[r][c]) this.grid[this.ghost.row + r][this.ghost.col + c] = colorVal;
+    this.markRenderDirty();
     this.score += getShapeCells(shape).length;
-    piece.placed = true; this.audio.place();
+    piece.placed = true; this.audio.place(); this.vibrate(14);
     const slot = document.querySelector(`.piece-slot[data-index="${pieceIndex}"]`);
     if (slot) slot.classList.add('placed');
     const clearedLines = this.checkAndClearLines();
@@ -1865,7 +2623,8 @@ class Game {
 
     // Award coins: 10 per line, 20 bonus for each combo level
     const coinsEarned = (total * 10) + (this.combo > 1 ? (this.combo - 1) * 20 : 0);
-    this.authManager.addCoins(coinsEarned).then(() => this.updateCoinDisplays());
+    // Performance: Firebase'e tek tek yazmak yerine batch'le, oyun sonunda gönder
+    this.queueCoins(coinsEarned);
 
     this.combo++;
     const cells = new Set();
@@ -1875,13 +2634,21 @@ class Game {
     for (const k of cells) { const [r, c] = k.split(',').map(Number); this.renderer.addClearParticles(r, c, this.cellSize, this.gridOffset.x, this.gridOffset.y, this.grid[r][c]); arr.push({ r, c }); }
     this.renderer.addFlashCells(arr);
     this.renderer.addClearWave(clearRows, clearCols, this.cellSize, this.gridOffset.x, this.gridOffset.y);
+    this.markRenderDirty();
     const pts = cells.size + total * 18 + (this.combo > 1 ? this.combo * 15 : 0);
     this.score += pts;
     this.showScorePopup(pts);
     if (this.combo > 1) { this.showCombo(this.combo); this.audio.combo(this.combo); }
     this.audio.clear(total);
+    this.vibrate(total > 1 ? [22, 25, 36] : 24);
     for (const k of cells) { const [r, c] = k.split(',').map(Number); this.grid[r][c] = 0; }
-    this.animatingClear = true; setTimeout(() => { this.animatingClear = false; }, 300);
+    this.markRenderDirty();
+    this.animatingClear = true;
+    setTimeout(() => {
+      this.animatingClear = false;
+      this.renderer.flashCells = [];
+      this.markRenderDirty();
+    }, 180);
     return true;
   }
 
@@ -1936,7 +2703,8 @@ class Game {
 
   async onGameOver() {
     this.stopOnlineTimer();
-    this.state = 'gameover'; this.audio.gameOver();
+    await this._flushCoins(); // Performance: birikmiş coin'leri tek seferde yaz
+    this.state = 'gameover'; this.audio.gameOver(); this.vibrate([45, 35, 70]);
     if (this.mode === 'online') this.network.sendGameOver();
     if (this.mode === 'online') this.recordOnlineMatchResult(false);
 
@@ -1968,6 +2736,7 @@ class Game {
     }
     this.state = 'gameover';
     this.audio.win();
+    this.vibrate([30, 35, 55]);
     this.recordCompletedGame(true);
     this.recordOnlineMatchResult(true);
     this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
@@ -1978,6 +2747,7 @@ class Game {
     if (this.state === 'playing') {
       this.stopOnlineTimer();
       this.state = 'gameover';
+      this.vibrate([30, 35, 55]);
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
@@ -1992,6 +2762,7 @@ class Game {
     const won = this.score > this.opponentScore; const tied = this.score === this.opponentScore;
     if (won) {
       this.audio.win();
+      this.vibrate([30, 35, 55]);
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
       this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
@@ -2052,14 +2823,14 @@ class Game {
     const btn = document.getElementById('btn-reward-continue');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = 'Reklam hazirlaniyor...';
+      btn.textContent = 'Reklam hazırlanıyor...';
     }
 
     const rewarded = await this.ad.showRewarded();
     if (!rewarded) {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Reklam hazir degil';
+        btn.textContent = 'Reklam hazır değil';
         setTimeout(() => {
           if (!btn.classList.contains('hidden')) btn.textContent = 'Reklam izle, +1 bomba ile devam et';
         }, 1400);
@@ -2075,6 +2846,7 @@ class Game {
     this.updatePowerUpUI();
     this.updateScoreDisplay();
     this.showScreen('game-screen');
+    this.startGameLoop(); // Performance: reklam sonrası devamda döngüyü yeniden başlat
     requestAnimationFrame(() => this.resizeCanvas());
   }
 
@@ -2128,51 +2900,47 @@ class Game {
   gameLoop(timestamp) {
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1); this.lastTime = timestamp;
     if (this.state === 'playing') {
-      // Performance: Particles sadece desktop'ta
-      if (this.particlesEnabled) {
+      const hadAnimation = this.renderer.isAnimating || (this.particlesEnabled && this.renderer.particles.length > 0);
+      if (hadAnimation) {
         this.renderer.updateParticles(dt);
+        this.markRenderDirty();
       }
 
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.renderer.drawGrid(this.ctx, this.grid, this.cellSize, this.gridOffset.x, this.gridOffset.y, this.ghost);
+      if (this.renderDirty || this.renderer.isAnimating || (this.particlesEnabled && this.renderer.particles.length > 0)) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.renderer.drawGrid(this.ctx, this.grid, this.cellSize, this.gridOffset.x, this.gridOffset.y, this.ghost);
 
-      if (this.particlesEnabled) {
-        this.renderer.drawParticles(this.ctx);
+        if (this.particlesEnabled) {
+          this.renderer.drawParticles(this.ctx);
+        }
+        this.renderDirty = false;
       }
 
-      // Performance: Opponent board hash ile karşılaştır (JSON.stringify yerine)
-      if (this.mode === 'online' && this.opponentBoard) {
-        const currentHash = this.hashBoard(this.opponentBoard);
-        if (this._lastOpponentHash !== currentHash) {
-          this.opponentCtx.clearRect(0, 0, this.opponentCanvas.width, this.opponentCanvas.height);
-          this.renderer.drawOpponentGrid(this.opponentCtx, this.opponentBoard, this.opponentCellSize, 4, 4);
-          this._lastOpponentHash = currentHash;
+      this.drawOpponentIfDirty();
+
+      if (this.mode === 'online' && this.onlineMode === 'time' && this.timerRemaining > 0) {
+        const timerText = `${Math.floor(this.timerRemaining / 60)}:${Math.floor(this.timerRemaining % 60).toString().padStart(2, '0')}`;
+        if (timerText !== this._lastTimerDisplay) {
+          this._lastTimerDisplay = timerText;
+          this.updateTimerDisplay();
         }
       }
-
-      if (this.mode === 'online' && this.onlineMode === 'time' && this.timerRemaining > 0) this.updateTimerDisplay();
       if (this.mode === 'online' && this.onlineMode === 'score' && this.score >= this.targetScore) {
         this.stopOnlineTimer();
-        this.state = 'gameover'; this.audio.win(); this.network.sendGameOver();
+        this.state = 'gameover'; this.audio.win(); this.vibrate([30, 35, 55]); this.network.sendGameOver();
         this.recordCompletedGame(true);
         this.recordOnlineMatchResult(true);
         this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
         this.showGameOverScreen(true, `${this.targetScore} puana ilk sen ulaştın!`);
       }
     }
-    requestAnimationFrame((t) => this.gameLoop(t));
-  }
-
-  // Performance: Fast board hash function (JSON.stringify yerine)
-  hashBoard(board) {
-    let hash = 0;
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        hash = ((hash << 5) - hash) + board[r][c];
-        hash = hash & hash; // Convert to 32bit integer
-      }
+    // Performance: Oyun yoksa ve animasyon bitmişse döngüyü durdur (menüde CPU/GPU serbest)
+    const needsLoop = this.state === 'playing' || this.renderer.isAnimating;
+    if (needsLoop) {
+      this._rafId = requestAnimationFrame((t) => this.gameLoop(t));
+    } else {
+      this._rafId = null; // Döngü durdu — startGameLoop() ile yeniden başlatılacak
     }
-    return hash;
   }
 
   // â”€â”€ Power-ups Logic â”€â”€
@@ -2191,9 +2959,17 @@ class Game {
     const coins = this.authManager.getCoins();
     const menuCoins = document.getElementById('menu-coins');
     const storeCoins = document.getElementById('store-coins');
+    const mapCoins = document.getElementById('map-coins');
+    const onlineCoins = document.getElementById('online-coins');
+    const leaderboardCoins = document.getElementById('leaderboard-coins');
+    const questsCoins = document.getElementById('quests-coins');
     const drawerCoins = document.getElementById('drawer-coins');
     if (menuCoins) menuCoins.textContent = coins;
     if (storeCoins) storeCoins.textContent = coins;
+    if (mapCoins) mapCoins.textContent = coins.toLocaleString('tr-TR');
+    if (onlineCoins) onlineCoins.textContent = coins.toLocaleString('tr-TR');
+    if (leaderboardCoins) leaderboardCoins.textContent = coins.toLocaleString('tr-TR');
+    if (questsCoins) questsCoins.textContent = coins.toLocaleString('tr-TR');
     if (drawerCoins) drawerCoins.textContent = coins.toLocaleString('tr-TR');
     this.updatePlayerHeader();
 
@@ -2203,6 +2979,118 @@ class Game {
       if (!['theme', 'cosmetic'].includes(btn.dataset.type) && Number.isFinite(price)) btn.disabled = false;
     });
     if (typeof this.updateStoreCosmeticsUI === 'function') this.updateStoreCosmeticsUI();
+  }
+
+  // Performance: Firebase coin yazımını batch'le — oyun boyunca biriktir, sonunda tek seferde gönder
+  queueCoins(amount) {
+    this._pendingCoins += amount;
+  }
+
+  async _flushCoins() {
+    if (this._pendingCoins <= 0) return;
+    const amount = this._pendingCoins;
+    this._pendingCoins = 0;
+    await this.authManager.addCoins(amount);
+    this.updateCoinDisplays();
+  }
+
+  getLocalDateKey(offsetDays = 0) {
+    const date = new Date();
+    date.setDate(date.getDate() + offsetDays);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  getDailyRewardKey() {
+    const uid = this.authManager && this.authManager.user ? this.authManager.user.uid : 'guest';
+    return `blockBattleDailyReward:${uid}`;
+  }
+
+  getDailyRewardState() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.getDailyRewardKey()) || '{}');
+      return {
+        streak: Math.min(Math.max(parseInt(raw.streak || '0', 10), 0), this.dailyRewards.length - 1),
+        lastClaimIndex: Math.min(Math.max(parseInt(raw.lastClaimIndex || '0', 10), 0), this.dailyRewards.length - 1),
+        lastClaimDate: typeof raw.lastClaimDate === 'string' ? raw.lastClaimDate : ''
+      };
+    } catch (err) {
+      return { streak: 0, lastClaimIndex: 0, lastClaimDate: '' };
+    }
+  }
+
+  saveDailyRewardState(state) {
+    localStorage.setItem(this.getDailyRewardKey(), JSON.stringify(state));
+  }
+
+  getTodayDailyRewardState() {
+    const state = this.getDailyRewardState();
+    const today = this.getLocalDateKey();
+    const yesterday = this.getLocalDateKey(-1);
+    const claimedToday = state.lastClaimDate === today;
+    const streak = state.lastClaimDate && state.lastClaimDate !== today && state.lastClaimDate !== yesterday
+      ? 0
+      : state.streak;
+    return { ...state, today, claimedToday, streak };
+  }
+
+  renderDailyReward() {
+    const track = document.getElementById('daily-reward-track');
+    if (!track) return;
+
+    const state = this.getTodayDailyRewardState();
+    const activeIndex = state.claimedToday ? state.lastClaimIndex : state.streak;
+    const reward = this.dailyRewards[activeIndex] || this.dailyRewards[0];
+    const items = track.querySelectorAll('span');
+
+    items.forEach((item, index) => {
+      item.classList.toggle('claimed', state.claimedToday ? index <= activeIndex : index < activeIndex);
+      item.classList.toggle('active', index === activeIndex);
+      item.classList.toggle('claimable', index === activeIndex && !state.claimedToday);
+      item.removeAttribute('role');
+      item.removeAttribute('tabindex');
+      item.removeAttribute('aria-disabled');
+      item.title = '';
+      if (index === activeIndex) {
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', state.claimedToday ? '-1' : '0');
+        item.setAttribute('aria-disabled', state.claimedToday ? 'true' : 'false');
+        item.title = state.claimedToday ? 'Bugünün ödülü alındı' : `Bugünün ödülü: ${reward} coin`;
+      }
+    });
+
+  }
+
+  async claimDailyReward() {
+    if (!this.authManager || !this.authManager.userData) return;
+
+    const state = this.getTodayDailyRewardState();
+    if (state.claimedToday) {
+      this.renderDailyReward();
+      return;
+    }
+
+    const reward = this.dailyRewards[state.streak] || this.dailyRewards[0];
+    const track = document.getElementById('daily-reward-track');
+    const activeItem = track ? track.querySelector('span.active') : null;
+    if (activeItem) activeItem.classList.add('claiming');
+
+    const success = await this.authManager.addCoins(reward);
+    if (!success) {
+      if (activeItem) activeItem.classList.remove('claiming');
+      return;
+    }
+
+    const nextStreak = state.streak >= this.dailyRewards.length - 1 ? 0 : state.streak + 1;
+    this.saveDailyRewardState({
+      streak: nextStreak,
+      lastClaimIndex: state.streak,
+      lastClaimDate: state.today
+    });
+    this.updateCoinDisplays();
+    this.renderDailyReward();
   }
 
   updatePlayerHeader() {
@@ -2217,18 +3105,99 @@ class Game {
     const headerUsername = document.getElementById('header-username');
     const headerLevel = document.getElementById('header-level');
     const headerXp = document.getElementById('header-xp');
+    const onlineUsername = document.getElementById('online-header-username');
+    const onlineLevel = document.getElementById('online-header-level');
+    const onlineXp = document.getElementById('online-header-xp');
+    const storeUsername = document.getElementById('store-header-username');
+    const storeLevel = document.getElementById('store-header-level');
+    const storeXp = document.getElementById('store-header-xp');
+    const mapUsername = document.getElementById('map-header-username');
+    const mapLevel = document.getElementById('map-header-level');
+    const mapXp = document.getElementById('map-header-xp');
+    const leaderboardUsername = document.getElementById('leaderboard-header-username');
+    const leaderboardLevel = document.getElementById('leaderboard-header-level');
+    const leaderboardXp = document.getElementById('leaderboard-header-xp');
+    const questsUsername = document.getElementById('quests-header-username');
+    const questsLevel = document.getElementById('quests-header-level');
+    const questsXp = document.getElementById('quests-header-xp');
+    const homeLevel = document.getElementById('home-level');
+    const homeXpLabel = document.getElementById('home-xp-label');
+    const homeXpCurrent = document.getElementById('home-xp-current');
+    const homeXpNext = document.getElementById('home-xp-next');
+    const homeXpBar = document.getElementById('home-xp-bar');
     const drawerUsername = document.getElementById('drawer-username');
     if (headerUsername) headerUsername.textContent = username;
+    if (onlineUsername) onlineUsername.textContent = username;
+    if (storeUsername) storeUsername.textContent = username;
+    if (mapUsername) mapUsername.textContent = username;
+    if (leaderboardUsername) leaderboardUsername.textContent = username;
+    if (questsUsername) questsUsername.textContent = username;
     if (drawerUsername) drawerUsername.textContent = username;
     if (headerLevel) headerLevel.textContent = level;
     if (headerXp) headerXp.textContent = `${currentXp}/500`;
+    if (onlineLevel) onlineLevel.textContent = level;
+    if (onlineXp) onlineXp.textContent = `${currentXp}/500`;
+    if (storeLevel) storeLevel.textContent = level;
+    if (storeXp) storeXp.textContent = `${currentXp}/500`;
+    if (mapLevel) mapLevel.textContent = level;
+    if (mapXp) mapXp.textContent = `${currentXp}/500`;
+    if (leaderboardLevel) leaderboardLevel.textContent = level;
+    if (leaderboardXp) leaderboardXp.textContent = `${currentXp}/500`;
+    if (questsLevel) questsLevel.textContent = level;
+    if (questsXp) questsXp.textContent = `${currentXp}/500`;
+    if (homeLevel) homeLevel.textContent = level;
+    if (homeXpLabel) homeXpLabel.textContent = `${currentXp}/500 XP`;
+    if (homeXpCurrent) homeXpCurrent.textContent = `${currentXp} XP`;
+    if (homeXpNext) homeXpNext.textContent = `${500 - currentXp} XP kaldı`;
+    if (homeXpBar) homeXpBar.style.width = `${Math.min(100, Math.max(0, (currentXp / 500) * 100))}%`;
+    this.applySelectedAvatar();
   }
 
-  showStore() {
+  showStore(tab = 'currency') {
     this.updateCoinDisplays();
     this.updateStoreThemesUI();
     this.updateStoreCosmeticsUI();
+    this.selectStoreTab(tab);
     this.showScreen('store-screen');
+    requestAnimationFrame(() => this.scrollStoreToTab(tab));
+  }
+
+  selectStoreTab(tab = 'currency') {
+    const validTab = document.querySelector(`[data-shop-tab="${tab}"]`) ? tab : 'currency';
+    document.querySelectorAll('[data-shop-tab]').forEach(item => {
+      item.classList.toggle('active', item.dataset.shopTab === validTab);
+    });
+    document.querySelectorAll('[data-shop-panel]').forEach(panel => {
+      panel.classList.toggle('active', panel.dataset.shopPanel === validTab);
+    });
+  }
+
+  scrollStoreToTab(tab = 'currency') {
+    const scroller = document.querySelector('#store-screen .store-themed-scroll');
+    if (!scroller) return;
+    if (tab === 'currency') {
+      scroller.scrollTop = 0;
+      return;
+    }
+    const tabs = document.querySelector('#store-screen .shop-tabs');
+    scroller.scrollTop = tabs ? Math.max(0, tabs.offsetTop - 12) : 0;
+  }
+
+  setupCoinTopUpButtons() {
+    document.querySelectorAll('.figma-stat.coin-stat').forEach((stat) => {
+      if (stat.querySelector('.coin-topup-btn')) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'coin-topup-btn';
+      btn.setAttribute('aria-label', 'Coin satın al');
+      btn.textContent = '+';
+      btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.showStore('currency');
+      };
+      stat.appendChild(btn);
+    });
   }
 
   setTheme(themeId) {
@@ -2260,8 +3229,9 @@ class Game {
         btn.style.background = 'var(--surface)';
         btn.style.color = 'var(--neon-green)';
       } else {
-        btn.textContent = `${price} coin`;
-        btn.disabled = this.authManager.getCoins() < price;
+        const canAfford = this.authManager.getCoins() >= price;
+        btn.textContent = canAfford ? 'Al' : 'Yetersiz';
+        btn.disabled = !canAfford;
         btn.style.background = '';
         btn.style.color = '';
       }
@@ -2307,8 +3277,9 @@ class Game {
         btn.style.background = 'var(--surface)';
         btn.style.color = 'var(--neon-green)';
       } else {
-        btn.textContent = `${price} coin`;
-        btn.disabled = this.authManager.getCoins() < price;
+        const canAfford = this.authManager.getCoins() >= price;
+        btn.textContent = canAfford ? 'Al' : 'Yetersiz';
+        btn.disabled = !canAfford;
         btn.style.background = '';
         btn.style.color = '';
       }
@@ -2340,6 +3311,7 @@ class Game {
     const itemsEl = document.getElementById('quick-shop-items');
     const balanceEl = document.getElementById('quick-shop-balance');
     const statusEl = document.getElementById('quick-shop-status');
+    const coinPanel = document.getElementById('quick-shop-coin-panel');
     if (!modal || !itemsEl) return;
 
     const items = [
@@ -2350,6 +3322,7 @@ class Game {
     const ordered = [...items].sort((a, b) => (a.type === focusType ? -1 : 0) + (b.type === focusType ? 1 : 0));
     if (balanceEl) balanceEl.textContent = `${this.authManager.getCoins().toLocaleString('tr-TR')} coin`;
     if (statusEl) statusEl.textContent = '';
+    if (coinPanel) coinPanel.innerHTML = '';
     itemsEl.innerHTML = ordered.map(item => `
       <div class="quick-shop-item ${item.type === focusType ? 'focused' : ''}">
         <div class="quick-shop-icon">${item.icon}</div>
@@ -2365,6 +3338,13 @@ class Game {
       btn.onclick = async () => {
         const type = btn.dataset.type;
         const price = parseInt(btn.dataset.price, 10);
+        if (this.authManager.getCoins() < price) {
+          if (statusEl) statusEl.textContent = 'Coin yetersiz. Oyundan çıkmadan coin ekleyebilirsin.';
+          this.showQuickShopCoinPanel(price - this.authManager.getCoins());
+          btn.classList.add('shake');
+          setTimeout(() => btn.classList.remove('shake'), 500);
+          return;
+        }
         btn.disabled = true;
         const success = await this.authManager.buyPowerUp(type, price);
         if (success) {
@@ -2376,6 +3356,7 @@ class Game {
           this.audio.pickup();
         } else if (statusEl) {
           statusEl.textContent = 'Coin yetersiz.';
+          this.showQuickShopCoinPanel(price - this.authManager.getCoins());
           btn.classList.add('shake');
           setTimeout(() => btn.classList.remove('shake'), 500);
         }
@@ -2383,7 +3364,59 @@ class Game {
       };
     });
 
+    this.showQuickShopCoinPanel(0);
     modal.classList.remove('hidden');
+  }
+
+  showQuickShopCoinPanel(shortage = 0) {
+    const panel = document.getElementById('quick-shop-coin-panel');
+    const statusEl = document.getElementById('quick-shop-status');
+    if (!panel) return;
+
+    const packs = [
+      { product: 'blockbattle_coins_500', amount: '500', price: '₺19,99' },
+      { product: 'blockbattle_coins_1500', amount: '1.500', price: '₺49,99' },
+      { product: 'blockbattle_coins_5000', amount: '5.000', price: '₺129,99' },
+    ];
+
+    const shortageText = shortage > 0
+      ? `<small>Bu alışveriş için ${Math.ceil(shortage).toLocaleString('tr-TR')} coin eksik.</small>`
+      : '<small>Oyundan çıkmadan coin ekle.</small>';
+
+    panel.innerHTML = `
+      <div class="quick-shop-coin-head">
+        <strong>Coin Ekle</strong>
+        ${shortageText}
+      </div>
+      <div class="quick-shop-coin-packs">
+        ${packs.map(pack => `
+          <button class="quick-shop-coin-pack" type="button" data-quick-iap-product="${pack.product}">
+            <span>${pack.amount} Coin</span>
+            <b>${pack.price}</b>
+          </button>
+        `).join('')}
+      </div>
+    `;
+
+    panel.classList.remove('hidden');
+
+    panel.querySelectorAll('[data-quick-iap-product]').forEach(btn => {
+      btn.onclick = async () => {
+        if (statusEl) statusEl.textContent = 'Satın alma penceresi açılıyor...';
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        if (this.iap) {
+          await this.iap.purchase(btn.dataset.quickIapProduct, null);
+        } else if (statusEl) {
+          statusEl.textContent = 'Gerçek ödeme Android uygulamasında açılır.';
+        }
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        if (statusEl) statusEl.textContent = `${this.authManager.getCoins().toLocaleString('tr-TR')} coin bakiyen var.`;
+        const balanceEl = document.getElementById('quick-shop-balance');
+        if (balanceEl) balanceEl.textContent = `${this.authManager.getCoins().toLocaleString('tr-TR')} coin`;
+      };
+    });
   }
 
   closeQuickShop() {
@@ -2423,6 +3456,7 @@ class Game {
     else this.authManager.decrementInventory('bomb');
     this.bombMode = false;
     this.renderer.addBombEffect(row, col, this.cellSize, this.gridOffset.x, this.gridOffset.y);
+    this.markRenderDirty();
 
     // Clear 3x3 area
     for (let r = row - 1; r <= row + 1; r++) {
@@ -2432,6 +3466,7 @@ class Game {
         }
       }
     }
+    this.markRenderDirty();
 
     this.audio.pickup(); // Or a bomb sound
     this.updatePowerUpUI();
@@ -2449,6 +3484,7 @@ class Game {
 
     this.renderPieceTray();
     this.renderer.addPowerBurst('rotate');
+    this.markRenderDirty();
     this.pulsePieceTray();
     this.updatePowerUpUI();
     this.audio.pickup();
@@ -2461,6 +3497,7 @@ class Game {
 
     this.generatePieces();
     this.renderer.addPowerBurst('skip');
+    this.markRenderDirty();
     this.pulsePieceTray();
     this.updatePowerUpUI();
     this.audio.pickup();
