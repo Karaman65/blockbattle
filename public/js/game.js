@@ -2708,8 +2708,8 @@ class Game {
     if (this.mode === 'online') this.network.sendGameOver();
     if (this.mode === 'online') this.recordOnlineMatchResult(false);
 
-    // Show interstitial ad
-    this.ad.showInterstitial();
+    const isPremium = !!(this.authManager && this.authManager.isPremium && this.authManager.isPremium());
+    if (!isPremium) this.ad.showInterstitial();
 
     // Save to Firebase
     await this.recordCompletedGame(false);
@@ -2795,11 +2795,12 @@ class Game {
     const rewardContinueBtn = document.getElementById('btn-reward-continue');
     const canPlayNextLevel = won && this.mode === 'solo' && this.currentLevel && this.currentLevel.id < this.levels.length;
     const canRewardContinue = !won && this.mode === 'solo' && !this.rewardContinueUsed;
+    const isPremium = !!(this.authManager && this.authManager.isPremium && this.authManager.isPremium());
     if (nextLevelBtn) nextLevelBtn.classList.toggle('hidden', !canPlayNextLevel);
     if (rewardContinueBtn) {
       rewardContinueBtn.classList.toggle('hidden', !canRewardContinue);
       rewardContinueBtn.disabled = false;
-      rewardContinueBtn.textContent = 'Reklam izle, +1 bomba ile devam et';
+      rewardContinueBtn.textContent = isPremium ? 'Premium devam: +1 bomba' : 'Reklam izle, +1 bomba ile devam et';
     }
     if (resultMsg) {
       title.textContent = won ? 'Zafer!' : 'Oyun Bitti!';
@@ -2821,12 +2822,13 @@ class Game {
   async continueAfterRewardAd() {
     if (this.mode !== 'solo' || this.rewardContinueUsed) return;
     const btn = document.getElementById('btn-reward-continue');
+    const isPremium = !!(this.authManager && this.authManager.isPremium && this.authManager.isPremium());
     if (btn) {
       btn.disabled = true;
-      btn.textContent = 'Reklam hazırlanıyor...';
+      btn.textContent = isPremium ? 'Premium devam açılıyor...' : 'Reklam hazırlanıyor...';
     }
 
-    const rewarded = await this.ad.showRewarded();
+    const rewarded = isPremium ? true : await this.ad.showRewarded();
     if (!rewarded) {
       if (btn) {
         btn.disabled = false;

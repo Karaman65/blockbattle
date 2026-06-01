@@ -218,6 +218,7 @@ class AdManager {
   }
 
   async showInterstitial() {
+    if (window._game?.authManager?.isPremium?.()) return;
     if (!this.initialized) return;
 
     // If not ready, try to prepare and skip this time
@@ -261,6 +262,7 @@ class AdManager {
   }
 
   async showRewarded() {
+    if (window._game?.authManager?.isPremium?.()) return true;
     if (typeof window.Capacitor === 'undefined' || !window.Capacitor.isNativePlatform()) {
       console.log('Rewarded AdMob: web test mode, reward granted without native ad.');
       return true;

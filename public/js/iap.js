@@ -88,6 +88,15 @@ class IapManager {
     document.querySelectorAll('[data-iap-product]').forEach(btn => {
       const id = btn.dataset.iapProduct;
       const config = this.productConfig[id];
+      const isOwnedPremium = !!(config?.premium && this.authManager?.isPremium && this.authManager.isPremium());
+      if (isOwnedPremium) {
+        btn.textContent = 'Aktif';
+        btn.disabled = true;
+        btn.classList.add('owned');
+        return;
+      }
+      btn.disabled = btn.dataset.busy === 'true';
+      btn.classList.remove('owned');
       const product = this.products.get(id);
       const price = product?.formatted_price || product?.offers?.[0]?.formatted_price || config?.fallbackPrice || 'Satın Al';
       btn.textContent = price;
@@ -99,6 +108,12 @@ class IapManager {
     if (!config) return;
 
     if (!this.game.requireAccount('Satın alma işlemi için giriş yap veya hesap oluştur.')) return;
+
+    if (config.premium && this.authManager?.isPremium && this.authManager.isPremium()) {
+      this.setStatus('Premium zaten aktif.');
+      this.updateProductLabels();
+      return;
+    }
 
     if (!this.plugin || !this.ready) {
       this.setStatus('Ödeme ürünü Play Console tarafında hazır olduktan sonra açılır.');
@@ -155,12 +170,18 @@ class IapManager {
     if (config.consumable && fulfilled.has(token)) return;
 
     if (config.premium) {
-      await this.authManager.completePremiumPurchase(config.coins);
-      await this.plugin.acknowledgePurchase({ purchaseToken: purchase.purchaseToken });
-      this.setStatus('Premium açıldı. 2000 coin hesabına eklendi.');
+      const result = await this.authManager.completePremiumPurchase(restoreOnly ? 0 : config.coins);
+      if (purchase.purchaseToken && this.plugin && typeof this.plugin.acknowledgePurchase === 'function') {
+        await this.plugin.acknowledgePurchase({ purchaseToken: purchase.purchaseToken });
+      }
+      this.setStatus(result && result.bonusGranted
+        ? 'Premium açıldı. 2000 coin hesabına eklendi.'
+        : 'Premium aktif.');
     } else if (!restoreOnly) {
       await this.authManager.addCoins(config.coins);
-      await this.plugin.consumePurchase({ purchaseToken: purchase.purchaseToken });
+      if (purchase.purchaseToken && this.plugin && typeof this.plugin.consumePurchase === 'function') {
+        await this.plugin.consumePurchase({ purchaseToken: purchase.purchaseToken });
+      }
       fulfilled.add(token);
       this.saveFulfilledTokens(fulfilled);
       this.setStatus(`${config.label} hesabına eklendi.`);
@@ -168,6 +189,7 @@ class IapManager {
 
     this.game.updateCoinDisplays();
     this.game.updatePlayerHeader();
+    this.updateProductLabels();
     if (this.game.updateAdBannerState) await this.game.updateAdBannerState();
   }
 

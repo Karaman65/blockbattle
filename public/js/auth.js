@@ -586,23 +586,33 @@ class AuthManager {
   async completePremiumPurchase(coinBonus = 2000) {
     if (!this.user) return false;
     try {
-      await db.collection('users').doc(this.user.uid).update({
+      await this.loadUserData();
+      const alreadyPremium = this.userData && this.userData.isPremium === true;
+      const bonusAlreadyGranted = this.userData && this.userData.premiumBonusGranted === true;
+      const shouldGrantBonus = !alreadyPremium && !bonusAlreadyGranted && coinBonus > 0;
+      const update = {
         isPremium: true,
-        coins: firebase.firestore.FieldValue.increment(coinBonus)
-      });
+        premiumBonusGranted: true
+      };
+      if (!alreadyPremium) update.premiumPurchasedAt = firebase.firestore.FieldValue.serverTimestamp();
+      if (shouldGrantBonus) {
+        update.coins = firebase.firestore.FieldValue.increment(coinBonus);
+      }
+
+      await db.collection('users').doc(this.user.uid).set(update, { merge: true });
 
       await db.collection('leaderboard').doc(this.user.uid).set({
         isPremium: true
       }, { merge: true });
 
-      if (this.userData) {
-        this.userData.isPremium = true;
-        this.userData.coins = (this.userData.coins || 0) + coinBonus;
-      }
-      return true;
+      if (!this.userData) this.userData = {};
+      this.userData.isPremium = true;
+      this.userData.premiumBonusGranted = true;
+      if (shouldGrantBonus) this.userData.coins = (this.userData.coins || 0) + coinBonus;
+      return { ok: true, bonusGranted: shouldGrantBonus };
     } catch (err) {
       console.error('Premium satın alma tamamlama hatası:', err);
-      return false;
+      return { ok: false, bonusGranted: false };
     }
   }
 
