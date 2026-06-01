@@ -62,7 +62,11 @@ class AuthManager {
       ownedCosmetics: guestOwnedCosmetics && typeof guestOwnedCosmetics === 'object' ? guestOwnedCosmetics : { bombEffect: ['classic'] },
       totalGames: 0,
       totalWins: 0,
-      totalOnlineGames: 0
+      totalOnlineGames: 0,
+      quickOnlineGames: 0,
+      quickWins: 0,
+      quickLosses: 0,
+      quickDraws: 0
     };
     if (notify && this.onAuthChanged) this.onAuthChanged(null);
     return { success: true, username };
@@ -126,6 +130,10 @@ class AuthManager {
         totalGames: 0,
         totalWins: 0,
         totalOnlineGames: 0,
+        quickOnlineGames: 0,
+        quickWins: 0,
+        quickLosses: 0,
+        quickDraws: 0,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -173,6 +181,10 @@ class AuthManager {
           totalGames: 0,
           totalWins: 0,
           totalOnlineGames: 0,
+          quickOnlineGames: 0,
+          quickWins: 0,
+          quickLosses: 0,
+          quickDraws: 0,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
 

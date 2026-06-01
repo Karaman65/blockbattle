@@ -267,15 +267,23 @@ class InputHandler {
     this.lastEvent = e;
     this.bombDragging = true;
     this.game.bombMode = true;
+    const target = this._getBombTargetPos(this._getPos(e));
+    this.game.setBombPreviewFromScreenPoint(target.x, target.y);
     this.game.updatePowerUpUI();
     this._createBombDragElement(this._getPos(e));
     this.game.audio.pickup();
   }
 
+  _getBombTargetPos(pos) {
+    return { x: pos.x, y: pos.y - 72 };
+  }
+
   _moveBombDrag(pos) {
     this.currentX = pos.x;
     this.currentY = pos.y;
-    this.lastEvent = { clientX: pos.x, clientY: pos.y };
+    const target = this._getBombTargetPos(pos);
+    this.lastEvent = { clientX: target.x, clientY: target.y };
+    this.game.setBombPreviewFromScreenPoint(target.x, target.y);
     if (!this.bombDragEl) return;
     const x = pos.x;
     const y = pos.y - 72;
@@ -287,11 +295,13 @@ class InputHandler {
 
   _endBombDrag(e) {
     const pos = this._getPos(e);
-    const cell = this._getCanvasCell(pos);
+    const target = this._getBombTargetPos(pos);
+    const cell = this._getCanvasCell(target);
     if (cell) {
       this.game.useBombAt(cell.row, cell.col);
     } else {
       this.game.bombMode = false;
+      this.game.clearBombPreview();
       this.game.updatePowerUpUI();
       this.game.audio.invalid();
     }

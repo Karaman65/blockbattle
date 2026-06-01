@@ -29,7 +29,7 @@ service cloud.firestore {
           'username', 'email', 'highScore', 'coins', 'unlockedLevel',
           'inventory', 'totalGames', 'totalWins', 'totalOnlineGames',
           'createdAt', 'ownedThemes', 'ownedCosmetics',
-          'quickOnlineGames', 'quickWins', 'quickLosses'
+          'quickOnlineGames', 'quickWins', 'quickLosses', 'quickDraws'
         ]);
       allow update: if isOwner(uid)
         && keepsPremiumUnchanged()

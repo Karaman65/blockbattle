@@ -8,6 +8,7 @@ class Renderer {
     this.particles = [];
     this.flashCells = []; // {r, c, alpha, time}
     this.shockwaves = [];
+    this.clearBursts = [];
 
     // Performance: Gradient cache
     this.gradientCache = new Map();
@@ -95,9 +96,10 @@ class Renderer {
 
     // Bomb Mode Overlay
     if (this.game.bombMode) {
-      this.drawBombPreview(ctx, cellSize, offsetX, offsetY);
+      this.drawLineBombPreview(ctx, cellSize, offsetX, offsetY);
     }
 
+    this.drawClearBursts(ctx);
     this.drawShockwaves(ctx);
   }
 
@@ -164,6 +166,44 @@ class Renderer {
       ctx.textBaseline = 'middle';
       ctx.fillText('💣', offsetX + col * cellSize + cellSize / 2, offsetY + row * cellSize + cellSize / 2);
     }
+  }
+
+  drawLineBombPreview(ctx, cellSize, offsetX, offsetY) {
+    const target = this.game.bombPreviewCell;
+    if (!target) return;
+    const { row, col } = target;
+    if (row < 0 || row >= 9 || col < 0 || col >= 9) return;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 184, 44, 0.18)';
+    for (let c = 0; c < 9; c++) {
+      const x = offsetX + c * cellSize;
+      const y = offsetY + row * cellSize;
+      ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+    }
+    for (let r = 0; r < 9; r++) {
+      const x = offsetX + col * cellSize;
+      const y = offsetY + r * cellSize;
+      ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+    }
+
+    const cx = offsetX + col * cellSize;
+    const cy = offsetY + row * cellSize;
+    ctx.fillStyle = 'rgba(255, 95, 64, 0.34)';
+    ctx.strokeStyle = 'rgba(255, 241, 148, 0.95)';
+    ctx.lineWidth = 2;
+    ctx.fillRect(cx + 1, cy + 1, cellSize - 2, cellSize - 2);
+    ctx.strokeRect(cx + 3, cy + 3, cellSize - 6, cellSize - 6);
+
+    ctx.strokeStyle = 'rgba(255, 241, 148, 0.72)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(offsetX, cy + cellSize / 2);
+    ctx.lineTo(offsetX + 9 * cellSize, cy + cellSize / 2);
+    ctx.moveTo(cx + cellSize / 2, offsetY);
+    ctx.lineTo(cx + cellSize / 2, offsetY + 9 * cellSize);
+    ctx.stroke();
+    ctx.restore();
   }
 
   drawBlock(ctx, x, y, w, h, color) {
@@ -264,8 +304,22 @@ class Renderer {
   }
 
   addClearWave(rows, cols, cellSize, offsetX, offsetY) {
+    const burstLimit = this.game.isMobile ? 2 : this.MAX_SHOCKWAVES;
     for (const r of rows) {
       if (this.shockwaves.length >= this.MAX_SHOCKWAVES) break;
+      if (this.clearBursts.length < burstLimit) {
+        this.clearBursts.push({
+          kind: 'h',
+          row: r,
+          col: null,
+          cellSize,
+          offsetX,
+          offsetY,
+          alpha: 1,
+          life: 0.38,
+          age: 0,
+        });
+      }
       this.shockwaves.push({
         kind: 'line-h',
         x: offsetX + 4.5 * cellSize,
@@ -281,6 +335,19 @@ class Renderer {
     }
     for (const c of cols) {
       if (this.shockwaves.length >= this.MAX_SHOCKWAVES) break;
+      if (this.clearBursts.length < burstLimit) {
+        this.clearBursts.push({
+          kind: 'v',
+          row: null,
+          col: c,
+          cellSize,
+          offsetX,
+          offsetY,
+          alpha: 1,
+          life: 0.38,
+          age: 0,
+        });
+      }
       this.shockwaves.push({
         kind: 'line-v',
         x: offsetX + (c + 0.5) * cellSize,
@@ -410,6 +477,84 @@ class Renderer {
       w.width = Math.max(1, w.width * 0.985);
       if (t >= 1) this.shockwaves.splice(i, 1);
     }
+
+    for (let i = this.clearBursts.length - 1; i >= 0; i--) {
+      const b = this.clearBursts[i];
+      b.age += dt;
+      const t = Math.min(1, b.age / b.life);
+      b.alpha = Math.max(0, (1 - t) * 0.95);
+      if (t >= 1) this.clearBursts.splice(i, 1);
+    }
+  }
+
+  drawClearBursts(ctx) {
+    for (const b of this.clearBursts) {
+      const total = 9 * b.cellSize;
+      const x = b.offsetX;
+      const y = b.offsetY;
+      const sweep = Math.min(1, b.age / b.life);
+      ctx.save();
+      ctx.globalAlpha = b.alpha;
+      if (!this.game.isMobile) {
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = 'rgba(96, 255, 218, 0.65)';
+      }
+
+      if (this.game.isMobile) {
+        ctx.fillStyle = b.kind === 'h'
+          ? `rgba(96, 255, 218, ${0.20 * b.alpha})`
+          : `rgba(255, 220, 96, ${0.18 * b.alpha})`;
+        if (b.kind === 'h') {
+          const yy = y + b.row * b.cellSize;
+          ctx.fillRect(x, yy + 1, total, b.cellSize - 2);
+          ctx.fillStyle = `rgba(255, 244, 174, ${0.58 * b.alpha})`;
+          ctx.fillRect(x + total * sweep - 2, yy + 2, 4, b.cellSize - 4);
+        } else {
+          const xx = x + b.col * b.cellSize;
+          ctx.fillRect(xx + 1, y, b.cellSize - 2, total);
+          ctx.fillStyle = `rgba(255, 244, 174, ${0.58 * b.alpha})`;
+          ctx.fillRect(xx + 2, y + total * sweep - 2, b.cellSize - 4, 4);
+        }
+        ctx.restore();
+        continue;
+      }
+
+      if (b.kind === 'h') {
+        const yy = y + b.row * b.cellSize;
+        const grad = ctx.createLinearGradient(x, yy, x + total, yy);
+        grad.addColorStop(0, 'rgba(96, 255, 218, 0.02)');
+        grad.addColorStop(Math.max(0.05, sweep - 0.18), 'rgba(96, 255, 218, 0.12)');
+        grad.addColorStop(sweep, 'rgba(255, 240, 150, 0.72)');
+        grad.addColorStop(Math.min(1, sweep + 0.18), 'rgba(96, 255, 218, 0.10)');
+        grad.addColorStop(1, 'rgba(96, 255, 218, 0.02)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, yy + 1, total, b.cellSize - 2);
+        ctx.strokeStyle = 'rgba(255, 244, 174, 0.72)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, yy + b.cellSize / 2);
+        ctx.lineTo(x + total, yy + b.cellSize / 2);
+        ctx.stroke();
+      } else {
+        const xx = x + b.col * b.cellSize;
+        const grad = ctx.createLinearGradient(xx, y, xx, y + total);
+        grad.addColorStop(0, 'rgba(168, 85, 247, 0.02)');
+        grad.addColorStop(Math.max(0.05, sweep - 0.18), 'rgba(168, 85, 247, 0.12)');
+        grad.addColorStop(sweep, 'rgba(255, 240, 150, 0.72)');
+        grad.addColorStop(Math.min(1, sweep + 0.18), 'rgba(168, 85, 247, 0.10)');
+        grad.addColorStop(1, 'rgba(168, 85, 247, 0.02)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(xx + 1, y, b.cellSize - 2, total);
+        ctx.strokeStyle = 'rgba(255, 244, 174, 0.72)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(xx + b.cellSize / 2, y);
+        ctx.lineTo(xx + b.cellSize / 2, y + total);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
   }
 
   drawShockwaves(ctx) {
@@ -443,6 +588,6 @@ class Renderer {
   }
 
   get isAnimating() {
-    return this.particles.length > 0 || this.flashCells.length > 0 || this.shockwaves.length > 0;
+    return this.particles.length > 0 || this.flashCells.length > 0 || this.shockwaves.length > 0 || this.clearBursts.length > 0;
   }
 }

@@ -69,9 +69,10 @@ class DatabaseManager {
       const player = [matchData.player1, matchData.player2].find(p => p && p.uid === currentUid);
       if (!player) return;
 
-      const won = currentUid === matchData.winnerUid;
-      const lost = matchData.winnerUid && !won;
-      const draw = !matchData.winnerUid;
+      const explicitResult = matchData.result || '';
+      const won = explicitResult === 'win' || currentUid === matchData.winnerUid;
+      const lost = explicitResult === 'loss' || (!!matchData.winnerUid && !won);
+      const draw = explicitResult === 'draw' || (!matchData.winnerUid && !won && !lost);
       const update = {
         totalOnlineGames: firebase.firestore.FieldValue.increment(1),
         quickOnlineGames: firebase.firestore.FieldValue.increment(1),

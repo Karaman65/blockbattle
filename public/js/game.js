@@ -67,7 +67,7 @@ class Game {
     this.dailyRewards = [100, 200, 300, 400, 500, 600, 700];
     this.avatarPresets = this.createAvatarPresets();
     this.boardBackgroundImage = null;
-    this.boardBackgroundSrc = localStorage.getItem('blockBattleBoardBackground') || '';
+    this.boardBackgroundSrc = localStorage.getItem(this.getBoardBackgroundStorageKey()) || localStorage.getItem('blockBattleBoardBackground') || '';
 
     // Performance: dirty rendering flags
     this.renderDirty = true;
@@ -78,6 +78,7 @@ class Game {
       skip: 1
     };
     this.bombMode = false;
+    this.bombPreviewCell = null;
   }
 
   detectMobile() {
@@ -150,6 +151,7 @@ class Game {
 
   enterMainMenuAfterAuth() {
     this.highScore = (this.authManager.userData && this.authManager.userData.highScore) || 0;
+    this.loadAccountVisualPreferences();
     const displayName = this.authManager.getUsername();
     const menuName = document.getElementById('menu-username');
     if (menuName) menuName.textContent = displayName;
@@ -346,6 +348,7 @@ class Game {
   }
 
   closeTransientOverlays() {
+    document.body.classList.remove('modal-open');
     [
       'main-menu-drawer',
       'quick-shop-modal',
@@ -1146,12 +1149,14 @@ class Game {
     const modal = document.getElementById('settings-modal');
     if (!modal) return;
     this.updateSettingsButtons();
+    document.body.classList.add('modal-open');
     modal.classList.remove('hidden');
   }
 
   closeSettingsModal() {
     const modal = document.getElementById('settings-modal');
     if (modal) modal.classList.add('hidden');
+    document.body.classList.remove('modal-open');
   }
 
   createAvatarPresets() {
@@ -1182,6 +1187,27 @@ class Game {
     return `blockBattleAvatar:${userId}`;
   }
 
+  getBoardBackgroundStorageKey() {
+    const userId = this.authManager?.user?.uid || this.authManager?.currentUser?.uid || 'guest';
+    return `blockBattleBoardBackground:${userId}`;
+  }
+
+  loadAccountVisualPreferences() {
+    const data = this.authManager?.userData || {};
+    if (data.avatar && this.authManager?.user) {
+      localStorage.setItem(this.getAvatarStorageKey(), JSON.stringify(data.avatar));
+    }
+    if (data.boardBackground && this.authManager?.user) {
+      localStorage.setItem(this.getBoardBackgroundStorageKey(), data.boardBackground);
+      this.boardBackgroundSrc = data.boardBackground;
+      this.loadBoardBackground(data.boardBackground);
+    } else {
+      this.boardBackgroundSrc = localStorage.getItem(this.getBoardBackgroundStorageKey()) || localStorage.getItem('blockBattleBoardBackground') || '';
+      if (this.boardBackgroundSrc) this.loadBoardBackground(this.boardBackgroundSrc);
+    }
+    this.applySelectedAvatar();
+  }
+
   getSelectedAvatar() {
     try {
       const saved = localStorage.getItem(this.getAvatarStorageKey());
@@ -1196,6 +1222,18 @@ class Game {
     localStorage.setItem(this.getAvatarStorageKey(), JSON.stringify(avatar));
     this.applySelectedAvatar();
     this.renderAvatarPicker();
+    this.persistVisualPreference({ avatar });
+  }
+
+  async persistVisualPreference(update) {
+    if (!this.authManager || !this.authManager.user || this.isGuestSession()) return;
+    if (!this.authManager.userData) this.authManager.userData = {};
+    Object.assign(this.authManager.userData, update);
+    try {
+      await db.collection('users').doc(this.authManager.user.uid).set(update, { merge: true });
+    } catch (err) {
+      console.warn('Gorsel tercih hesapta kaydedilemedi', err);
+    }
   }
 
   buildAvatarSvg(preset, selected = false) {
@@ -1312,7 +1350,7 @@ class Game {
         const image = new Image();
         image.onerror = reject;
         image.onload = () => {
-          const size = 256;
+          const size = 160;
           const canvas = document.createElement('canvas');
           canvas.width = size;
           canvas.height = size;
@@ -1321,7 +1359,7 @@ class Game {
           const sx = (image.width - side) / 2;
           const sy = (image.height - side) / 2;
           ctx.drawImage(image, sx, sy, side, side, 0, 0, size, size);
-          resolve(canvas.toDataURL('image/jpeg', 0.86));
+          resolve(canvas.toDataURL('image/jpeg', 0.78));
         };
         image.src = reader.result;
       };
@@ -1347,7 +1385,9 @@ class Game {
     if (!file.type.startsWith('image/')) return;
     try {
       const src = await this.resizeBoardBackgroundFile(file);
+      localStorage.setItem(this.getBoardBackgroundStorageKey(), src);
       localStorage.setItem('blockBattleBoardBackground', src);
+      this.persistVisualPreference({ boardBackground: src });
       this.loadBoardBackground(src);
     } catch (err) {
       console.error('Izgara arka plan yuklenemedi', err);
@@ -1373,7 +1413,7 @@ class Game {
         const image = new Image();
         image.onerror = reject;
         image.onload = () => {
-          const maxSize = 900;
+          const maxSize = 420;
           const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
           const width = Math.max(1, Math.round(image.width * scale));
           const height = Math.max(1, Math.round(image.height * scale));
@@ -1382,7 +1422,7 @@ class Game {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(image, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.84));
+          resolve(canvas.toDataURL('image/jpeg', 0.68));
         };
         image.src = reader.result;
       };
@@ -1662,10 +1702,11 @@ class Game {
 
   async recordOnlineMatchResult(won) {
     if (this.onlineMatchRecorded || this.mode !== 'online') return;
-    if (!this.authManager.user || !this.opponentUid) return;
+    if (!this.authManager.user) return;
     const myUid = this.authManager.user.uid;
     const matchType = this.network.matchType === 'quick' ? 'quick' : 'room';
-    const shouldWriteMatch = won === true || (won === null && myUid < this.opponentUid);
+    const opponentUid = this.opponentUid || '';
+    const shouldWriteMatch = !!opponentUid && (won === true || (won === null && myUid < opponentUid));
     this.onlineMatchRecorded = true;
     await this.dbManager.recordOnlineMatch({
       matchType,
@@ -1673,17 +1714,18 @@ class Game {
       roomId: this.network.roomId || '',
       currentUid: myUid,
       writeMatch: shouldWriteMatch,
+      result: won === true ? 'win' : won === false ? 'loss' : 'draw',
       player1: {
         uid: myUid,
         username: this.authManager.getUsername(),
         score: this.score,
       },
       player2: {
-        uid: this.opponentUid,
+        uid: opponentUid,
         username: this.opponentUsername || 'Rakip',
         score: this.opponentScore || 0,
       },
-      winnerUid: won === true ? myUid : won === false ? this.opponentUid : null,
+      winnerUid: won === true ? myUid : won === false ? opponentUid : null,
     });
     await this.authManager.loadUserData();
     this.updatePlayerHeader();
@@ -2020,10 +2062,25 @@ class Game {
     if (profileXpNext) profileXpNext.textContent = `Level ${level + 1} için ${xpLeft.toLocaleString('tr-TR')} kaldı`;
     if (profileProgressFill) profileProgressFill.style.setProperty('width', `${Math.min(100, Math.max(0, (currentXp / 500) * 100))}%`, 'important');
     document.getElementById('p-high-score').textContent = highScore.toLocaleString('tr-TR');
-    const onlineWins = d.quickWins || 0;
-    const onlineLosses = d.quickLosses || 0;
-    const onlineDraws = d.quickDraws || 0;
-    const totalOnlineGames = d.quickOnlineGames || d.totalOnlineGames || onlineWins + onlineLosses + onlineDraws;
+    let onlineWins = d.quickWins || 0;
+    let onlineLosses = d.quickLosses || 0;
+    let onlineDraws = d.quickDraws || 0;
+    let totalOnlineGames = d.quickOnlineGames || (onlineWins + onlineLosses + onlineDraws);
+    const hist = document.getElementById('match-history');
+    let matches = [];
+    if (this.authManager.user) {
+      hist.innerHTML = '<div class="spinner-container"><div class="spinner spinner-sm"></div></div>';
+      matches = (await this.dbManager.getMatchHistory(this.authManager.user.uid, 20))
+        .filter(m => m.matchType === 'quick')
+        .slice(0, 10);
+      if (totalOnlineGames === 0 && matches.length > 0) {
+        const uid = this.authManager.user.uid;
+        onlineWins = matches.filter(m => m.winnerUid === uid).length;
+        onlineDraws = matches.filter(m => !m.winnerUid).length;
+        onlineLosses = matches.length - onlineWins - onlineDraws;
+        totalOnlineGames = matches.length;
+      }
+    }
     const rankLabel = document.getElementById('profile-rank-label');
     if (rankLabel) rankLabel.textContent = `${onlineWins.toLocaleString('tr-TR')} Galibiyet`;
     document.getElementById('p-total-games').textContent = totalOnlineGames.toLocaleString('tr-TR');
@@ -2036,12 +2093,8 @@ class Game {
     if (drawsEl) drawsEl.textContent = onlineDraws.toLocaleString('tr-TR');
     const lossesEl = document.getElementById('p-total-losses');
     if (lossesEl) lossesEl.textContent = onlineLosses.toLocaleString('tr-TR');
-    // Load match history
-    const hist = document.getElementById('match-history');
     if (!this.authManager.user) { hist.innerHTML = '<p class="text-muted">Giriş yapılmadı</p>'; return; }
-    hist.innerHTML = '<div class="spinner-container"><div class="spinner spinner-sm"></div></div>';
-    const matches = await this.dbManager.getMatchHistory(this.authManager.user.uid, 10);
-    if (matches.length === 0) { hist.innerHTML = '<p class="text-muted">Henüz online maç yok</p>'; return; }
+    if (matches.length === 0) { hist.innerHTML = '<p class="text-muted">Henüz hızlı maç yok</p>'; return; }
     const uid = this.authManager.user.uid;
     hist.innerHTML = matches.map(m => {
       const isP1 = m.player1 && m.player1.uid === uid;
@@ -2463,22 +2516,33 @@ class Game {
     const ga = document.getElementById('game-area');
     const fallbackWidth = Math.min(window.innerWidth || 360, 780);
     const fallbackHeight = Math.max(280, (window.innerHeight || 640) - 270);
-    const mobileSolo = this.isMobile && this.mode !== 'online';
+    const mobileViewport = this.isMobile || (window.innerWidth || 0) <= 720;
+    const mobileSolo = mobileViewport && this.mode !== 'online';
+    const mobileOnline = mobileViewport && this.mode === 'online';
     const measuredWidth = ga && ga.clientWidth ? ga.clientWidth : fallbackWidth;
     const measuredHeight = ga && ga.clientHeight ? ga.clientHeight : fallbackHeight;
+    const cssVars = getComputedStyle(document.documentElement);
+    const adHeight = (document.body.classList.contains('ad-banner-visible') && !document.body.classList.contains('premium-no-ads'))
+      ? (parseFloat(cssVars.getPropertyValue('--ad-banner-height')) || 64)
+      : 0;
+    const viewportHeight = window.innerHeight || fallbackHeight;
     const mobileWidth = Math.min(window.innerWidth || fallbackWidth, 520) - 24;
-    const mobileHeight = Math.max(320, (window.innerHeight || fallbackHeight) - 330);
-    const availableWidth = Math.max((mobileSolo ? mobileWidth : measuredWidth) - 4, 240);
-    const availableHeight = Math.max((mobileSolo ? mobileHeight : measuredHeight) - 4, 240);
+    const mobileVerticalReserve = this.mode === 'online' ? 390 : 290;
+    const mobileHeight = Math.max(280, viewportHeight - mobileVerticalReserve - adHeight);
+    const mobileGame = mobileSolo || mobileOnline;
+    const boardChromeSpace = mobileGame ? 28 : 4;
+    const availableWidth = Math.max((mobileGame ? mobileWidth : measuredWidth) - boardChromeSpace, 240);
+    const availableHeight = Math.max((mobileGame ? mobileHeight : measuredHeight) - 4, 240);
     let widthForMainBoard = availableWidth;
-    if (this.mode === 'online') {
+    if (this.mode === 'online' && !mobileOnline) {
       const gap = window.innerWidth <= 480 ? 8 : 16;
       const onlineWidthLimitedCellSize = Math.floor((availableWidth - gap - 20) / 12.6);
       widthForMainBoard = Math.max(onlineWidthLimitedCellSize * this.GRID_SIZE, 0);
     }
     let cs = Math.floor(Math.min(widthForMainBoard, availableHeight) / this.GRID_SIZE);
-    cs = Math.min(cs, this.mode === 'online' ? 68 : (mobileSolo ? 48 : 82));
-    cs = Math.max(cs, this.mode === 'online' ? 20 : (mobileSolo ? 34 : 30));
+    const mobileMaxCell = viewportHeight <= 760 ? 30 : (viewportHeight <= 860 ? 32 : 34);
+    cs = Math.min(cs, this.mode === 'online' ? (mobileOnline ? mobileMaxCell : 68) : (mobileSolo ? mobileMaxCell : 82));
+    cs = Math.max(cs, this.mode === 'online' ? (mobileOnline ? 29 : 20) : (mobileSolo ? 29 : 30));
     this.cellSize = cs;
     const gp = this.GRID_SIZE * cs;
 
@@ -2490,7 +2554,7 @@ class Game {
     this.markRenderDirty();
 
     if (this.mode === 'online') {
-      this.opponentCellSize = Math.max(Math.floor(cs * 0.4), 12);
+      this.opponentCellSize = mobileOnline ? Math.max(Math.floor(cs * 0.18), 6) : Math.max(Math.floor(cs * 0.4), 12);
       const op = this.GRID_SIZE * this.opponentCellSize;
       this.opponentCanvas.width = op + 8;
       this.opponentCanvas.height = op + 8;
@@ -2555,6 +2619,29 @@ class Game {
   clearGhost() {
     if (this.ghost) this.markRenderDirty();
     this.ghost = null;
+  }
+
+  setBombPreviewFromScreenPoint(screenX, screenY) {
+    if (!this.canvas) return;
+    const rect = this.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const sx = this.canvas.width / rect.width;
+    const sy = this.canvas.height / rect.height;
+    const x = (screenX - rect.left) * sx;
+    const y = (screenY - rect.top) * sy;
+    const col = Math.floor((x - this.gridOffset.x) / this.cellSize);
+    const row = Math.floor((y - this.gridOffset.y) / this.cellSize);
+    const next = row >= 0 && row < this.GRID_SIZE && col >= 0 && col < this.GRID_SIZE
+      ? { row, col }
+      : null;
+    const prev = this.bombPreviewCell;
+    this.bombPreviewCell = next;
+    if (!prev || !next || prev.row !== next.row || prev.col !== next.col) this.markRenderDirty();
+  }
+
+  clearBombPreview() {
+    if (this.bombPreviewCell) this.markRenderDirty();
+    this.bombPreviewCell = null;
   }
 
   canPlace(shape, sr, sc) {
@@ -2634,6 +2721,7 @@ class Game {
     for (const k of cells) { const [r, c] = k.split(',').map(Number); this.renderer.addClearParticles(r, c, this.cellSize, this.gridOffset.x, this.gridOffset.y, this.grid[r][c]); arr.push({ r, c }); }
     this.renderer.addFlashCells(arr);
     this.renderer.addClearWave(clearRows, clearCols, this.cellSize, this.gridOffset.x, this.gridOffset.y);
+    this.pulseBoardClear(total > 1 ? 'strong' : 'normal');
     this.markRenderDirty();
     const pts = cells.size + total * 18 + (this.combo > 1 ? this.combo * 15 : 0);
     this.score += pts;
@@ -3317,7 +3405,7 @@ class Game {
     if (!modal || !itemsEl) return;
 
     const items = [
-      { type: 'bomb', icon: 'B', name: 'Bomba', desc: '3x3 alanı temizler.', price: 280 },
+      { type: 'bomb', icon: 'B', name: 'Bomba', desc: 'Satır ve sütunu temizler.', price: 280 },
       { type: 'rotate', icon: 'R', name: 'Döndür', desc: 'Parçaları çevirir.', price: 150 },
       { type: 'skip', icon: 'P', name: 'Pas Geç', desc: 'Yeni parçalar getirir.', price: 220 },
     ];
@@ -3448,6 +3536,7 @@ class Game {
   toggleBombMode() {
     if (this.powerUps.bomb <= 0) return;
     this.bombMode = !this.bombMode;
+    if (!this.bombMode) this.clearBombPreview();
     this.updatePowerUpUI();
   }
 
@@ -3457,20 +3546,24 @@ class Game {
     if (this.rewardBombs > 0) this.rewardBombs--;
     else this.authManager.decrementInventory('bomb');
     this.bombMode = false;
-    this.renderer.addBombEffect(row, col, this.cellSize, this.gridOffset.x, this.gridOffset.y);
-    this.markRenderDirty();
+    this.clearBombPreview();
 
-    // Clear 3x3 area
-    for (let r = row - 1; r <= row + 1; r++) {
-      for (let c = col - 1; c <= col + 1; c++) {
-        if (r >= 0 && r < this.GRID_SIZE && c >= 0 && c < this.GRID_SIZE) {
-          this.grid[r][c] = 0;
-        }
-      }
+    const cells = [];
+    for (let c = 0; c < this.GRID_SIZE; c++) cells.push({ r: row, c });
+    for (let r = 0; r < this.GRID_SIZE; r++) if (r !== row) cells.push({ r, c: col });
+
+    this.renderer.addFlashCells(cells);
+    this.renderer.addBombEffect(row, col, this.cellSize, this.gridOffset.x, this.gridOffset.y);
+    this.renderer.addClearWave([row], [col], this.cellSize, this.gridOffset.x, this.gridOffset.y);
+    this.pulseBoardClear('strong');
+
+    for (const cell of cells) {
+      this.grid[cell.r][cell.c] = 0;
     }
     this.markRenderDirty();
 
-    this.audio.pickup(); // Or a bomb sound
+    this.audio.pickup();
+    this.vibrate([28, 30, 46]);
     this.updatePowerUpUI();
     this.checkAndClearLines();
   }
@@ -3512,6 +3605,15 @@ class Game {
     void tray.offsetWidth;
     tray.classList.add('power-pulse');
     setTimeout(() => tray.classList.remove('power-pulse'), 360);
+  }
+
+  pulseBoardClear(intensity = 'normal') {
+    const board = document.getElementById('main-board-wrap');
+    if (!board) return;
+    board.classList.remove('line-clear-kick', 'line-clear-kick-strong');
+    void board.offsetWidth;
+    board.classList.add(intensity === 'strong' ? 'line-clear-kick-strong' : 'line-clear-kick');
+    setTimeout(() => board.classList.remove('line-clear-kick', 'line-clear-kick-strong'), 420);
   }
 }
 
