@@ -93,7 +93,7 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow get: if isOwner(uid);
-      allow list: if request.query.limit <= 1;
+      allow list: if false;
       allow create: if isOwner(uid)
         && hasOnlyAllowedKeys(request.resource.data, [
           'username', 'email', 'highScore', 'coins', 'unlockedLevel',
@@ -113,7 +113,8 @@ service cloud.firestore {
     }
 
     match /usernames/{usernameKey} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if false;
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
         && hasOnlyAllowedKeys(request.resource.data, ['uid', 'username', 'createdAt']);

@@ -21,6 +21,10 @@ function leaderboardRef(uid) {
   return db.collection('leaderboard').doc(uid);
 }
 
+function usernameKey(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
 async function syncLeaderboard(uid, username, highScore, isPremium) {
   await leaderboardRef(uid).set({
     username: username || 'Oyuncu',
@@ -206,6 +210,31 @@ exports.economyUnlockLevel = functions.https.onCall(async (data, context) => {
   if (level <= current) return { ok: true, unlockedLevel: current };
   await ref.update({ unlockedLevel: level });
   return { ok: true, unlockedLevel: level };
+});
+
+/** Resolve a username to its Firebase Auth email for username login/reset. */
+exports.resolveLoginEmail = functions.https.onCall(async (data) => {
+  const key = usernameKey(data?.username);
+  if (!key || key.length > 40) {
+    throw new functions.https.HttpsError('invalid-argument', 'Gecersiz kullanici adi.');
+  }
+
+  const usernameDoc = await db.collection('usernames').doc(key).get();
+  if (!usernameDoc.exists) {
+    throw new functions.https.HttpsError('not-found', 'Kullanici bulunamadi.');
+  }
+
+  const uid = usernameDoc.data()?.uid;
+  if (!uid) {
+    throw new functions.https.HttpsError('not-found', 'Kullanici bulunamadi.');
+  }
+
+  const authUser = await admin.auth().getUser(uid);
+  if (!authUser.email) {
+    throw new functions.https.HttpsError('not-found', 'Email bulunamadi.');
+  }
+
+  return { email: authUser.email };
 });
 
 /** Record game stats + optional high score. */

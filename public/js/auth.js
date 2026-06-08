@@ -225,23 +225,9 @@ class AuthManager {
 
       // If no @ sign, treat as username and look up email
       if (!emailOrUsername.includes('@')) {
-        const usernameDoc = await db.collection('usernames')
-          .doc(emailOrUsername.trim().toLowerCase())
-          .get();
-
-        if (!usernameDoc.exists) {
-          const legacySnap = await db.collection('users')
-            .where('username', '==', emailOrUsername.trim())
-            .limit(1)
-            .get();
-
-          if (legacySnap.empty) {
-            return { success: false, error: 'Kullanıcı bulunamadı!' };
-          }
-          email = legacySnap.docs[0].data().email;
-        } else {
-          email = usernameDoc.data().email;
-        }
+        const resolvedEmail = await this.resolveLoginEmail(emailOrUsername);
+        if (!resolvedEmail) return { success: false, error: 'Kullanıcı bulunamadı!' };
+        email = resolvedEmail;
       }
 
       const cred = await auth.signInWithEmailAndPassword(email, password);
@@ -317,23 +303,9 @@ class AuthManager {
       if (!email) return { success: false, error: 'Email veya kullanıcı adını yaz.' };
 
       if (!email.includes('@')) {
-        const usernameDoc = await db.collection('usernames')
-          .doc(email.toLowerCase())
-          .get();
-
-        if (!usernameDoc.exists) {
-          const legacySnap = await db.collection('users')
-            .where('username', '==', email)
-            .limit(1)
-            .get();
-
-          if (legacySnap.empty) {
-            return { success: false, error: 'Bu kullanıcı adı bulunamadı.' };
-          }
-          email = legacySnap.docs[0].data().email;
-        } else {
-          email = usernameDoc.data().email;
-        }
+        const resolvedEmail = await this.resolveLoginEmail(email);
+        if (!resolvedEmail) return { success: false, error: 'Bu kullanıcı adı bulunamadı.' };
+        email = resolvedEmail;
       }
 
       await auth.sendPasswordResetEmail(email);
@@ -347,6 +319,17 @@ class AuthManager {
       if (err.code === 'auth/too-many-requests') msg = 'Çok fazla deneme! Biraz bekle.';
       if (err.code === 'auth/unauthorized-continue-uri') msg = 'Firebase Authorized domains ayarında bu site adresi yok.';
       return { success: false, error: msg };
+    }
+  }
+
+  async resolveLoginEmail(username) {
+    try {
+      if (!economyApi.isAvailable()) return null;
+      const result = await economyApi.call('resolveLoginEmail', { username: username.trim().toLowerCase() });
+      return result && result.email ? result.email : null;
+    } catch (err) {
+      console.warn('Username email resolve failed:', err);
+      return null;
     }
   }
 
