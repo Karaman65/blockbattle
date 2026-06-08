@@ -52,7 +52,7 @@ class IapManager {
       await this.plugin.init();
       await this.attachListeners();
       await this.loadProducts();
-      await this.plugin.getPurchases();
+      await this.syncPurchasesFromStore(false);
       this.ready = true;
       this.setStatus('Google Play ödeme hazır.');
     } catch (err) {
@@ -134,6 +134,9 @@ class IapManager {
         productId,
         additionalData: { accountId: this.authManager.user.uid },
       });
+      await this.settlePurchaseAfterBuy(productId);
+      this.pendingProducts.delete(productId);
+      this.setButtonBusy(button, false);
     } catch (err) {
       if (!(err && String(err.message || err).includes('USER_CANCELED'))) {
         console.warn('Purchase failed:', err);
@@ -142,6 +145,48 @@ class IapManager {
       this.pendingProducts.delete(productId);
       this.setButtonBusy(button, false);
     }
+  }
+
+  async settlePurchaseAfterBuy(productId) {
+    this.setStatus('Satın alma kontrol ediliyor...');
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const handled = await this.syncPurchasesFromStore(false, productId);
+      if (handled) return;
+      await this.delay(700 + attempt * 600);
+    }
+    await this.refreshAccountState();
+  }
+
+  async syncPurchasesFromStore(restoreOnly = false, preferredProductId = '') {
+    if (!this.plugin || typeof this.plugin.getPurchases !== 'function') return false;
+    try {
+      const result = await this.plugin.getPurchases();
+      const purchases = Array.isArray(result && result.purchases) ? result.purchases : [];
+      const filtered = preferredProductId
+        ? purchases.filter(purchase => this.getProductId(purchase) === preferredProductId)
+        : purchases;
+      if (!filtered.length) return false;
+      for (const purchase of filtered) {
+        await this.fulfillPurchase(purchase, restoreOnly);
+      }
+      return true;
+    } catch (err) {
+      console.warn('Purchase sync failed:', err);
+      return false;
+    }
+  }
+
+  async refreshAccountState() {
+    if (this.authManager && typeof this.authManager.loadUserData === 'function') {
+      await this.authManager.loadUserData('server');
+    }
+    this.game.updateCoinDisplays();
+    this.game.updatePlayerHeader();
+    this.updateProductLabels();
+  }
+
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   async handlePurchases(purchases) {
@@ -156,7 +201,9 @@ class IapManager {
   async restorePurchases(purchases) {
     if (!Array.isArray(purchases)) return;
     for (const purchase of purchases) {
-      await this.fulfillPurchase(purchase, true);
+      const productId = this.getProductId(purchase);
+      const config = this.productConfig[productId];
+      await this.fulfillPurchase(purchase, !!(config && config.premium));
     }
   }
 
@@ -169,22 +216,32 @@ class IapManager {
     const fulfilled = this.getFulfilledTokens();
     if (config.consumable && fulfilled.has(token)) return;
 
+    const purchaseToken = purchase.purchaseToken || purchase.token;
+    if (!purchaseToken) {
+      this.setStatus('Satın alma doğrulanamadı (token yok).');
+      return;
+    }
+
+    const verifyResult = await this.authManager.verifyPlayPurchase(productId, purchaseToken);
+    if (!verifyResult || !verifyResult.ok) {
+      this.setStatus('Satın alma sunucuda doğrulanamadı. Destek ile iletişime geç.');
+      return;
+    }
+
     if (config.premium) {
-      const result = await this.authManager.completePremiumPurchase(restoreOnly ? 0 : config.coins);
-      if (purchase.purchaseToken && this.plugin && typeof this.plugin.acknowledgePurchase === 'function') {
-        await this.plugin.acknowledgePurchase({ purchaseToken: purchase.purchaseToken });
+      if (purchaseToken && this.plugin && typeof this.plugin.acknowledgePurchase === 'function') {
+        await this.plugin.acknowledgePurchase({ purchaseToken });
       }
-      this.setStatus(result && result.bonusGranted
+      this.setStatus(verifyResult.bonusGranted
         ? 'Premium açıldı. 2000 coin hesabına eklendi.'
-        : 'Premium aktif.');
+        : verifyResult.duplicate ? 'Premium zaten aktif.' : 'Premium aktif.');
     } else if (!restoreOnly) {
-      await this.authManager.addCoins(config.coins);
-      if (purchase.purchaseToken && this.plugin && typeof this.plugin.consumePurchase === 'function') {
-        await this.plugin.consumePurchase({ purchaseToken: purchase.purchaseToken });
+      if (purchaseToken && this.plugin && typeof this.plugin.consumePurchase === 'function') {
+        await this.plugin.consumePurchase({ purchaseToken });
       }
       fulfilled.add(token);
       this.saveFulfilledTokens(fulfilled);
-      this.setStatus(`${config.label} hesabına eklendi.`);
+      this.setStatus(verifyResult.duplicate ? `${config.label} zaten işlendi.` : `${config.label} hesabına eklendi.`);
     }
 
     this.game.updateCoinDisplays();

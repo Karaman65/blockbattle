@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=7.2">
   <link rel="stylesheet" href="css/mobile-performance.css?v=1.3">
-  <link rel="stylesheet" href="css/figma-ui.css?v=7.2">
+  <link rel="stylesheet" href="css/figma-ui.css?v=7.6">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#05050f">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -410,16 +410,18 @@
         <div class="featured-power-row">
           <div class="featured-power-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
-              <path d="M12 3 4.5 7.2v9.6L12 21l7.5-4.2V7.2L12 3Z"></path>
-              <path d="M4.8 7.4 12 11.5l7.2-4.1M12 11.5V21"></path>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+              <path d="M3 21v-5h5"></path>
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+              <path d="M21 3v5h-5"></path>
             </svg>
           </div>
           <div>
-            <strong>Kalkan Takviyesi</strong>
-            <span>Bloklarını 30 saniye koru</span>
-            <b><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>250</b>
+            <strong>Döndürme Takviyesi</strong>
+            <span>Bloğu çevirmek için +1 hak</span>
+            <b><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M18.09 10.37A6 6 0 1 1 10.34 18"></path><path d="M7 6h1v4"></path><path d="m16.71 13.88.7.71-2.82 2.82"></path></svg>150</b>
           </div>
-          <button type="button" data-back-target="store-screen" data-store-tab="items">Satın Al</button>
+          <button class="btn-buy" type="button" data-type="rotate" data-price="150">Satın Al</button>
         </div>
       </section>
 
@@ -1486,26 +1488,39 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
 
   <!-- Socket.IO -->
   <script src="js/socket.io.min.js?v=5.0"></script>
 
   <!-- Game Scripts -->
   <script src="capacitor.js"></script>
-  <script src="js/firebase-config.js?v=5.0"></script>
+  <script src="js/firebase-config.js?v=5.1"></script>
+  <script src="js/economy-api.js?v=1.1"></script>
   <script src="js/blocks.js?v=5.0"></script>
   <script src="js/audio.js?v=5.0"></script>
-  <script src="js/renderer.js?v=5.8"></script>
+  <script src="js/renderer.js?v=6.0"></script>
   <script src="js/input.js?v=5.0"></script>
   <script src="js/network.js?v=5.0"></script>
-  <script src="js/auth.js?v=6.3"></script>
-  <script src="js/db.js?v=5.0"></script>
-  <script src="js/ad.js?v=5.3"></script>
-  <script src="js/iap.js?v=1.1"></script>
-  <script src="js/game.js?v=7.6"></script>
+  <script src="js/ui-header.js?v=1.1"></script>
+  <script src="js/auth.js?v=7.5"></script>
+  <script src="js/db.js?v=6.0"></script>
+  <script src="js/ad.js?v=6.1"></script>
+  <script src="js/iap.js?v=2.1"></script>
+  <script src="js/game.js?v=8.7"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=102').catch(() => { });
+      const isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+      if (isLocalDev) {
+        navigator.serviceWorker.getRegistrations()
+          .then(registrations => registrations.forEach(registration => registration.unregister()))
+          .catch(() => { });
+        if (window.caches) caches.keys()
+          .then(keys => keys.forEach(key => caches.delete(key)))
+          .catch(() => { });
+      } else {
+        navigator.serviceWorker.register('/sw.js?v=104').catch(() => { });
+      }
     }
   </script>
 </body>

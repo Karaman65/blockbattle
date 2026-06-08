@@ -9834,7 +9834,8 @@ body #quests-screen .quests-player-header .figma-player-copy span {
 
 @keyframes board-line-clear-kick-mobile {
   0% { transform: scale(1); }
-  45% { transform: scale(1.008); }
+  28% { transform: scale(1.012); }
+  62% { transform: scale(0.998); }
   100% { transform: scale(1); }
 }
 
@@ -9850,4 +9851,65 @@ body #quests-screen .quests-player-header .figma-player-copy span {
 .piece-cell.filled {
   opacity: 1 !important;
   visibility: visible !important;
+}
+
+/* Native banner guard: keep the app tab bar above AdMob on real phones. */
+@media (max-width: 520px), (pointer: coarse) {
+  body.ad-banner-visible:not(.premium-no-ads) {
+    --native-banner-space: max(var(--ad-banner-height, 0px), 50px);
+    --bottom-nav-offset: calc(var(--native-banner-space) + env(safe-area-inset-bottom, 0px));
+    --content-bottom-space: calc(var(--bottom-nav-height, 82px) + var(--native-banner-space) + env(safe-area-inset-bottom, 0px) + 24px);
+  }
+
+  body.ad-banner-visible:not(.premium-no-ads) #bottom-nav,
+  body.ad-banner-visible:not(.premium-no-ads) #menu-screen.screen.active ~ #bottom-nav,
+  body.ad-banner-visible:not(.premium-no-ads) #map-screen.screen.active ~ #bottom-nav,
+  body.ad-banner-visible:not(.premium-no-ads) #online-screen.screen.active ~ #bottom-nav,
+  body.ad-banner-visible:not(.premium-no-ads) #quests-screen.screen.active ~ #bottom-nav,
+  body.ad-banner-visible:not(.premium-no-ads) #profile-screen.screen.active ~ #bottom-nav,
+  body.ad-banner-visible:not(.premium-no-ads) #store-screen.screen.active ~ #bottom-nav,
+  body.ad-banner-visible:not(.premium-no-ads) #leaderboard-screen.screen.active ~ #bottom-nav {
+    bottom: var(--bottom-nav-offset) !important;
+  }
+
+  body.ad-banner-visible:not(.premium-no-ads) #menu-screen .home-shell,
+  body.ad-banner-visible:not(.premium-no-ads) #map-screen .map-themed-scroll,
+  body.ad-banner-visible:not(.premium-no-ads) #quests-screen .quests-themed-scroll,
+  body.ad-banner-visible:not(.premium-no-ads) #profile-screen .profile-themed-scroll,
+  body.ad-banner-visible:not(.premium-no-ads) #store-screen .store-themed-scroll,
+  body.ad-banner-visible:not(.premium-no-ads) #leaderboard-screen .leaderboard-themed-scroll,
+  body.ad-banner-visible:not(.premium-no-ads) #online-screen .battle-screen-panel {
+    padding-bottom: calc(var(--content-bottom-space) + 16px) !important;
+  }
+}
+
+/* Mobile gameplay performance guard: keep effects readable without GPU-heavy filters. */
+@media (max-width: 520px), (pointer: coarse) {
+  #game-screen,
+  #game-header,
+  #game-area,
+  #boards-container,
+  #main-board-wrap,
+  #power-ups,
+  #piece-tray,
+  .power-up-btn,
+  .piece-slot,
+  #quick-shop-modal .quick-shop-panel,
+  #pause-overlay .glass-panel,
+  #gameover-screen .gameover-panel {
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+
+  #main-board-wrap.line-clear-kick,
+  #main-board-wrap.line-clear-kick-strong {
+    animation: board-line-clear-kick-mobile 220ms ease-out both !important;
+  }
+
+  #game-canvas,
+  #opponent-canvas {
+    filter: none !important;
+  }
 }

@@ -441,6 +441,9 @@ function handleDisconnect(socket) {
 // ── Start Server ──
 
 const PORT = process.env.PORT || 3001;
+if (process.env.NODE_ENV === 'production' && ALLOWED_ORIGINS.length === 0) {
+  console.warn('WARNING: ALLOWED_ORIGINS is empty — all browser origins are allowed. Set ALLOWED_ORIGINS in production.');
+}
 server.listen(PORT, () => {
   console.log(`\n  ⚔️  Block Battle Server`);
   console.log(`  🌐 http://localhost:${PORT}\n`);

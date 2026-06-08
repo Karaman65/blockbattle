@@ -1,4 +1,6 @@
 node_modules/
+.codex-tmp/
+check.html
 android/
 .idea/
 .DS_Store
@@ -36,3 +38,4 @@ Thumbs.db
 .chrome-store-assets/
 store-assets/
 kurtarilan-codex-mesajlari.md
+firebase-debug.log

@@ -14,11 +14,81 @@ service cloud.firestore {
     }
 
     function keepsPremiumUnchanged() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isPremium']);
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'isPremium', 'premiumBonusGranted', 'premiumPurchasedAt', 'fulfilledPurchases'
+      ]);
     }
 
     function keepsIdentityUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['email', 'createdAt']);
+    }
+
+    function keepsEconomyUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'coins', 'inventory', 'highScore', 'unlockedLevel',
+        'totalGames', 'totalWins', 'totalOnlineGames',
+        'quickOnlineGames', 'quickWins', 'quickLosses', 'quickDraws',
+        'ownedThemes', 'ownedCosmetics',
+        'claimedQuests', 'dailyRewardLastClaim', 'dailyRewardStreak', 'dailyRewardLastIndex'
+      ]);
+    }
+
+    function onlyCosmeticPrefsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['avatar', 'boardBackground', 'uiTheme']);
+    }
+
+    function coinIncreaseAtMost(maxAmount) {
+      return request.resource.data.coins is number
+        && resource.data.coins is number
+        && request.resource.data.coins >= resource.data.coins
+        && request.resource.data.coins - resource.data.coins <= maxAmount;
+    }
+
+    function onlyClientRewardClaimChanged() {
+      let keys = request.resource.data.diff(resource.data).affectedKeys();
+      return (
+        keys.hasOnly(['coins', 'claimedQuests'])
+        && coinIncreaseAtMost(3000)
+      ) || (
+        keys.hasOnly(['coins', 'dailyRewardLastClaim', 'dailyRewardStreak', 'dailyRewardLastIndex'])
+        && coinIncreaseAtMost(700)
+      );
+    }
+
+    function inventoryValue(data, key) {
+      return data.inventory.get(key, 0);
+    }
+
+    function inventoryHasNumbers(data) {
+      return data.inventory is map
+        && data.inventory.keys().hasOnly(['bomb', 'rotate', 'skip'])
+        && inventoryValue(data, 'bomb') is number
+        && inventoryValue(data, 'rotate') is number
+        && inventoryValue(data, 'skip') is number;
+    }
+
+    function onePowerUpIncrement(type) {
+      return inventoryValue(request.resource.data, type) == inventoryValue(resource.data, type) + 1
+        && (type == 'bomb' || inventoryValue(request.resource.data, 'bomb') == inventoryValue(resource.data, 'bomb'))
+        && (type == 'rotate' || inventoryValue(request.resource.data, 'rotate') == inventoryValue(resource.data, 'rotate'))
+        && (type == 'skip' || inventoryValue(request.resource.data, 'skip') == inventoryValue(resource.data, 'skip'));
+    }
+
+    function onlyClientPowerUpSpendChanged() {
+      let keys = request.resource.data.diff(resource.data).affectedKeys();
+      let spent = resource.data.coins - request.resource.data.coins;
+      return keys.hasOnly(['coins', 'inventory'])
+        && resource.data.coins is number
+        && request.resource.data.coins is number
+        && request.resource.data.coins >= 0
+        && inventoryHasNumbers(resource.data)
+        && inventoryHasNumbers(request.resource.data)
+        && (
+          (spent == 280 && onePowerUpIncrement('bomb'))
+          || (spent == 150 && onePowerUpIncrement('rotate'))
+          || (spent == 220 && onePowerUpIncrement('skip'))
+        );
     }
 
     match /users/{uid} {
@@ -33,7 +103,12 @@ service cloud.firestore {
         ]);
       allow update: if isOwner(uid)
         && keepsPremiumUnchanged()
-        && keepsIdentityUnchanged();
+        && keepsIdentityUnchanged()
+        && (
+          (keepsEconomyUnchanged() && onlyCosmeticPrefsChanged())
+          || onlyClientRewardClaimChanged()
+          || onlyClientPowerUpSpendChanged()
+        );
       allow delete: if false;
     }
 
@@ -41,13 +116,13 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
-        && hasOnlyAllowedKeys(request.resource.data, ['uid', 'username', 'email', 'createdAt']);
+        && hasOnlyAllowedKeys(request.resource.data, ['uid', 'username', 'createdAt']);
       allow update, delete: if false;
     }
 
     match /leaderboard/{uid} {
       allow read: if true;
-      allow write: if isOwner(uid);
+      allow write: if false;
       allow delete: if false;
     }
 

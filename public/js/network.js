@@ -159,7 +159,7 @@ class NetworkManager {
       this.game.onTimeUp();
     });
     this.socket.on('game-finished', () => {
-      if (this.game.onlineMode === 'time') this.game.onTimeUp();
+      // Timed mode ends via game-time-up from server (single authority).
     });
 
     this.socket.on('error', (data) => {

@@ -3,13 +3,14 @@
 // ═══════════════════════════════════════════
 
 class AdManager {
-  constructor() {
+  constructor(game) {
+    this.game = game;
     this.appId = 'ca-app-pub-2847518527759480~2761291675';
     this.bannerId = 'ca-app-pub-2847518527759480/5562804120';
     this.interstitialId = 'ca-app-pub-2847518527759480/4944601888';
-    this.rewardedId = '';
+    this.rewardedId = 'ca-app-pub-2847518527759480/5562804120';
     this.testRewardedId = 'ca-app-pub-3940256099942544/5224354917';
-    this.isTesting = false;
+    this.isTesting = this.detectTestingMode();
     this.initialized = false;
     this.bannerShowing = false;
     this.interstitialReady = false;
@@ -19,14 +20,28 @@ class AdManager {
     this.bannerResizeHandler = null;
     this.bannerListenersReady = false;
     this.bannerRefreshRaf = null;
-    
+    this.bannerRequested = false;
+
     this.adMob = null;
+  }
+
+  detectTestingMode() {
+    if (typeof window === 'undefined') return false;
+    const host = window.location && window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      return false;
+    }
+    return host !== 'blockbattle.onrender.com';
+  }
+
+  isPremiumUser() {
+    return !!(this.game && this.game.authManager && this.game.authManager.isPremium && this.game.authManager.isPremium());
   }
 
   async init() {
     if (this.initialized) return;
 
-    // Check if we are running in Capacitor
     if (typeof window.Capacitor === 'undefined' || !window.Capacitor.isNativePlatform()) {
       console.log('AdMob: Not on a native device, ads will not load.');
       return;
@@ -34,6 +49,10 @@ class AdManager {
 
     try {
       this.adMob = window.Capacitor.Plugins.AdMob;
+      if (!this.adMob) {
+        console.error('AdMob plugin is not available on window.Capacitor.Plugins.');
+        return;
+      }
       await this.adMob.initialize({
         requestTrackingAuthorization: true,
         testingDevices: [],
@@ -44,9 +63,9 @@ class AdManager {
       console.log('AdMob Initialized');
       this.setupBannerLayoutTracking();
 
-      // Preload Interstitial
       this.prepareInterstitial();
       this.prepareRewarded();
+      if (this.bannerRequested) this.showBanner();
     } catch (err) {
       console.error('AdMob Init Error:', err);
     }
@@ -58,6 +77,7 @@ class AdManager {
   }
 
   async showBanner() {
+    this.bannerRequested = true;
     if (!this.initialized) return;
     if (this.bannerShowing) {
       this.refreshBannerLayout();
@@ -73,138 +93,53 @@ class AdManager {
     };
 
     try {
+      if (!this.bannerHeight) {
+        this.bannerHeight = 50;
+        this.refreshBannerLayout();
+      }
       await this.adMob.showBanner(options);
       this.bannerShowing = true;
-      document.body.classList.add('ad-banner-visible');
       this.refreshBannerLayout();
-      clearTimeout(this.bannerFallbackTimer);
-      this.bannerFallbackTimer = setTimeout(() => this.refreshBannerLayout(), 800);
-      console.log('Banner showing');
+      console.log('Banner shown');
     } catch (err) {
       console.error('Show Banner Error:', err);
-      this.setBannerHeight(0);
     }
   }
 
   async hideBanner() {
-    if (!this.bannerShowing) {
-      document.body.classList.remove('ad-banner-visible');
-      this.setBannerHeight(0);
-      return;
-    }
+    if (!this.initialized || !this.bannerShowing) return;
     try {
       await this.adMob.hideBanner();
       this.bannerShowing = false;
-      document.body.classList.remove('ad-banner-visible');
-      this.setBannerHeight(0);
+      this.bannerHeight = 0;
+      this.refreshBannerLayout();
     } catch (err) {
       console.error('Hide Banner Error:', err);
     }
   }
 
   setupBannerLayoutTracking() {
-    if (this.bannerListenersReady) return;
+    if (this.bannerListenersReady || !this.adMob || typeof this.adMob.addListener !== 'function') return;
     this.bannerListenersReady = true;
-
-    const onResize = () => this.scheduleBannerLayoutRefresh();
-    window.addEventListener('resize', onResize, { passive: true });
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', onResize, { passive: true });
-    }
-    this.bannerResizeHandler = onResize;
-
-    if (this.adMob && typeof this.adMob.addListener === 'function') {
-      this.adMob.addListener('bannerAdSizeChanged', (info) => {
-        const height = Number(info && info.height) || 0;
-        this.setBannerHeight(height);
-      }).catch(() => { });
-
-      this.adMob.addListener('bannerAdLoaded', () => {
-        this.refreshBannerLayout();
-      }).catch(() => { });
-
-      this.adMob.addListener('bannerAdFailedToLoad', () => {
-        this.setBannerHeight(0);
-      }).catch(() => { });
-    }
-  }
-
-  scheduleBannerLayoutRefresh() {
-    if (this.bannerRefreshRaf) return;
-    this.bannerRefreshRaf = requestAnimationFrame(() => {
-      this.bannerRefreshRaf = null;
+    this.adMob.addListener('bannerAdSizeChanged', (info) => {
+      this.bannerHeight = info && info.height ? info.height : 0;
       this.refreshBannerLayout();
     });
+    this.bannerResizeHandler = () => this.refreshBannerLayout();
+    window.addEventListener('resize', this.bannerResizeHandler);
   }
 
   refreshBannerLayout() {
-    if (!this.bannerShowing) {
-      this.setBannerHeight(0);
-      return;
-    }
-
-    const domHeight = this.measureDomBannerHeight();
-    if (domHeight > 0) {
-      this.setBannerHeight(domHeight);
-      return;
-    }
-
-    const fallbackHeight = this.getAdaptiveBannerFallbackHeight();
-    this.setBannerHeight(fallbackHeight);
-  }
-
-  measureDomBannerHeight() {
-    const selectors = [
-      '#ad-banner',
-      '#admob-banner',
-      '.ad-banner',
-      '.admob-banner',
-      '.admob-container',
-      '[data-ad-banner]',
-      'ins.adsbygoogle'
-    ];
-
-    for (const selector of selectors) {
-      const el = document.querySelector(selector);
-      if (!el) continue;
-      const style = window.getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
-      if (style.display === 'none' || style.visibility === 'hidden' || rect.height <= 0) continue;
-      return Math.ceil(rect.height);
-    }
-
-    return 0;
-  }
-
-  getAdaptiveBannerFallbackHeight() {
-    const viewportWidth = Math.min(window.innerWidth || 0, window.visualViewport?.width || window.innerWidth || 0);
-    if (viewportWidth >= 728) return 90;
-    if (viewportWidth >= 468) return 60;
-    return 50;
-  }
-
-  setBannerHeight(height) {
-    const cleanHeight = Math.max(0, Math.ceil(Number(height) || 0));
-    const shouldShowClass = cleanHeight > 0 && this.bannerShowing;
-    if (
-      this.bannerHeight === cleanHeight &&
-      document.body.classList.contains('ad-banner-visible') === shouldShowClass
-    ) {
-      return;
-    }
-
-    this.bannerHeight = cleanHeight;
-    const root = document.documentElement;
-    root.style.setProperty('--ad-banner-height', `${cleanHeight}px`);
-    root.style.setProperty('--bottom-nav-offset', cleanHeight > 0
-      ? `calc(${cleanHeight}px + env(safe-area-inset-bottom, 0px))`
-      : 'env(safe-area-inset-bottom, 0px)');
-    document.body.classList.toggle('ad-banner-visible', shouldShowClass);
+    if (this.bannerRefreshRaf) cancelAnimationFrame(this.bannerRefreshRaf);
+    this.bannerRefreshRaf = requestAnimationFrame(() => {
+      const height = this.bannerShowing ? (this.bannerHeight || 50) : 0;
+      document.documentElement.style.setProperty('--ad-banner-height', `${height}px`);
+      document.documentElement.style.setProperty('--admob-banner-height', `${height}px`);
+    });
   }
 
   async prepareInterstitial() {
     if (!this.initialized) return;
-
     try {
       await this.adMob.prepareInterstitial({
         adId: this.interstitialId,
@@ -218,10 +153,9 @@ class AdManager {
   }
 
   async showInterstitial() {
-    if (window._game?.authManager?.isPremium?.()) return;
+    if (this.isPremiumUser()) return;
     if (!this.initialized) return;
 
-    // If not ready, try to prepare and skip this time
     if (!this.interstitialReady) {
       this.prepareInterstitial();
       return;
@@ -230,7 +164,6 @@ class AdManager {
     try {
       await this.adMob.showInterstitial();
       this.interstitialReady = false;
-      // Prepare next one
       this.prepareInterstitial();
     } catch (err) {
       console.error('Show Interstitial Error:', err);
@@ -262,10 +195,10 @@ class AdManager {
   }
 
   async showRewarded() {
-    if (window._game?.authManager?.isPremium?.()) return true;
+    if (this.isPremiumUser()) return true;
     if (typeof window.Capacitor === 'undefined' || !window.Capacitor.isNativePlatform()) {
-      console.log('Rewarded AdMob: web test mode, reward granted without native ad.');
-      return true;
+      console.log('Rewarded AdMob: web — reward denied (native only).');
+      return false;
     }
     if (!this.initialized) return false;
 

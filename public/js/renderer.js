@@ -14,9 +14,9 @@ class Renderer {
     this.gradientCache = new Map();
 
     // Performance: Particle limits
-    this.MAX_PARTICLES = this.game.isMobile ? 0 : 50;
-    this.MAX_FLASH_CELLS = this.game.isMobile ? 24 : 50;
-    this.MAX_SHOCKWAVES = this.game.isMobile ? 6 : 20;
+    this.MAX_PARTICLES = this.game.isMobile ? 0 : 90;
+    this.MAX_FLASH_CELLS = this.game.isMobile ? 28 : 72;
+    this.MAX_SHOCKWAVES = this.game.isMobile ? 6 : 24;
   }
 
   drawGrid(ctx, grid, cellSize, offsetX, offsetY, ghost) {
@@ -78,8 +78,19 @@ class Renderer {
     for (const fc of this.flashCells) {
       const x = offsetX + fc.c * cellSize;
       const y = offsetY + fc.r * cellSize;
-      ctx.fillStyle = `rgba(96, 255, 218, ${fc.alpha * 0.45})`;
-      ctx.fillRect(x, y, cellSize, cellSize);
+      const pulse = Math.sin(Math.min(1, fc.time / fc.life) * Math.PI);
+      ctx.save();
+      ctx.globalAlpha = fc.alpha;
+      ctx.fillStyle = this.game.isMobile
+        ? `rgba(255, 228, 104, ${0.34 + pulse * 0.18})`
+        : `rgba(104, 255, 218, ${0.30 + pulse * 0.28})`;
+      ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+      ctx.strokeStyle = this.game.isMobile
+        ? `rgba(255, 255, 210, ${0.52 + pulse * 0.24})`
+        : `rgba(255, 255, 255, ${0.48 + pulse * 0.32})`;
+      ctx.lineWidth = this.game.isMobile ? 2 : 2.4;
+      ctx.strokeRect(x + 3, y + 3, cellSize - 6, cellSize - 6);
+      ctx.restore();
     }
 
     // Grid lines — Performance: tüm çizgileri tek path'te birleştir (20x daha az stroke() çağrısı)
@@ -271,7 +282,6 @@ class Renderer {
 
   // Particle system for line clear effects
   addClearParticles(row, col, cellSize, offsetX, offsetY, colorIndex) {
-    // Performance: Skip particles on mobile
     if (!this.game.particlesEnabled) return;
     if (this.particles.length >= this.MAX_PARTICLES) return;
 
@@ -279,18 +289,19 @@ class Renderer {
     const cx = offsetX + col * cellSize + cellSize / 2;
     const cy = offsetY + row * cellSize + cellSize / 2;
 
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI * 2 * i) / 6 + Math.random() * 0.5;
-      const speed = 80 + Math.random() * 120;
+    const particleCount = this.game.isMobile ? 2 : 8;
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.55;
+      const speed = (this.game.isMobile ? 58 : 95) + Math.random() * (this.game.isMobile ? 70 : 145);
       this.particles.push({
         x: cx,
         y: cy,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        size: 3 + Math.random() * 4,
-        color: color.base,
+        size: (this.game.isMobile ? 2.5 : 3.5) + Math.random() * (this.game.isMobile ? 3.5 : 5),
+        color: Math.random() > 0.45 ? color.light : '#fff2a6',
         alpha: 1,
-        life: 0.5 + Math.random() * 0.3,
+        life: (this.game.isMobile ? 0.34 : 0.56) + Math.random() * 0.26,
         age: 0,
       });
     }
@@ -299,12 +310,18 @@ class Renderer {
   addFlashCells(cells) {
     for (const { r, c } of cells) {
       if (this.flashCells.length >= this.MAX_FLASH_CELLS) break;
-      this.flashCells.push({ r, c, alpha: 0.58, time: 0 });
+      this.flashCells.push({
+        r,
+        c,
+        alpha: this.game.isMobile ? 0.72 : 0.86,
+        time: 0,
+        life: this.game.isMobile ? 0.32 : 0.42,
+      });
     }
   }
 
   addClearWave(rows, cols, cellSize, offsetX, offsetY) {
-    const burstLimit = this.game.isMobile ? 2 : this.MAX_SHOCKWAVES;
+    const burstLimit = this.game.isMobile ? 4 : this.MAX_SHOCKWAVES;
     for (const r of rows) {
       if (this.shockwaves.length >= this.MAX_SHOCKWAVES) break;
       if (this.clearBursts.length < burstLimit) {
@@ -316,7 +333,7 @@ class Renderer {
           offsetX,
           offsetY,
           alpha: 1,
-          life: 0.38,
+          life: this.game.isMobile ? 0.34 : 0.48,
           age: 0,
         });
       }
@@ -326,10 +343,10 @@ class Renderer {
         y: offsetY + (r + 0.5) * cellSize,
         radius: cellSize,
         maxRadius: cellSize * 4.8,
-        width: 3,
-        color: 'rgba(0, 243, 255, 0.75)',
-        alpha: 0.65,
-        life: 0.35,
+        width: this.game.isMobile ? 4 : 5,
+        color: this.game.isMobile ? 'rgba(255, 232, 120, 0.90)' : 'rgba(0, 243, 255, 0.88)',
+        alpha: this.game.isMobile ? 0.82 : 0.78,
+        life: this.game.isMobile ? 0.32 : 0.42,
         age: 0,
       });
     }
@@ -344,7 +361,7 @@ class Renderer {
           offsetX,
           offsetY,
           alpha: 1,
-          life: 0.38,
+          life: this.game.isMobile ? 0.34 : 0.48,
           age: 0,
         });
       }
@@ -354,10 +371,10 @@ class Renderer {
         y: offsetY + 4.5 * cellSize,
         radius: cellSize,
         maxRadius: cellSize * 4.8,
-        width: 3,
-        color: 'rgba(157, 0, 255, 0.68)',
-        alpha: 0.6,
-        life: 0.35,
+        width: this.game.isMobile ? 4 : 5,
+        color: this.game.isMobile ? 'rgba(96, 255, 218, 0.88)' : 'rgba(190, 96, 255, 0.82)',
+        alpha: this.game.isMobile ? 0.80 : 0.76,
+        life: this.game.isMobile ? 0.32 : 0.42,
         age: 0,
       });
     }
@@ -396,24 +413,23 @@ class Renderer {
       });
     }
 
-    // Performance: Skip particles on mobile
     if (!this.game.particlesEnabled) return;
     if (this.particles.length >= this.MAX_PARTICLES) return;
 
-    const particleCount = this.game.isMobile ? 0 : 24;
+    const particleCount = this.game.isMobile ? 12 : 30;
     for (let i = 0; i < particleCount; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 70 + Math.random() * 135;
+      const speed = (this.game.isMobile ? 62 : 78) + Math.random() * (this.game.isMobile ? 110 : 150);
       const smoke = i % 3 !== 0;
       this.particles.push({
         x: cx,
         y: cy,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        size: smoke ? 4 + Math.random() * 7 : 2 + Math.random() * 3,
+        size: smoke ? 4 + Math.random() * (this.game.isMobile ? 5 : 8) : 2 + Math.random() * 3,
         color: smoke ? style.smoke[i % style.smoke.length] : style.spark,
         alpha: smoke ? 0.72 : 1,
-        life: smoke ? 0.55 + Math.random() * 0.28 : 0.24 + Math.random() * 0.16,
+        life: smoke ? 0.46 + Math.random() * 0.28 : 0.24 + Math.random() * 0.18,
         age: 0,
       });
     }
@@ -462,7 +478,8 @@ class Renderer {
     for (let i = this.flashCells.length - 1; i >= 0; i--) {
       const fc = this.flashCells[i];
       fc.time += dt;
-      fc.alpha = Math.max(0, 0.58 - fc.time * 5.8);
+      const life = fc.life || 0.34;
+      fc.alpha = Math.max(0, (1 - fc.time / life) * (this.game.isMobile ? 0.72 : 0.86));
       if (fc.alpha <= 0) {
         this.flashCells.splice(i, 1);
       }
@@ -496,24 +513,24 @@ class Renderer {
       ctx.save();
       ctx.globalAlpha = b.alpha;
       if (!this.game.isMobile) {
-        ctx.shadowBlur = 18;
+        ctx.shadowBlur = 26;
         ctx.shadowColor = 'rgba(96, 255, 218, 0.65)';
       }
 
       if (this.game.isMobile) {
         ctx.fillStyle = b.kind === 'h'
-          ? `rgba(96, 255, 218, ${0.20 * b.alpha})`
-          : `rgba(255, 220, 96, ${0.18 * b.alpha})`;
+          ? `rgba(96, 255, 218, ${0.30 * b.alpha})`
+          : `rgba(255, 220, 96, ${0.28 * b.alpha})`;
         if (b.kind === 'h') {
           const yy = y + b.row * b.cellSize;
           ctx.fillRect(x, yy + 1, total, b.cellSize - 2);
-          ctx.fillStyle = `rgba(255, 244, 174, ${0.58 * b.alpha})`;
-          ctx.fillRect(x + total * sweep - 2, yy + 2, 4, b.cellSize - 4);
+          ctx.fillStyle = `rgba(255, 255, 220, ${0.78 * b.alpha})`;
+          ctx.fillRect(x + total * sweep - 3, yy + 1, 6, b.cellSize - 2);
         } else {
           const xx = x + b.col * b.cellSize;
           ctx.fillRect(xx + 1, y, b.cellSize - 2, total);
-          ctx.fillStyle = `rgba(255, 244, 174, ${0.58 * b.alpha})`;
-          ctx.fillRect(xx + 2, y + total * sweep - 2, b.cellSize - 4, 4);
+          ctx.fillStyle = `rgba(255, 255, 220, ${0.78 * b.alpha})`;
+          ctx.fillRect(xx + 1, y + total * sweep - 3, b.cellSize - 2, 6);
         }
         ctx.restore();
         continue;
@@ -524,13 +541,13 @@ class Renderer {
         const grad = ctx.createLinearGradient(x, yy, x + total, yy);
         grad.addColorStop(0, 'rgba(96, 255, 218, 0.02)');
         grad.addColorStop(Math.max(0.05, sweep - 0.18), 'rgba(96, 255, 218, 0.12)');
-        grad.addColorStop(sweep, 'rgba(255, 240, 150, 0.72)');
+        grad.addColorStop(sweep, 'rgba(255, 250, 190, 0.92)');
         grad.addColorStop(Math.min(1, sweep + 0.18), 'rgba(96, 255, 218, 0.10)');
         grad.addColorStop(1, 'rgba(96, 255, 218, 0.02)');
         ctx.fillStyle = grad;
         ctx.fillRect(x, yy + 1, total, b.cellSize - 2);
-        ctx.strokeStyle = 'rgba(255, 244, 174, 0.72)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255, 244, 174, 0.88)';
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(x, yy + b.cellSize / 2);
         ctx.lineTo(x + total, yy + b.cellSize / 2);
@@ -540,13 +557,13 @@ class Renderer {
         const grad = ctx.createLinearGradient(xx, y, xx, y + total);
         grad.addColorStop(0, 'rgba(168, 85, 247, 0.02)');
         grad.addColorStop(Math.max(0.05, sweep - 0.18), 'rgba(168, 85, 247, 0.12)');
-        grad.addColorStop(sweep, 'rgba(255, 240, 150, 0.72)');
+        grad.addColorStop(sweep, 'rgba(255, 250, 190, 0.92)');
         grad.addColorStop(Math.min(1, sweep + 0.18), 'rgba(168, 85, 247, 0.10)');
         grad.addColorStop(1, 'rgba(168, 85, 247, 0.02)');
         ctx.fillStyle = grad;
         ctx.fillRect(xx + 1, y, b.cellSize - 2, total);
-        ctx.strokeStyle = 'rgba(255, 244, 174, 0.72)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255, 244, 174, 0.88)';
+        ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(xx + b.cellSize / 2, y);
         ctx.lineTo(xx + b.cellSize / 2, y + total);
@@ -563,6 +580,10 @@ class Renderer {
       ctx.globalAlpha = w.alpha;
       ctx.strokeStyle = w.color;
       ctx.lineWidth = w.width;
+      if (!this.game.isMobile) {
+        ctx.shadowBlur = 16;
+        ctx.shadowColor = w.color;
+      }
       ctx.beginPath();
       if (w.kind === 'line-h') {
         ctx.moveTo(w.x - w.radius, w.y);
@@ -580,9 +601,17 @@ class Renderer {
 
   drawParticles(ctx) {
     for (const p of this.particles) {
+      ctx.save();
       ctx.globalAlpha = p.alpha;
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      if (!this.game.isMobile) {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = p.color;
+      }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
   }

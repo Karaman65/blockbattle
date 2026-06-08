@@ -99,7 +99,6 @@ class AuthManager {
       await docRef.set({
         uid: user.uid,
         username: finalUsername,
-        email: user.email || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       return finalUsername;
@@ -191,7 +190,6 @@ class AuthManager {
         await db.collection('usernames').doc(usernameKey).set({
           uid: cred.user.uid,
           username,
-          email,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -203,6 +201,8 @@ class AuthManager {
         });
       } catch (fsErr) {
         console.error('Firestore write error:', fsErr);
+        try { await cred.user.delete(); } catch (delErr) { console.error('Auth rollback failed:', delErr); }
+        return { success: false, error: 'Hesap oluşturuldu ama profil kaydedilemedi. Tekrar dene.' };
       }
 
       return { success: true };
@@ -362,10 +362,11 @@ class AuthManager {
     await auth.signOut();
   }
 
-  async loadUserData() {
+  async loadUserData(source = 'default') {
     if (this.isGuest || !this.user) return;
     try {
-      const doc = await db.collection('users').doc(this.user.uid).get();
+      const options = source === 'server' ? { source: 'server' } : undefined;
+      const doc = await db.collection('users').doc(this.user.uid).get(options);
       if (doc.exists) {
         this.userData = doc.data();
       }
@@ -399,15 +400,20 @@ class AuthManager {
     if (!this.user) return false;
     const safeLevel = Math.max(1, level);
     try {
-      await db.collection('users').doc(this.user.uid).set({
-        unlockedLevel: safeLevel
-      }, { merge: true });
+      if (!economyApi.isAvailable()) throw new Error('functions-unavailable');
+      await economyApi.call('economyUnlockLevel', { level: safeLevel });
       if (this.userData) this.userData.unlockedLevel = safeLevel;
       return true;
     } catch (e) { console.error(e); return false; }
   }
 
-  async addCoins(amount) {
+  _applyUserSnapshot(data) {
+    if (data && typeof data === 'object') {
+      this.userData = { ...this.userData, ...data };
+    }
+  }
+
+  async addCoins(amount, reason = 'solo_game', extra = {}) {
     if (this.isGuest) {
       if (!this.userData) return false;
       this.userData.coins = (this.userData.coins || 0) + amount;
@@ -416,12 +422,123 @@ class AuthManager {
     }
     if (!this.user) return false;
     try {
-      await db.collection('users').doc(this.user.uid).update({
-        coins: firebase.firestore.FieldValue.increment(amount)
-      });
-      if (this.userData) this.userData.coins = (this.userData.coins || 0) + amount;
+      if (!economyApi.isAvailable()) throw new Error('functions-unavailable');
+      const payload = { reason, amount: Math.trunc(amount), ...extra };
+      const res = await economyApi.call('economyGrantCoins', payload);
+      if (this.userData && res && typeof res.coins === 'number') this.userData.coins = res.coins;
+      else if (this.userData) this.userData.coins = (this.userData.coins || 0) + Math.trunc(amount);
       return true;
     } catch (e) { console.error(e); return false; }
+  }
+
+  async claimQuestReward(questId, periodKey, reward = 0) {
+    if (this.isGuest) return this.addCoins(0);
+    if (!this.user) return false;
+    try {
+      const res = await economyApi.call('economyClaimQuest', { questId, periodKey });
+      if (res && typeof res.coins === 'number' && this.userData) this.userData.coins = res.coins;
+      if (res && res.ok && this.userData) {
+        if (!this.userData.claimedQuests) this.userData.claimedQuests = {};
+        const current = Array.isArray(this.userData.claimedQuests[periodKey])
+          ? this.userData.claimedQuests[periodKey]
+          : [];
+        if (!current.includes(questId)) {
+          this.userData.claimedQuests[periodKey] = [...current, questId];
+        }
+      }
+      return !!(res && res.ok);
+    } catch (e) {
+      console.error(e);
+      return this.claimQuestRewardDirect(questId, periodKey, reward);
+    }
+  }
+
+  async claimQuestRewardDirect(questId, periodKey, reward = 0) {
+    if (!this.user || !questId || !periodKey || reward <= 0) return false;
+    try {
+      const ref = db.collection('users').doc(this.user.uid);
+      const result = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) return { ok: false };
+        const data = snap.data() || {};
+        const claimed = data.claimedQuests || {};
+        const current = Array.isArray(claimed[periodKey]) ? claimed[periodKey] : [];
+        if (current.includes(questId)) {
+          return { ok: true, coins: data.coins || 0, alreadyClaimed: true };
+        }
+        const next = { ...claimed, [periodKey]: [...current, questId] };
+        const nextCoins = (data.coins || 0) + Math.trunc(reward);
+        tx.set(ref, {
+          claimedQuests: next,
+          coins: nextCoins
+        }, { merge: true });
+        return { ok: true, coins: nextCoins };
+      });
+      if (!result || !result.ok) return false;
+      if (!this.userData) this.userData = {};
+      this.userData.coins = result.coins || 0;
+      if (!this.userData.claimedQuests) this.userData.claimedQuests = {};
+      const current = Array.isArray(this.userData.claimedQuests[periodKey])
+        ? this.userData.claimedQuests[periodKey]
+        : [];
+      if (!current.includes(questId)) this.userData.claimedQuests[periodKey] = [...current, questId];
+      return true;
+    } catch (err) {
+      console.error('Quest direct claim failed:', err);
+      return false;
+    }
+  }
+
+  async claimDailyRewardServer(today, yesterday, reward = 0, streak = 0) {
+    if (this.isGuest) return false;
+    if (!this.user) return false;
+    try {
+      const res = await economyApi.call('economyClaimDaily', { today, yesterday });
+      await this.loadUserData('server');
+      return !!(res && res.ok);
+    } catch (e) {
+      console.error(e);
+      return this.claimDailyRewardDirect(today, yesterday, reward, streak);
+    }
+  }
+
+  async claimDailyRewardDirect(today, yesterday, reward = 0, streak = 0) {
+    if (!this.user || !today || reward <= 0) return false;
+    try {
+      const ref = db.collection('users').doc(this.user.uid);
+      const result = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) return { ok: false };
+        const data = snap.data() || {};
+        if (data.dailyRewardLastClaim === today) {
+          return { ok: true, alreadyClaimed: true, coins: data.coins || 0 };
+        }
+        let serverStreak = typeof data.dailyRewardStreak === 'number' ? data.dailyRewardStreak : streak;
+        if (data.dailyRewardLastClaim && data.dailyRewardLastClaim !== today && data.dailyRewardLastClaim !== yesterday) {
+          serverStreak = 0;
+        }
+        const safeReward = Math.trunc(reward);
+        const nextStreak = serverStreak >= 6 ? 0 : serverStreak + 1;
+        const nextCoins = (data.coins || 0) + safeReward;
+        tx.set(ref, {
+          coins: nextCoins,
+          dailyRewardLastClaim: today,
+          dailyRewardStreak: nextStreak,
+          dailyRewardLastIndex: serverStreak
+        }, { merge: true });
+        return { ok: true, coins: nextCoins, nextStreak, lastIndex: serverStreak };
+      });
+      if (!result || !result.ok) return false;
+      if (!this.userData) this.userData = {};
+      this.userData.coins = result.coins || 0;
+      if (typeof result.nextStreak === 'number') this.userData.dailyRewardStreak = result.nextStreak;
+      if (typeof result.lastIndex === 'number') this.userData.dailyRewardLastIndex = result.lastIndex;
+      this.userData.dailyRewardLastClaim = today;
+      return true;
+    } catch (err) {
+      console.error('Daily direct claim failed:', err);
+      return false;
+    }
   }
 
   async buyPowerUp(type, price) {
@@ -435,22 +552,51 @@ class AuthManager {
     }
     if (!this.user || this.getCoins() < price) return false;
     try {
-      const field = `inventory.${type}`;
-      await db.collection('users').doc(this.user.uid).update({
-        coins: firebase.firestore.FieldValue.increment(-price),
-        [field]: firebase.firestore.FieldValue.increment(1)
-      });
-      
-      if (this.userData) {
-        this.userData.coins -= price;
-        if (!this.userData.inventory) this.userData.inventory = {};
-        this.userData.inventory[type] = (this.userData.inventory[type] || 0) + 1;
-      }
+      const res = await economyApi.call('economySpendShop', { action: 'powerUp', type });
+      if (res && res.user) this._applyUserSnapshot(res.user);
+      else await this.loadUserData();
       return true;
-    } catch (e) { console.error(e); return false; }
+    } catch (e) {
+      console.error(e);
+      return this.buyPowerUpDirect(type, price);
+    }
+  }
+
+  async buyPowerUpDirect(type, price) {
+    const allowedPrices = { bomb: 280, rotate: 150, skip: 220 };
+    const safePrice = allowedPrices[type];
+    if (!this.user || !safePrice || safePrice !== price || this.getCoins() < safePrice) return false;
+    try {
+      const ref = db.collection('users').doc(this.user.uid);
+      const result = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) return { ok: false, reason: 'missing-user' };
+        const data = snap.data() || {};
+        const coins = Number(data.coins || 0);
+        if (coins < safePrice) return { ok: false, reason: 'insufficient' };
+        const inventory = {
+          bomb: Number(data.inventory?.bomb || 0),
+          rotate: Number(data.inventory?.rotate || 0),
+          skip: Number(data.inventory?.skip || 0),
+        };
+        inventory[type] = (inventory[type] || 0) + 1;
+        const nextCoins = coins - safePrice;
+        tx.set(ref, { coins: nextCoins, inventory }, { merge: true });
+        return { ok: true, coins: nextCoins, inventory };
+      });
+      if (!result || !result.ok) return false;
+      if (!this.userData) this.userData = {};
+      this.userData.coins = result.coins;
+      this.userData.inventory = result.inventory;
+      return true;
+    } catch (err) {
+      console.error('Power-up direct buy failed:', err);
+      return false;
+    }
   }
 
   async buyBundle(items, price) {
+    const bundleKey = String(price);
     if (this.isGuest) {
       if (!this.userData || this.getCoins() < price) return false;
       this.userData.coins -= price;
@@ -463,21 +609,9 @@ class AuthManager {
     }
     if (!this.user || this.getCoins() < price) return false;
     try {
-      const update = {
-        coins: firebase.firestore.FieldValue.increment(-price)
-      };
-      for (const [type, count] of Object.entries(items)) {
-        if (count > 0) update[`inventory.${type}`] = firebase.firestore.FieldValue.increment(count);
-      }
-      await db.collection('users').doc(this.user.uid).update(update);
-
-      if (this.userData) {
-        this.userData.coins -= price;
-        if (!this.userData.inventory) this.userData.inventory = {};
-        for (const [type, count] of Object.entries(items)) {
-          this.userData.inventory[type] = (this.userData.inventory[type] || 0) + count;
-        }
-      }
+      const res = await economyApi.call('economySpendShop', { action: 'bundle', bundleKey });
+      if (res && res.user) this._applyUserSnapshot(res.user);
+      else await this.loadUserData();
       return true;
     } catch (e) { console.error(e); return false; }
   }
@@ -499,16 +633,9 @@ class AuthManager {
     if (this.getCoins() < price) return false;
 
     try {
-      await db.collection('users').doc(this.user.uid).update({
-        coins: firebase.firestore.FieldValue.increment(-price),
-        ownedThemes: firebase.firestore.FieldValue.arrayUnion(themeId)
-      });
-      
-      if (this.userData) {
-        this.userData.coins -= price;
-        if (!this.userData.ownedThemes) this.userData.ownedThemes = ['default'];
-        this.userData.ownedThemes.push(themeId);
-      }
+      const res = await economyApi.call('economySpendShop', { action: 'theme', themeId });
+      if (res && res.user) this._applyUserSnapshot(res.user);
+      else await this.loadUserData();
       return true;
     } catch (e) { console.error(e); return false; }
   }
@@ -531,17 +658,9 @@ class AuthManager {
     if (this.getCoins() < price) return false;
 
     try {
-      await db.collection('users').doc(this.user.uid).update({
-        coins: firebase.firestore.FieldValue.increment(-price),
-        [`ownedCosmetics.${category}`]: firebase.firestore.FieldValue.arrayUnion(cosmeticId)
-      });
-
-      if (this.userData) {
-        this.userData.coins -= price;
-        if (!this.userData.ownedCosmetics) this.userData.ownedCosmetics = {};
-        if (!this.userData.ownedCosmetics[category]) this.userData.ownedCosmetics[category] = ['classic'];
-        this.userData.ownedCosmetics[category].push(cosmeticId);
-      }
+      const res = await economyApi.call('economySpendShop', { action: 'cosmetic', category, cosmeticId });
+      if (res && res.user) this._applyUserSnapshot(res.user);
+      else await this.loadUserData();
       return true;
     } catch (e) { console.error(e); return false; }
   }
@@ -556,11 +675,10 @@ class AuthManager {
     }
     if (!this.user) return;
     try {
-      const field = `inventory.${type}`;
-      await db.collection('users').doc(this.user.uid).update({
-        [field]: firebase.firestore.FieldValue.increment(-1)
-      });
-      if (this.userData && this.userData.inventory) this.userData.inventory[type]--;
+      await economyApi.call('economyUsePowerUp', { type });
+      if (this.userData && this.userData.inventory) {
+        this.userData.inventory[type] = Math.max(0, (this.userData.inventory[type] || 0) - 1);
+      }
     } catch (e) { console.error(e); }
   }
 
@@ -574,56 +692,32 @@ class AuthManager {
     return this.userData && this.userData.isPremium === true;
   }
 
+  /** @deprecated Premium only via verifyPlayPurchase (IAP). */
   async setPremium() {
-    if (!this.user) return;
-    try {
-      // Update users collection
-      await db.collection('users').doc(this.user.uid).update({
-        isPremium: true
-      });
-      
-      // Update leaderboard collection
-      await db.collection('leaderboard').doc(this.user.uid).set({
-        isPremium: true
-      }, { merge: true });
-
-      if (this.userData) this.userData.isPremium = true;
-      return true;
-    } catch (err) {
-      console.error('Premium güncelleme hatası:', err);
-      return false;
-    }
+    console.warn('setPremium() is disabled — use IAP verification.');
+    return false;
   }
 
   async completePremiumPurchase(coinBonus = 2000) {
-    if (!this.user) return false;
+    console.warn('completePremiumPurchase() deprecated — use verifyPlayPurchase from IAP flow.');
+    return { ok: false, bonusGranted: false };
+  }
+
+  async verifyPlayPurchase(productId, purchaseToken) {
+    if (!this.user) return { ok: false };
     try {
-      await this.loadUserData();
-      const alreadyPremium = this.userData && this.userData.isPremium === true;
-      const bonusAlreadyGranted = this.userData && this.userData.premiumBonusGranted === true;
-      const shouldGrantBonus = !alreadyPremium && !bonusAlreadyGranted && coinBonus > 0;
-      const update = {
-        isPremium: true,
-        premiumBonusGranted: true
-      };
-      if (!alreadyPremium) update.premiumPurchasedAt = firebase.firestore.FieldValue.serverTimestamp();
-      if (shouldGrantBonus) {
-        update.coins = firebase.firestore.FieldValue.increment(coinBonus);
+      const coinsBefore = this.getCoins();
+      const res = await economyApi.call('verifyPlayPurchase', { productId, purchaseToken });
+      await this.loadUserData('server');
+      if (res && res.ok && !res.duplicate && Number(res.coinsGranted) > 0) {
+        const expectedCoins = coinsBefore + Number(res.coinsGranted);
+        if (!this.userData) this.userData = {};
+        if ((this.userData.coins || 0) < expectedCoins) this.userData.coins = expectedCoins;
       }
-
-      await db.collection('users').doc(this.user.uid).set(update, { merge: true });
-
-      await db.collection('leaderboard').doc(this.user.uid).set({
-        isPremium: true
-      }, { merge: true });
-
-      if (!this.userData) this.userData = {};
-      this.userData.isPremium = true;
-      this.userData.premiumBonusGranted = true;
-      if (shouldGrantBonus) this.userData.coins = (this.userData.coins || 0) + coinBonus;
-      return { ok: true, bonusGranted: shouldGrantBonus };
+      const bonusGranted = !!(res && res.coinsGranted > 0 && productId === 'blockbattle_premium_lifetime');
+      return { ok: !!(res && res.ok), bonusGranted, duplicate: !!(res && res.duplicate) };
     } catch (err) {
-      console.error('Premium satın alma tamamlama hatası:', err);
+      console.error('IAP verify error:', err);
       return { ok: false, bonusGranted: false };
     }
   }

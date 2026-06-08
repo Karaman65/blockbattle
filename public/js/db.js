@@ -5,46 +5,32 @@
 class DatabaseManager {
   constructor() {}
 
-  // ── Score & Stats ──
+  // ── Score & Stats (server-authoritative via Cloud Functions) ──
 
   async updateHighScore(uid, score, username, won = false) {
-    const userRef = db.collection('users').doc(uid);
-    const doc = await userRef.get();
-    if (!doc.exists) return;
-    const data = doc.data();
-
-    const updates = {
-      totalGames: firebase.firestore.FieldValue.increment(1),
-    };
-
-    if (won) {
-      updates.totalWins = firebase.firestore.FieldValue.increment(1);
+    if (!economyApi.isAvailable()) {
+      console.warn('economyRecordGame unavailable');
+      return;
     }
-
-    if (score > (data.highScore || 0)) {
-      updates.highScore = score;
-      // Also update leaderboard
-      await db.collection('leaderboard').doc(uid).set({
-        username: username,
-        highScore: score,
-        isPremium: data.isPremium === true, // Sync premium status
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+    try {
+      await economyApi.call('economyRecordGame', {
+        score,
+        username,
+        won,
+        recordHighScore: true,
+      });
+    } catch (e) {
+      console.error('updateHighScore failed:', e);
     }
-
-    await userRef.update(updates);
   }
 
   async syncPremiumToLeaderboard(uid, isPremium) {
-    try {
-      await db.collection('leaderboard').doc(uid).set({
-        isPremium: isPremium
-      }, { merge: true });
-    } catch (e) { console.error(e); }
+    // Leaderboard premium flag is updated by verifyPlayPurchase / economyRecordGame on server.
+    void uid;
+    void isPremium;
   }
 
   async recordOnlineMatch(matchData) {
-    // matchData: { player1: {uid, username, score}, player2: {uid, username, score}, mode, winnerUid }
     try {
       const matchType = matchData.matchType === 'quick' ? 'quick' : 'room';
       const currentUid = matchData.currentUid;
@@ -64,30 +50,23 @@ class DatabaseManager {
         }, { merge: false });
       }
 
-      if (matchType !== 'quick') return;
+      if (matchType !== 'quick' || !economyApi.isAvailable()) return;
 
+      const won = matchData.result === 'win' || currentUid === matchData.winnerUid;
+      const lost = matchData.result === 'loss' || (!!matchData.winnerUid && !won);
+      const draw = matchData.result === 'draw' || (!matchData.winnerUid && !won && !lost);
       const player = [matchData.player1, matchData.player2].find(p => p && p.uid === currentUid);
-      if (!player) return;
+      const score = player ? player.score : 0;
 
-      const explicitResult = matchData.result || '';
-      const won = explicitResult === 'win' || currentUid === matchData.winnerUid;
-      const lost = explicitResult === 'loss' || (!!matchData.winnerUid && !won);
-      const draw = explicitResult === 'draw' || (!matchData.winnerUid && !won && !lost);
-      const update = {
-        totalOnlineGames: firebase.firestore.FieldValue.increment(1),
-        quickOnlineGames: firebase.firestore.FieldValue.increment(1),
-      };
-      if (won) {
-        update.totalWins = firebase.firestore.FieldValue.increment(1);
-        update.quickWins = firebase.firestore.FieldValue.increment(1);
-      }
-      if (lost) {
-        update.quickLosses = firebase.firestore.FieldValue.increment(1);
-      }
-      if (draw) {
-        update.quickDraws = firebase.firestore.FieldValue.increment(1);
-      }
-      await db.collection('users').doc(currentUid).update(update);
+      await economyApi.call('economyRecordGame', {
+        score,
+        won,
+        recordHighScore: false,
+        onlineStats: true,
+        matchType: 'quick',
+        lost,
+        draw,
+      });
     } catch (err) {
       console.error('Failed to record match:', err);
     }
@@ -117,45 +96,32 @@ class DatabaseManager {
 
   async getMatchHistory(uid, limit = 15) {
     try {
-      // Get matches where user is player1 or player2
-      const snap1 = await db.collection('matches')
+      const p1 = await db.collection('matches')
         .where('player1.uid', '==', uid)
-        .limit(limit * 3)
+        .orderBy('createdAt', 'desc')
+        .limit(limit)
         .get();
 
-      const snap2 = await db.collection('matches')
+      const p2 = await db.collection('matches')
         .where('player2.uid', '==', uid)
-        .limit(limit * 3)
+        .orderBy('createdAt', 'desc')
+        .limit(limit)
         .get();
 
-      const matches = [];
-      snap1.forEach(doc => matches.push({ id: doc.id, ...doc.data() }));
-      snap2.forEach(doc => matches.push({ id: doc.id, ...doc.data() }));
+      const all = [];
+      p1.forEach(doc => all.push({ id: doc.id, ...doc.data() }));
+      p2.forEach(doc => all.push({ id: doc.id, ...doc.data() }));
 
-      // Sort by createdAt descending and limit
-      matches.sort((a, b) => {
-        const ta = a.createdAt ? a.createdAt.toMillis() : 0;
-        const tb = b.createdAt ? b.createdAt.toMillis() : 0;
+      all.sort((a, b) => {
+        const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+        const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
         return tb - ta;
       });
 
-      return matches.slice(0, limit);
+      return all.slice(0, limit);
     } catch (err) {
       console.error('Failed to get match history:', err);
       return [];
-    }
-  }
-
-  // ── User Profile ──
-
-  async getUserProfile(uid) {
-    try {
-      const doc = await db.collection('users').doc(uid).get();
-      if (doc.exists) return doc.data();
-      return null;
-    } catch (err) {
-      console.error('Failed to get profile:', err);
-      return null;
     }
   }
 }

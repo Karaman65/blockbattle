@@ -17,6 +17,7 @@ firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
 const db = firebase.firestore();
+// Functions loaded via firebase-functions-compat in index.html
 
 auth.languageCode = 'tr';
 

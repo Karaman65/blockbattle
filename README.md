@@ -37,6 +37,15 @@ npm run dev
   - If omitted, all origins are allowed (development fallback).
 - Copy `.env.example` and set your production values.
 
+## Firebase Cloud Functions (economy & IAP)
+
+Server-side coin grants, shop spends, premium verification, and leaderboard writes require deployed Functions. See [FUNCTIONS_SETUP.md](FUNCTIONS_SETUP.md).
+
+```bash
+cd functions && npm install && cd ..
+firebase deploy --only functions,firestore:rules
+```
+
 ## Firebase
 
 Client Firebase settings are in `public/js/firebase-config.js`.

@@ -24,6 +24,8 @@ class Game {
     this.opponentUid = null;
     this.opponentUsername = 'Rakip';
     this.onlineMatchRecorded = false;
+    this.gameCompletionRecorded = false;
+    this.gameOverHandled = false;
     this.opponentCellSize = 18;
     this.opponentBoardDirty = true;
     this.timerRemaining = 0;
@@ -51,7 +53,7 @@ class Game {
     this.network = new NetworkManager(this);
     this.authManager = new AuthManager();
     this.dbManager = new DatabaseManager();
-    this.ad = new AdManager();
+    this.ad = new AdManager(this);
     this.iap = window.IapManager ? new IapManager(this) : null;
     this.lastTime = 0;
     this.nativeBackHandlerRegistered = false;
@@ -329,6 +331,7 @@ class Game {
     }
     if (id === 'menu-screen') this.renderDailyReward();
     if (id === 'menu-screen') this.renderHomeQuestPreview();
+    if (this.authManager && this.authManager.userData) this.updateCoinDisplays();
     this.updateBackButton(id);
 
     // Bottom Nav Visibility
@@ -667,6 +670,7 @@ class Game {
     const errEl = document.getElementById('login-error');
     if (errEl) errEl.classList.add('hidden');
     this.authManager.startGuestSession(true);
+    setTimeout(() => this.updateAdBannerState(), 700);
   }
 
   openPasswordResetModal() {
@@ -1672,6 +1676,8 @@ class Game {
   }
 
   async recordCompletedGame(won = false) {
+    if (this.gameCompletionRecorded) return;
+    this.gameCompletionRecorded = true;
     this.updateQuestProgress(won);
     this.renderHomeQuestPreview();
     if (this.isGuestSession()) {
@@ -1684,7 +1690,7 @@ class Game {
     }
     if (!this.authManager.isLoggedIn()) return;
     try {
-      await this.dbManager.updateHighScore(this.authManager.user.uid, this.score, this.authManager.getUsername(), false);
+      await this.dbManager.updateHighScore(this.authManager.user.uid, this.score, this.authManager.getUsername(), won);
       await this.authManager.loadUserData();
       this.highScore = Math.max(this.highScore, (this.authManager.userData && this.authManager.userData.highScore) || 0);
       this.updateCoinDisplays();
@@ -1783,7 +1789,7 @@ class Game {
 
     const dailyQuests = (this.buildQuests().daily || []);
     const periodKey = this.getQuestPeriodKey('daily');
-    const claimed = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
+    const claimed = this.getClaimedQuestIds(periodKey);
     const completedCount = dailyQuests.filter(([id, title, desc, value, target]) => value >= target || claimed.includes(id)).length;
     countEl.textContent = `${completedCount}/${dailyQuests.length}`;
 
@@ -1832,7 +1838,7 @@ class Game {
 
       Object.entries(groups).forEach(([type, quests]) => {
         const periodKey = this.getQuestPeriodKey(type);
-        claimed[type] = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
+        claimed[type] = this.getClaimedQuestIds(periodKey);
       });
 
       const activeQuests = (groups[activeType] || []);
@@ -1922,11 +1928,24 @@ class Game {
         const btn = row.querySelector('.quest-claim');
         if (btn) btn.onclick = async () => {
           if (!ready || isClaimed) return;
-          const success = await this.authManager.addCoins(reward);
-          if (!success) return;
-          const current = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
-          if (!current.includes(id)) current.push(id);
-          localStorage.setItem(`claimedQuests:${periodKey}`, JSON.stringify(current));
+          btn.disabled = true;
+          btn.textContent = '...';
+          let success = false;
+          if (this.isGuestSession()) {
+            success = await this.authManager.addCoins(reward);
+          } else {
+            success = await this.authManager.claimQuestReward(id, periodKey, reward);
+          }
+          if (!success) {
+            btn.disabled = false;
+            btn.textContent = 'Al';
+            btn.title = 'Ödül alınamadı. Bağlantını kontrol edip tekrar dene.';
+            btn.classList.add('shake');
+            setTimeout(() => btn.classList.remove('shake'), 500);
+            return;
+          }
+          btn.title = '';
+          this.markQuestClaimed(periodKey, id);
           this.updateCoinDisplays();
           this.audio.pickup();
           this.renderQuests();
@@ -1937,6 +1956,37 @@ class Game {
       list.appendChild(section);
       return;
     }
+  }
+
+  getClaimedQuestIds(periodKey) {
+    if (!periodKey) return [];
+    if (!this.isGuestSession()) {
+      const claimed = this.authManager?.userData?.claimedQuests?.[periodKey];
+      return Array.isArray(claimed) ? claimed : [];
+    }
+    try {
+      const claimed = JSON.parse(localStorage.getItem(`claimedQuests:${periodKey}`) || '[]');
+      return Array.isArray(claimed) ? claimed : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  markQuestClaimed(periodKey, questId) {
+    if (!periodKey || !questId) return;
+    if (!this.isGuestSession() && this.authManager?.userData) {
+      if (!this.authManager.userData.claimedQuests) this.authManager.userData.claimedQuests = {};
+      const current = Array.isArray(this.authManager.userData.claimedQuests[periodKey])
+        ? this.authManager.userData.claimedQuests[periodKey]
+        : [];
+      if (!current.includes(questId)) {
+        this.authManager.userData.claimedQuests[periodKey] = [...current, questId];
+      }
+      return;
+    }
+    const current = this.getClaimedQuestIds(periodKey);
+    if (!current.includes(questId)) current.push(questId);
+    localStorage.setItem(`claimedQuests:${periodKey}`, JSON.stringify(current));
   }
 
   getPlayerPublicId() {
@@ -2257,7 +2307,10 @@ class Game {
     this.audio.win();
     this.vibrate([30, 35, 55]);
     this.recordCompletedGame(true);
-    if (this.hasAccount()) this.authManager.addCoins(75 + this.currentLevel.id * 25).then(() => this.updateCoinDisplays());
+    if (this.hasAccount()) {
+      const bonus = 75 + this.currentLevel.id * 25;
+      this.authManager.addCoins(bonus, 'level_complete', { levelId: this.currentLevel.id }).then(() => this.updateCoinDisplays());
+    }
     this.updatePlayerHeader();
     this.showGameOverScreen(true, `${this.currentLevel.id}. bölüm tamamlandı!`);
   }
@@ -2291,6 +2344,7 @@ class Game {
     this.targetScore = this.currentLevel.target;
     this.mode = 'solo'; this.state = 'playing'; this.score = 0; this.combo = 0; this.animatingClear = false;
     this.rewardContinueUsed = false; this.rewardBombs = 0;
+    this.gameCompletionRecorded = false; this.gameOverHandled = false;
     this.seed = Date.now(); this.rng = new SeededRandom(this.seed); this.blockSetIndex = 0;
     this.resetGrid(); this.applyLevelSetup(this.currentLevel); this.generatePieces();
     this.resetPowerUps();
@@ -2313,6 +2367,8 @@ class Game {
     this.animatingClear = false;
     this.rewardContinueUsed = false;
     this.rewardBombs = 0;
+    this.gameCompletionRecorded = false;
+    this.gameOverHandled = false;
     this.seed = Date.now();
     this.rng = new SeededRandom(this.seed);
     this.blockSetIndex = 0;
@@ -2336,6 +2392,7 @@ class Game {
     this.opponentBoard = null; this.opponentScore = 0; this.opponentBoardDirty = true;
     this.onlineLocked = false;
     this.opponentUid = null; this.opponentUsername = 'Rakip'; this.onlineMatchRecorded = false;
+    this.gameCompletionRecorded = false; this.gameOverHandled = false;
     this.resetGrid(); this.generatePieces();
     const tray = document.getElementById('piece-tray');
     if (tray) tray.classList.remove('locked');
@@ -2347,29 +2404,13 @@ class Game {
     if (mode === 'time') {
       document.getElementById('timer-box').classList.remove('hidden');
       this.updateTimerDisplay();
-      this.startOnlineTimer();
+      // Timer driven by server timer-sync / game-time-up (no local countdown).
     } else {
       document.getElementById('timer-box').classList.add('hidden');
     }
     this.updateLevelBadge();
     this.updateScoreDisplay();
     this.enterGameScreen(this.onlineMode === 'time' ? 'Zamana karşı' : 'Skor yarışı', 'Rakip alanı bağlanıyor');
-  }
-
-  startOnlineTimer() {
-    this.stopOnlineTimer();
-    this.onlineTimer = setInterval(() => {
-      if (this.mode !== 'online' || this.onlineMode !== 'time' || this.state !== 'playing') {
-        this.stopOnlineTimer();
-        return;
-      }
-      this.timerRemaining = Math.max(0, this.timerRemaining - 1);
-      this.updateTimerDisplay();
-      if (this.timerRemaining <= 0) {
-        this.stopOnlineTimer();
-        this.onTimeUp();
-      }
-    }, 1000);
   }
 
   stopOnlineTimer() {
@@ -2736,7 +2777,7 @@ class Game {
       this.animatingClear = false;
       this.renderer.flashCells = [];
       this.markRenderDirty();
-    }, 180);
+    }, this.isMobile ? 320 : 420);
     return true;
   }
 
@@ -2769,6 +2810,15 @@ class Game {
     setTimeout(() => { d.className = 'combo-display hidden'; }, 900);
   }
 
+  showGameStatus(message) {
+    const d = document.getElementById('combo-display');
+    const t = document.getElementById('combo-text');
+    if (!d || !t) return;
+    t.textContent = message;
+    d.className = 'combo-display show status-message';
+    setTimeout(() => { d.className = 'combo-display hidden'; }, 2200);
+  }
+
   // â”€â”€ Game Over â”€â”€
   checkGameOver() {
     const rem = this.pieces.filter(p => !p.placed);
@@ -2786,7 +2836,7 @@ class Game {
     const status = this.onlineMode === 'time'
       ? 'Hamlen kalmadı. Süre bitince sonuç açıklanacak.'
       : 'Hamlen kalmadı. Rakip de kilitlenirse veya 1000 puana ulaşılırsa maç bitecek.';
-    this.showCombo(status);
+    this.showGameStatus(status);
   }
 
   async onGameOver() {
@@ -2805,7 +2855,7 @@ class Game {
     // Award coins for solo play (1 coin per 10 points)
     if (this.mode === 'solo') {
       const soloCoins = Math.floor(this.score / 10);
-      if (soloCoins > 0) this.authManager.addCoins(soloCoins).then(() => this.updateCoinDisplays());
+      if (soloCoins > 0) this.authManager.addCoins(soloCoins, 'solo_game').then(() => this.updateCoinDisplays());
     }
 
     setTimeout(() => this.endGame(), 800);
@@ -2818,7 +2868,7 @@ class Game {
       this.audio.gameOver();
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(false);
-      this.authManager.addCoins(25).then(() => this.updateCoinDisplays());
+      this.authManager.addCoins(25, 'online_loss').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Rakip ${this.targetScore} puana ulaştı. ${this.score} - ${this.opponentScore}`);
       return;
     }
@@ -2827,7 +2877,7 @@ class Game {
     this.vibrate([30, 35, 55]);
     this.recordCompletedGame(true);
     this.recordOnlineMatchResult(true);
-    this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
+    this.authManager.addCoins(100, 'online_win').then(() => this.updateCoinDisplays());
     this.showGameOverScreen(true, 'Rakip kaybetti! Kazandın!');
   }
 
@@ -2838,13 +2888,14 @@ class Game {
       this.vibrate([30, 35, 55]);
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
-      this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
+      this.authManager.addCoins(100, 'online_win').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(true, 'Rakip ayrıldı. Kazandın!');
     }
   }
 
   onTimeUp() {
-    if (this.state !== 'playing') return;
+    if (this.state !== 'playing' || this.gameOverHandled) return;
+    this.gameOverHandled = true;
     this.stopOnlineTimer();
     this.state = 'gameover';
     const won = this.score > this.opponentScore; const tied = this.score === this.opponentScore;
@@ -2853,20 +2904,20 @@ class Game {
       this.vibrate([30, 35, 55]);
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
-      this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
+      this.authManager.addCoins(100, 'online_win').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(true, `Kazandın! ${this.score} - ${this.opponentScore}`);
     }
     else if (tied) {
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(null);
-      this.authManager.addCoins(50).then(() => this.updateCoinDisplays());
+      this.authManager.addCoins(50, 'online_draw').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Berabere! ${this.score} - ${this.opponentScore}`);
     }
     else {
       this.audio.gameOver();
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(false);
-      this.authManager.addCoins(25).then(() => this.updateCoinDisplays());
+      this.authManager.addCoins(25, 'online_loss').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Kaybettin! ${this.score} - ${this.opponentScore}`);
     }
   }
@@ -3015,12 +3066,13 @@ class Game {
           this.updateTimerDisplay();
         }
       }
-      if (this.mode === 'online' && this.onlineMode === 'score' && this.score >= this.targetScore) {
+      if (this.mode === 'online' && this.onlineMode === 'score' && this.score >= this.targetScore && !this.gameOverHandled) {
+        this.gameOverHandled = true;
         this.stopOnlineTimer();
         this.state = 'gameover'; this.audio.win(); this.vibrate([30, 35, 55]); this.network.sendGameOver();
         this.recordCompletedGame(true);
         this.recordOnlineMatchResult(true);
-        this.authManager.addCoins(100).then(() => this.updateCoinDisplays());
+        this.authManager.addCoins(100, 'online_win').then(() => this.updateCoinDisplays());
         this.showGameOverScreen(true, `${this.targetScore} puana ilk sen ulaştın!`);
       }
     }
@@ -3047,21 +3099,11 @@ class Game {
 
   updateCoinDisplays() {
     const coins = this.authManager.getCoins();
-    const menuCoins = document.getElementById('menu-coins');
-    const storeCoins = document.getElementById('store-coins');
-    const mapCoins = document.getElementById('map-coins');
-    const onlineCoins = document.getElementById('online-coins');
-    const leaderboardCoins = document.getElementById('leaderboard-coins');
-    const questsCoins = document.getElementById('quests-coins');
-    const drawerCoins = document.getElementById('drawer-coins');
-    if (menuCoins) menuCoins.textContent = coins;
-    if (storeCoins) storeCoins.textContent = coins;
-    if (mapCoins) mapCoins.textContent = coins.toLocaleString('tr-TR');
-    if (onlineCoins) onlineCoins.textContent = coins.toLocaleString('tr-TR');
-    if (leaderboardCoins) leaderboardCoins.textContent = coins.toLocaleString('tr-TR');
-    if (questsCoins) questsCoins.textContent = coins.toLocaleString('tr-TR');
-    if (drawerCoins) drawerCoins.textContent = coins.toLocaleString('tr-TR');
-    this.updatePlayerHeader();
+    const activeScreenId = typeof UiHeader !== 'undefined' ? UiHeader.getActiveScreenId() : null;
+    if (typeof UiHeader !== 'undefined') {
+      UiHeader.updateCoins(coins, activeScreenId);
+    }
+    this.updatePlayerHeader(activeScreenId);
 
     // Keep consumable shop buttons clickable so they can show feedback when coins are low.
     document.querySelectorAll('.btn-buy').forEach(btn => {
@@ -3080,8 +3122,21 @@ class Game {
     if (this._pendingCoins <= 0) return;
     const amount = this._pendingCoins;
     this._pendingCoins = 0;
-    await this.authManager.addCoins(amount);
+    await this.authManager.addCoins(amount, 'solo_game');
     this.updateCoinDisplays();
+  }
+
+  async flushPendingCoinsForShop() {
+    if (this._pendingCoins <= 0) return true;
+    const amount = this._pendingCoins;
+    this._pendingCoins = 0;
+    const success = await this.authManager.addCoins(amount, 'solo_game');
+    if (!success) {
+      this._pendingCoins += amount;
+      return false;
+    }
+    this.updateCoinDisplays();
+    return true;
   }
 
   getLocalDateKey(offsetDays = 0) {
@@ -3167,23 +3222,40 @@ class Game {
     const activeItem = track ? track.querySelector('span.active') : null;
     if (activeItem) activeItem.classList.add('claiming');
 
-    const success = await this.authManager.addCoins(reward);
+    let success = false;
+    if (this.isGuestSession()) {
+      success = await this.authManager.addCoins(reward);
+      if (success) {
+        const nextStreak = state.streak >= this.dailyRewards.length - 1 ? 0 : state.streak + 1;
+        this.saveDailyRewardState({
+          streak: nextStreak,
+          lastClaimIndex: state.streak,
+          lastClaimDate: state.today
+        });
+      }
+    } else {
+      const yesterday = this.getLocalDateKey(-1);
+      success = await this.authManager.claimDailyRewardServer(state.today, yesterday, reward, state.streak);
+      if (success) {
+        const serverStreak = (this.authManager.userData && this.authManager.userData.dailyRewardStreak) || 0;
+        const lastIndex = (this.authManager.userData && this.authManager.userData.dailyRewardLastIndex) || state.streak;
+        this.saveDailyRewardState({
+          streak: serverStreak,
+          lastClaimIndex: lastIndex,
+          lastClaimDate: state.today
+        });
+      }
+    }
     if (!success) {
       if (activeItem) activeItem.classList.remove('claiming');
       return;
     }
-
-    const nextStreak = state.streak >= this.dailyRewards.length - 1 ? 0 : state.streak + 1;
-    this.saveDailyRewardState({
-      streak: nextStreak,
-      lastClaimIndex: state.streak,
-      lastClaimDate: state.today
-    });
     this.updateCoinDisplays();
     this.renderDailyReward();
   }
 
-  updatePlayerHeader() {
+  updatePlayerHeader(activeScreenId) {
+    const screenId = activeScreenId || (typeof UiHeader !== 'undefined' ? UiHeader.getActiveScreenId() : null);
     const d = this.authManager.userData || {};
     const username = this.authManager.getUsername ? this.authManager.getUsername() : 'Oyuncu';
     const unlocked = this.unlockedLevel || this.getSavedUnlockedLevel();
@@ -3216,29 +3288,30 @@ class Game {
     const homeXpNext = document.getElementById('home-xp-next');
     const homeXpBar = document.getElementById('home-xp-bar');
     const drawerUsername = document.getElementById('drawer-username');
-    if (headerUsername) headerUsername.textContent = username;
-    if (onlineUsername) onlineUsername.textContent = username;
-    if (storeUsername) storeUsername.textContent = username;
-    if (mapUsername) mapUsername.textContent = username;
-    if (leaderboardUsername) leaderboardUsername.textContent = username;
-    if (questsUsername) questsUsername.textContent = username;
+    const setText = (el, value) => { if (el) el.textContent = value; };
+    setText(headerUsername, username);
+    setText(onlineUsername, username);
+    setText(storeUsername, username);
+    setText(mapUsername, username);
+    setText(leaderboardUsername, username);
+    setText(questsUsername, username);
     if (drawerUsername) drawerUsername.textContent = username;
-    if (headerLevel) headerLevel.textContent = level;
-    if (headerXp) headerXp.textContent = `${currentXp}/500`;
-    if (onlineLevel) onlineLevel.textContent = level;
-    if (onlineXp) onlineXp.textContent = `${currentXp}/500`;
-    if (storeLevel) storeLevel.textContent = level;
-    if (storeXp) storeXp.textContent = `${currentXp}/500`;
-    if (mapLevel) mapLevel.textContent = level;
-    if (mapXp) mapXp.textContent = `${currentXp}/500`;
-    if (leaderboardLevel) leaderboardLevel.textContent = level;
-    if (leaderboardXp) leaderboardXp.textContent = `${currentXp}/500`;
-    if (questsLevel) questsLevel.textContent = level;
-    if (questsXp) questsXp.textContent = `${currentXp}/500`;
-    if (homeLevel) homeLevel.textContent = level;
-    if (homeXpLabel) homeXpLabel.textContent = `${currentXp}/500 XP`;
-    if (homeXpCurrent) homeXpCurrent.textContent = `${currentXp} XP`;
-    if (homeXpNext) homeXpNext.textContent = `${500 - currentXp} XP kaldı`;
+    setText(headerLevel, level);
+    setText(headerXp, `${currentXp}/500`);
+    setText(onlineLevel, level);
+    setText(onlineXp, `${currentXp}/500`);
+    setText(storeLevel, level);
+    setText(storeXp, `${currentXp}/500`);
+    setText(mapLevel, level);
+    setText(mapXp, `${currentXp}/500`);
+    setText(leaderboardLevel, level);
+    setText(leaderboardXp, `${currentXp}/500`);
+    setText(questsLevel, level);
+    setText(questsXp, `${currentXp}/500`);
+    setText(homeLevel, level);
+    setText(homeXpLabel, `${currentXp}/500 XP`);
+    setText(homeXpCurrent, `${currentXp} XP`);
+    setText(homeXpNext, `${500 - currentXp} XP kaldı`);
     if (homeXpBar) homeXpBar.style.width = `${Math.min(100, Math.max(0, (currentXp / 500) * 100))}%`;
     this.applySelectedAvatar();
   }
@@ -3428,14 +3501,24 @@ class Game {
       btn.onclick = async () => {
         const type = btn.dataset.type;
         const price = parseInt(btn.dataset.price, 10);
+        btn.disabled = true;
+        const coinsReady = await this.flushPendingCoinsForShop();
+        if (balanceEl) balanceEl.textContent = `${this.authManager.getCoins().toLocaleString('tr-TR')} coin`;
+        if (!coinsReady) {
+          if (statusEl) statusEl.textContent = 'Coinler hazırlanamadı. Biraz sonra tekrar dene.';
+          btn.classList.add('shake');
+          setTimeout(() => btn.classList.remove('shake'), 500);
+          btn.disabled = false;
+          return;
+        }
         if (this.authManager.getCoins() < price) {
-          if (statusEl) statusEl.textContent = 'Coin yetersiz. Oyundan çıkmadan coin ekleyebilirsin.';
+          if (statusEl) statusEl.textContent = 'Coin yetersiz.';
           this.showQuickShopCoinPanel(price - this.authManager.getCoins());
           btn.classList.add('shake');
           setTimeout(() => btn.classList.remove('shake'), 500);
+          btn.disabled = false;
           return;
         }
-        btn.disabled = true;
         const success = await this.authManager.buyPowerUp(type, price);
         if (success) {
           this.powerUps[type] = (this.powerUps[type] || 0) + 1;
@@ -3445,8 +3528,9 @@ class Game {
           if (statusEl) statusEl.textContent = 'Alındı. Oyuna devam edebilirsin.';
           this.audio.pickup();
         } else if (statusEl) {
-          statusEl.textContent = 'Coin yetersiz.';
-          this.showQuickShopCoinPanel(price - this.authManager.getCoins());
+          const shortage = price - this.authManager.getCoins();
+          statusEl.textContent = shortage > 0 ? 'Coin yetersiz.' : 'Satın alma tamamlanamadı. Tekrar dene.';
+          if (shortage > 0) this.showQuickShopCoinPanel(shortage);
           btn.classList.add('shake');
           setTimeout(() => btn.classList.remove('shake'), 500);
         }
