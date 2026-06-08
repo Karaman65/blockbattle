@@ -117,7 +117,7 @@ service cloud.firestore {
       allow list: if false;
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
-        && hasOnlyAllowedKeys(request.resource.data, ['uid', 'username', 'createdAt']);
+        && hasOnlyAllowedKeys(request.resource.data, ['uid', 'username', 'email', 'createdAt']);
       allow update, delete: if false;
     }
 

@@ -99,6 +99,7 @@ class AuthManager {
       await docRef.set({
         uid: user.uid,
         username: finalUsername,
+        email: user.email || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       return finalUsername;
@@ -190,6 +191,7 @@ class AuthManager {
         await db.collection('usernames').doc(usernameKey).set({
           uid: cred.user.uid,
           username,
+          email,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -225,7 +227,7 @@ class AuthManager {
 
       // If no @ sign, treat as username and look up email
       if (!emailOrUsername.includes('@')) {
-        const resolvedEmail = await this.resolveLoginEmail(emailOrUsername);
+        const resolvedEmail = await this.resolveLoginEmail(emailOrUsername, { allowFunctionFallback: true });
         if (!resolvedEmail) return { success: false, error: 'Kullanıcı bulunamadı!' };
         email = resolvedEmail;
       }
@@ -303,7 +305,7 @@ class AuthManager {
       if (!email) return { success: false, error: 'Email veya kullanıcı adını yaz.' };
 
       if (!email.includes('@')) {
-        const resolvedEmail = await this.resolveLoginEmail(email);
+        const resolvedEmail = await this.resolveLoginEmail(email, { allowFunctionFallback: true });
         if (!resolvedEmail) return { success: false, error: 'Bu kullanıcı adı bulunamadı.' };
         email = resolvedEmail;
       }
@@ -322,9 +324,14 @@ class AuthManager {
     }
   }
 
-  async resolveLoginEmail(username) {
+  async resolveLoginEmail(username, options = {}) {
     try {
-      if (!economyApi.isAvailable()) return null;
+      const key = username.trim().toLowerCase();
+      const usernameDoc = await db.collection('usernames').doc(key).get();
+      if (usernameDoc.exists && usernameDoc.data().email) {
+        return usernameDoc.data().email;
+      }
+      if (!options.allowFunctionFallback || !economyApi.isAvailable()) return null;
       const result = await economyApi.call('resolveLoginEmail', { username: username.trim().toLowerCase() });
       return result && result.email ? result.email : null;
     } catch (err) {
