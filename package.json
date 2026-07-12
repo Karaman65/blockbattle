@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "description": "Block Battle - Online Multiplayer Block Puzzle Game",
   "main": "server.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "check:syntax": "node --check server.js && node --check public/js/economy-api.js && node --check public/js/ui-header.js && node --check public/js/auth.js && node --check public/js/db.js && node --check public/js/ad.js && node --check public/js/iap.js && node --check public/js/network.js && node --check public/js/game.js && node --check public/sw.js",
-    "health:local": "node -e \"fetch('http://localhost:3001/health').then(r=>r.text()).then(console.log).catch(e=>{console.error(e.message);process.exit(1);})\""
+    "check:syntax": "node --check server.js && node --check server-game-core.js && node --check functions/index.js && node --check functions/catalog.js && node --check public/js/app-bootstrap.js && node --check public/js/reset-password.js && node --check public/js/economy-api.js && node --check public/js/ui-header.js && node --check public/js/auth.js && node --check public/js/db.js && node --check public/js/ad.js && node --check public/js/audio.js && node --check public/js/blocks.js && node --check public/js/input.js && node --check public/js/renderer.js && node --check public/js/iap.js && node --check public/js/network.js && node --check public/js/game.js && node --check public/sw.js",
+    "health:local": "node -e \"fetch('http://localhost:3001/health').then(r=>r.text()).then(console.log).catch(e=>{console.error(e.message);process.exit(1);})\"",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.0.0",
@@ -19,9 +23,14 @@
     "@capacitor/splash-screen": "^8.0.1",
     "capacitor-plugin-cdv-purchase": "^13.16.0",
     "express": "^4.18.2",
+    "firebase-admin": "^14.1.0",
     "socket.io": "^4.7.4"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5"
+  },
+  "overrides": {
+    "qs": "^6.15.2",
+    "ws": "^8.21.0"
   }
 }

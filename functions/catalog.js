@@ -38,6 +38,24 @@ const QUEST_REWARDS = {
   m1: 1000, m2: 1200, m3: 1400, m4: 1500, m5: 1600, m6: 1700, m7: 1900, m8: 2200, m9: 2500, m10: 3000,
 };
 
+const QUEST_REQUIREMENTS = {
+  d1: { metric: 'highScore', target: 150 }, d2: { metric: 'highScore', target: 300 },
+  d3: { metric: 'totalGames', target: 2 }, d4: { metric: 'totalGames', target: 5 },
+  d5: { metric: 'totalWins', target: 1 }, d6: { metric: 'unlockedLevel', target: 2 },
+  d7: { metric: 'coins', target: 500 }, d8: { metric: 'powerUps', target: 3 },
+  d9: { metric: 'highScore', target: 500 }, d10: { metric: 'unlockedLevel', target: 3 },
+  w1: { metric: 'totalGames', target: 10 }, w2: { metric: 'totalWins', target: 3 },
+  w3: { metric: 'highScore', target: 1000 }, w4: { metric: 'unlockedLevel', target: 4 },
+  w5: { metric: 'coins', target: 1500 }, w6: { metric: 'powerUps', target: 8 },
+  w7: { metric: 'totalGames', target: 15 }, w8: { metric: 'highScore', target: 1500 },
+  w9: { metric: 'unlockedLevel', target: 6 }, w10: { metric: 'totalWins', target: 6 },
+  m1: { metric: 'totalGames', target: 30 }, m2: { metric: 'totalWins', target: 10 },
+  m3: { metric: 'highScore', target: 2500 }, m4: { metric: 'unlockedLevel', target: 8 },
+  m5: { metric: 'coins', target: 4000 }, m6: { metric: 'powerUps', target: 20 },
+  m7: { metric: 'totalGames', target: 50 }, m8: { metric: 'highScore', target: 4000 },
+  m9: { metric: 'unlockedLevel', target: 10 }, m10: { metric: 'totalWins', target: 25 },
+};
+
 const DAILY_REWARDS = [100, 200, 300, 400, 500, 600, 700];
 
 const COIN_GRANT_CAPS = {
@@ -57,6 +75,7 @@ module.exports = {
   COSMETICS,
   IAP_PRODUCTS,
   QUEST_REWARDS,
+  QUEST_REQUIREMENTS,
   DAILY_REWARDS,
   COIN_GRANT_CAPS,
   ANDROID_PACKAGE,

@@ -76,36 +76,10 @@ class AuthManager {
     localStorage.removeItem('blockBattleGuestSession');
   }
 
-  getUsernameKey(username) {
-    return String(username || 'oyuncu').trim().toLowerCase().replace(/[^a-z0-9ğüşöçıİĞÜŞÖÇ_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'oyuncu';
-  }
-
   getProviderUsername(user) {
     const raw = user.displayName || (user.email ? user.email.split('@')[0] : '') || `oyuncu-${user.uid.slice(0, 6)}`;
-    return String(raw).trim().slice(0, 16) || `Oyuncu${user.uid.slice(0, 4)}`;
-  }
-
-  async reserveUsername(baseUsername, user) {
-    let username = String(baseUsername || 'Oyuncu').trim().slice(0, 16) || 'Oyuncu';
-    let key = this.getUsernameKey(username);
-
-    for (let i = 0; i < 5; i++) {
-      const candidate = i === 0 ? key : `${key}-${user.uid.slice(0, 4 + i)}`;
-      const docRef = db.collection('usernames').doc(candidate);
-      const snap = await docRef.get();
-      if (snap.exists && snap.data().uid === user.uid) return snap.data().username || username;
-      if (snap.exists) continue;
-      const finalUsername = i === 0 ? username : `${username.slice(0, 11)}${user.uid.slice(0, 4 + i)}`;
-      await docRef.set({
-        uid: user.uid,
-        username: finalUsername,
-        email: user.email || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      return finalUsername;
-    }
-
-    return `Oyuncu${user.uid.slice(0, 6)}`;
+    const clean = String(raw).trim().replace(/[^a-z0-9ğüşöçıİĞÜŞÖÇ_-]+/gi, '-').replace(/^-+|-+$/g, '');
+    return clean.slice(0, 16) || `Oyuncu${user.uid.slice(0, 4)}`;
   }
 
   async ensureUserProfile(user = this.user) {
@@ -114,36 +88,11 @@ class AuthManager {
       const userRef = db.collection('users').doc(user.uid);
       const doc = await userRef.get();
       if (doc.exists) return true;
-
-      const username = await this.reserveUsername(this.getProviderUsername(user), user);
-      await userRef.set({
-        username,
-        email: user.email || '',
-        highScore: 0,
-        coins: 500,
-        unlockedLevel: 1,
-        inventory: {
-          bomb: 2,
-          rotate: 5,
-          skip: 2
-        },
-        totalGames: 0,
-        totalWins: 0,
-        totalOnlineGames: 0,
-        quickOnlineGames: 0,
-        quickWins: 0,
-        quickLosses: 0,
-        quickDraws: 0,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      if (!economyApi.isAvailable()) throw new Error('functions-unavailable');
+      const result = await economyApi.call('createProfile', {
+        username: this.getProviderUsername(user),
       });
-
-      await db.collection('leaderboard').doc(user.uid).set({
-        username,
-        highScore: 0,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-
-      return true;
+      return !!(result && result.ok);
     } catch (err) {
       console.error('Failed to ensure user profile:', err);
       return false;
@@ -153,54 +102,12 @@ class AuthManager {
   async register(username, email, password) {
     try {
       this.clearGuestSession();
-      const usernameKey = username.trim().toLowerCase();
-      const usernameDoc = await db.collection('usernames').doc(usernameKey).get();
-      if (usernameDoc.exists) {
-        return { success: false, error: 'Bu kullanıcı adı alınmış.' };
-      }
-
-      // Create auth user FIRST (so we're authenticated for Firestore)
       const cred = await auth.createUserWithEmailAndPassword(email, password);
 
       try {
-        // Update display name
         await cred.user.updateProfile({ displayName: username });
-
-        // Save user profile to Firestore
-        await db.collection('users').doc(cred.user.uid).set({
-          username: username,
-          email: email,
-          highScore: 0,
-          coins: 500, // Başlangıç hediyesi!
-          unlockedLevel: 1,
-          inventory: {
-            bomb: 2,
-            rotate: 5,
-            skip: 2
-          },
-          totalGames: 0,
-          totalWins: 0,
-          totalOnlineGames: 0,
-          quickOnlineGames: 0,
-          quickWins: 0,
-          quickLosses: 0,
-          quickDraws: 0,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-
-        await db.collection('usernames').doc(usernameKey).set({
-          uid: cred.user.uid,
-          username,
-          email,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        // Add to leaderboard
-        await db.collection('leaderboard').doc(cred.user.uid).set({
-          username: username,
-          highScore: 0,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
+        if (!economyApi.isAvailable()) throw new Error('functions-unavailable');
+        await economyApi.call('createProfile', { username });
       } catch (fsErr) {
         console.error('Firestore write error:', fsErr);
         try { await cred.user.delete(); } catch (delErr) { console.error('Auth rollback failed:', delErr); }
@@ -223,14 +130,8 @@ class AuthManager {
   async login(emailOrUsername, password) {
     try {
       this.clearGuestSession();
-      let email = emailOrUsername;
-
-      // If no @ sign, treat as username and look up email
-      if (!emailOrUsername.includes('@')) {
-        const resolvedEmail = await this.resolveLoginEmail(emailOrUsername, { allowFunctionFallback: true });
-        if (!resolvedEmail) return { success: false, error: 'Kullanıcı bulunamadı!' };
-        email = resolvedEmail;
-      }
+      const email = emailOrUsername.trim();
+      if (!email.includes('@')) return { success: false, error: 'E-posta adresinle giriş yap.' };
 
       const cred = await auth.signInWithEmailAndPassword(email, password);
       this.user = cred.user;
@@ -304,11 +205,7 @@ class AuthManager {
       let email = emailOrUsername.trim();
       if (!email) return { success: false, error: 'Email veya kullanıcı adını yaz.' };
 
-      if (!email.includes('@')) {
-        const resolvedEmail = await this.resolveLoginEmail(email, { allowFunctionFallback: true });
-        if (!resolvedEmail) return { success: false, error: 'Bu kullanıcı adı bulunamadı.' };
-        email = resolvedEmail;
-      }
+      if (!email.includes('@')) return { success: false, error: 'E-posta adresini yaz.' };
 
       await auth.sendPasswordResetEmail(email);
       return { success: true, email };
@@ -324,22 +221,6 @@ class AuthManager {
     }
   }
 
-  async resolveLoginEmail(username, options = {}) {
-    try {
-      const key = username.trim().toLowerCase();
-      const usernameDoc = await db.collection('usernames').doc(key).get();
-      if (usernameDoc.exists && usernameDoc.data().email) {
-        return usernameDoc.data().email;
-      }
-      if (!options.allowFunctionFallback || !economyApi.isAvailable()) return null;
-      const result = await economyApi.call('resolveLoginEmail', { username: username.trim().toLowerCase() });
-      return result && result.email ? result.email : null;
-    } catch (err) {
-      console.warn('Username email resolve failed:', err);
-      return null;
-    }
-  }
-
   async logout() {
     if (this.isGuest) {
       this.clearGuestSession();
@@ -350,6 +231,22 @@ class AuthManager {
       return;
     }
     await auth.signOut();
+  }
+
+  async deleteAccount() {
+    if (!this.user || this.isGuest) return false;
+    try {
+      const result = await economyApi.call('deleteAccountData', {});
+      try { await auth.signOut(); } catch (signOutError) { console.warn(signOutError); }
+      this.clearGuestSession();
+      this.user = null;
+      this.userData = null;
+      this.isGuest = false;
+      return !!(result && result.ok);
+    } catch (err) {
+      console.error('Account deletion failed:', err);
+      return false;
+    }
   }
 
   async loadUserData(source = 'default') {
@@ -386,20 +283,48 @@ class AuthManager {
   }
 
   async setUnlockedLevel(level) {
-    if (this.isGuest) return false;
-    if (!this.user) return false;
-    const safeLevel = Math.max(1, level);
-    try {
-      if (!economyApi.isAvailable()) throw new Error('functions-unavailable');
-      await economyApi.call('economyUnlockLevel', { level: safeLevel });
-      if (this.userData) this.userData.unlockedLevel = safeLevel;
-      return true;
-    } catch (e) { console.error(e); return false; }
+    void level;
+    return false;
   }
 
   _applyUserSnapshot(data) {
     if (data && typeof data === 'object') {
       this.userData = { ...this.userData, ...data };
+    }
+  }
+
+  async startVerifiedGame(mode, levelId = 0) {
+    if (this.isGuest || !this.user) return null;
+    try {
+      const result = await economyApi.call('economyStartGame', { mode, levelId });
+      return result && result.gameId ? result.gameId : null;
+    } catch (err) {
+      console.error('Game session could not start:', err);
+      return null;
+    }
+  }
+
+  async finishVerifiedGame(gameId, score, won) {
+    if (!gameId || this.isGuest || !this.user) return null;
+    try {
+      const result = await economyApi.call('economyFinishGame', { gameId, score, won });
+      await this.loadUserData('server');
+      return result && result.ok ? result : null;
+    } catch (err) {
+      console.error('Game result could not be verified:', err);
+      return null;
+    }
+  }
+
+  async claimVerifiedOnlineMatch(ticket) {
+    if (!ticket || this.isGuest || !this.user) return null;
+    try {
+      const result = await economyApi.call('economyClaimOnlineMatch', { ticket });
+      await this.loadUserData('server');
+      return result && result.ok ? result : null;
+    } catch (err) {
+      console.error('Online match result could not be verified:', err);
+      return null;
     }
   }
 
@@ -410,15 +335,9 @@ class AuthManager {
       this.saveGuestEconomy();
       return true;
     }
-    if (!this.user) return false;
-    try {
-      if (!economyApi.isAvailable()) throw new Error('functions-unavailable');
-      const payload = { reason, amount: Math.trunc(amount), ...extra };
-      const res = await economyApi.call('economyGrantCoins', payload);
-      if (this.userData && res && typeof res.coins === 'number') this.userData.coins = res.coins;
-      else if (this.userData) this.userData.coins = (this.userData.coins || 0) + Math.trunc(amount);
-      return true;
-    } catch (e) { console.error(e); return false; }
+    void reason;
+    void extra;
+    return false;
   }
 
   async claimQuestReward(questId, periodKey, reward = 0) {
@@ -428,53 +347,18 @@ class AuthManager {
       const res = await economyApi.call('economyClaimQuest', { questId, periodKey });
       if (res && typeof res.coins === 'number' && this.userData) this.userData.coins = res.coins;
       if (res && res.ok && this.userData) {
+        const claimedPeriodKey = res.periodKey || periodKey;
         if (!this.userData.claimedQuests) this.userData.claimedQuests = {};
-        const current = Array.isArray(this.userData.claimedQuests[periodKey])
-          ? this.userData.claimedQuests[periodKey]
+        const current = Array.isArray(this.userData.claimedQuests[claimedPeriodKey])
+          ? this.userData.claimedQuests[claimedPeriodKey]
           : [];
         if (!current.includes(questId)) {
-          this.userData.claimedQuests[periodKey] = [...current, questId];
+          this.userData.claimedQuests[claimedPeriodKey] = [...current, questId];
         }
       }
       return !!(res && res.ok);
     } catch (e) {
       console.error(e);
-      return this.claimQuestRewardDirect(questId, periodKey, reward);
-    }
-  }
-
-  async claimQuestRewardDirect(questId, periodKey, reward = 0) {
-    if (!this.user || !questId || !periodKey || reward <= 0) return false;
-    try {
-      const ref = db.collection('users').doc(this.user.uid);
-      const result = await db.runTransaction(async (tx) => {
-        const snap = await tx.get(ref);
-        if (!snap.exists) return { ok: false };
-        const data = snap.data() || {};
-        const claimed = data.claimedQuests || {};
-        const current = Array.isArray(claimed[periodKey]) ? claimed[periodKey] : [];
-        if (current.includes(questId)) {
-          return { ok: true, coins: data.coins || 0, alreadyClaimed: true };
-        }
-        const next = { ...claimed, [periodKey]: [...current, questId] };
-        const nextCoins = (data.coins || 0) + Math.trunc(reward);
-        tx.set(ref, {
-          claimedQuests: next,
-          coins: nextCoins
-        }, { merge: true });
-        return { ok: true, coins: nextCoins };
-      });
-      if (!result || !result.ok) return false;
-      if (!this.userData) this.userData = {};
-      this.userData.coins = result.coins || 0;
-      if (!this.userData.claimedQuests) this.userData.claimedQuests = {};
-      const current = Array.isArray(this.userData.claimedQuests[periodKey])
-        ? this.userData.claimedQuests[periodKey]
-        : [];
-      if (!current.includes(questId)) this.userData.claimedQuests[periodKey] = [...current, questId];
-      return true;
-    } catch (err) {
-      console.error('Quest direct claim failed:', err);
       return false;
     }
   }
@@ -488,45 +372,6 @@ class AuthManager {
       return !!(res && res.ok);
     } catch (e) {
       console.error(e);
-      return this.claimDailyRewardDirect(today, yesterday, reward, streak);
-    }
-  }
-
-  async claimDailyRewardDirect(today, yesterday, reward = 0, streak = 0) {
-    if (!this.user || !today || reward <= 0) return false;
-    try {
-      const ref = db.collection('users').doc(this.user.uid);
-      const result = await db.runTransaction(async (tx) => {
-        const snap = await tx.get(ref);
-        if (!snap.exists) return { ok: false };
-        const data = snap.data() || {};
-        if (data.dailyRewardLastClaim === today) {
-          return { ok: true, alreadyClaimed: true, coins: data.coins || 0 };
-        }
-        let serverStreak = typeof data.dailyRewardStreak === 'number' ? data.dailyRewardStreak : streak;
-        if (data.dailyRewardLastClaim && data.dailyRewardLastClaim !== today && data.dailyRewardLastClaim !== yesterday) {
-          serverStreak = 0;
-        }
-        const safeReward = Math.trunc(reward);
-        const nextStreak = serverStreak >= 6 ? 0 : serverStreak + 1;
-        const nextCoins = (data.coins || 0) + safeReward;
-        tx.set(ref, {
-          coins: nextCoins,
-          dailyRewardLastClaim: today,
-          dailyRewardStreak: nextStreak,
-          dailyRewardLastIndex: serverStreak
-        }, { merge: true });
-        return { ok: true, coins: nextCoins, nextStreak, lastIndex: serverStreak };
-      });
-      if (!result || !result.ok) return false;
-      if (!this.userData) this.userData = {};
-      this.userData.coins = result.coins || 0;
-      if (typeof result.nextStreak === 'number') this.userData.dailyRewardStreak = result.nextStreak;
-      if (typeof result.lastIndex === 'number') this.userData.dailyRewardLastIndex = result.lastIndex;
-      this.userData.dailyRewardLastClaim = today;
-      return true;
-    } catch (err) {
-      console.error('Daily direct claim failed:', err);
       return false;
     }
   }
@@ -548,39 +393,6 @@ class AuthManager {
       return true;
     } catch (e) {
       console.error(e);
-      return this.buyPowerUpDirect(type, price);
-    }
-  }
-
-  async buyPowerUpDirect(type, price) {
-    const allowedPrices = { bomb: 280, rotate: 150, skip: 220 };
-    const safePrice = allowedPrices[type];
-    if (!this.user || !safePrice || safePrice !== price || this.getCoins() < safePrice) return false;
-    try {
-      const ref = db.collection('users').doc(this.user.uid);
-      const result = await db.runTransaction(async (tx) => {
-        const snap = await tx.get(ref);
-        if (!snap.exists) return { ok: false, reason: 'missing-user' };
-        const data = snap.data() || {};
-        const coins = Number(data.coins || 0);
-        if (coins < safePrice) return { ok: false, reason: 'insufficient' };
-        const inventory = {
-          bomb: Number(data.inventory?.bomb || 0),
-          rotate: Number(data.inventory?.rotate || 0),
-          skip: Number(data.inventory?.skip || 0),
-        };
-        inventory[type] = (inventory[type] || 0) + 1;
-        const nextCoins = coins - safePrice;
-        tx.set(ref, { coins: nextCoins, inventory }, { merge: true });
-        return { ok: true, coins: nextCoins, inventory };
-      });
-      if (!result || !result.ok) return false;
-      if (!this.userData) this.userData = {};
-      this.userData.coins = result.coins;
-      this.userData.inventory = result.inventory;
-      return true;
-    } catch (err) {
-      console.error('Power-up direct buy failed:', err);
       return false;
     }
   }
@@ -741,6 +553,3 @@ class AuthManager {
     return this.isGuest === true;
   }
 }
-
-
-

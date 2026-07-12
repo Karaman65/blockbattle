@@ -25,6 +25,7 @@ class Game {
     this.opponentUsername = 'Rakip';
     this.onlineMatchRecorded = false;
     this.gameCompletionRecorded = false;
+    this.verifiedGamePromise = null;
     this.gameOverHandled = false;
     this.opponentCellSize = 18;
     this.opponentBoardDirty = true;
@@ -149,6 +150,12 @@ class Game {
 
   hasAccount() {
     return !!(this.authManager && this.authManager.user);
+  }
+
+  escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[char]);
   }
 
   enterMainMenuAfterAuth() {
@@ -826,6 +833,26 @@ class Game {
     if (settingsLogout) settingsLogout.onclick = () => this.logoutToLogin();
     const profileLogout = document.getElementById('profile-logout-btn');
     if (profileLogout) profileLogout.onclick = () => this.logoutToLogin();
+    const deleteAccount = document.getElementById('settings-delete-account');
+    if (deleteAccount) deleteAccount.onclick = async () => {
+      if (!this.hasAccount()) {
+        this.showToast('Silinecek bir hesap bulunamadı.');
+        return;
+      }
+      const confirmed = window.confirm('Hesabın, ilerlemen, coinlerin ve ilişkili verilerin kalıcı olarak silinecek. Devam edilsin mi?');
+      if (!confirmed) return;
+      deleteAccount.disabled = true;
+      const deleted = await this.authManager.deleteAccount();
+      deleteAccount.disabled = false;
+      if (!deleted) {
+        this.showToast('Hesap silinemedi. Tekrar giriş yapıp yeniden dene.');
+        return;
+      }
+      this.closeSettingsModal();
+      this.state = 'menu';
+      this.showScreen('login-screen', { skipHistory: true });
+      this.showToast('Hesabın ve ilişkili verilerin silindi.');
+    };
     const dailyRewardTrack = document.getElementById('daily-reward-track');
     if (dailyRewardTrack) {
       dailyRewardTrack.onclick = (e) => {
@@ -1605,18 +1632,18 @@ class Game {
 
   getQuestPeriodKey(type) {
     const now = new Date();
-    const uid = this.authManager && this.authManager.user ? this.authManager.user.uid : 'guest';
-    if (type === 'daily') return `${uid}:daily:${this.getLocalDateKey()}`;
+    if (type === 'daily') return this.getLocalDateKey();
     if (type === 'weekly') {
-      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const day = monday.getDay() || 7;
-      monday.setDate(monday.getDate() - day + 1);
-      const year = monday.getFullYear();
-      const month = String(monday.getMonth() + 1).padStart(2, '0');
-      const date = String(monday.getDate()).padStart(2, '0');
-      return `${uid}:weekly:${year}-${month}-${date}`;
+      const date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const day = (date.getUTCDay() + 6) % 7;
+      date.setUTCDate(date.getUTCDate() - day + 3);
+      const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+      const firstDay = (firstThursday.getUTCDay() + 6) % 7;
+      firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDay + 3);
+      const week = 1 + Math.round((date - firstThursday) / 604800000);
+      return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
     }
-    return `${uid}:monthly:${now.getFullYear()}-${now.getMonth() + 1}`;
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
   getQuestResetLabel(type) {
@@ -1664,7 +1691,15 @@ class Game {
   getQuestStats(type = 'daily') {
     const d = this.authManager.userData || {};
     const inv = this.authManager.getInventory ? this.authManager.getInventory() : {};
-    const period = this.getPeriodQuestStats(type);
+    const localPeriod = this.getPeriodQuestStats(type);
+    const serverPeriod = d.periodStats && d.periodStats[type];
+    const period = this.hasAccount() && serverPeriod && serverPeriod.key === this.getQuestPeriodKey(type)
+      ? {
+          games: serverPeriod.totalGames || 0,
+          wins: serverPeriod.totalWins || 0,
+          highScore: serverPeriod.highScore || 0,
+        }
+      : (this.hasAccount() ? { games: 0, wins: 0, highScore: 0 } : localPeriod);
     return {
       highScore: Math.max(period.highScore || 0, this.score || 0),
       totalGames: period.games || 0,
@@ -1689,12 +1724,20 @@ class Game {
       return;
     }
     if (!this.authManager.isLoggedIn()) return;
+    if (this.mode === 'online') return;
     try {
-      await this.dbManager.updateHighScore(this.authManager.user.uid, this.score, this.authManager.getUsername(), won);
-      await this.authManager.loadUserData();
+      const gameId = this.verifiedGamePromise ? await this.verifiedGamePromise : null;
+      const result = await this.authManager.finishVerifiedGame(gameId, this.score, won);
+      if (!result) {
+        this.showToast('Oyun sonucu doğrulanamadı; ödül eklenmedi.');
+        return;
+      }
       this.highScore = Math.max(this.highScore, (this.authManager.userData && this.authManager.userData.highScore) || 0);
+      this.unlockedLevel = Math.max(this.unlockedLevel, result.unlockedLevel || 1);
+      localStorage.setItem(this.getLevelProgressKey(), String(this.unlockedLevel));
       this.updateCoinDisplays();
       this.updatePlayerHeader();
+      this.renderHomeQuestPreview();
     } catch (e) {
       console.error(e);
     }
@@ -1706,35 +1749,48 @@ class Game {
     if (data.username) this.opponentUsername = data.username;
   }
 
+  applyAuthoritativeOnlineState(data) {
+    if (this.mode !== 'online' || !data) return;
+    const boardValid = Array.isArray(data.board)
+      && data.board.length === this.GRID_SIZE
+      && data.board.every(row => Array.isArray(row) && row.length === this.GRID_SIZE);
+    const piecesValid = Array.isArray(data.pieces)
+      && data.pieces.length === 3
+      && data.pieces.every(piece => piece && Array.isArray(piece.shape));
+    if (!boardValid || !piecesValid || !Number.isFinite(Number(data.score))) return;
+    this.grid = data.board.map(row => row.map(value => {
+      const number = Math.trunc(Number(value) || 0);
+      return number >= 0 && number <= 9 ? number : 0;
+    }));
+    this.score = Math.max(0, Math.trunc(Number(data.score)));
+    this.pieces = data.pieces.map(piece => ({
+      shape: piece.shape.map(row => row.map(value => value ? 1 : 0)),
+      colorIndex: Math.max(0, Math.min(BLOCK_COLORS.length - 1, Math.trunc(Number(piece.colorIndex) || 0))),
+      placed: piece.placed === true,
+      name: String(piece.name || '').slice(0, 20),
+    }));
+    this.renderPieceTray();
+    this.updateScoreDisplay();
+    this.markRenderDirty();
+  }
+
   async recordOnlineMatchResult(won) {
     if (this.onlineMatchRecorded || this.mode !== 'online') return;
-    if (!this.authManager.user) return;
-    const myUid = this.authManager.user.uid;
-    const matchType = this.network.matchType === 'quick' ? 'quick' : 'room';
-    const opponentUid = this.opponentUid || '';
-    const shouldWriteMatch = !!opponentUid && (won === true || (won === null && myUid < opponentUid));
     this.onlineMatchRecorded = true;
-    await this.dbManager.recordOnlineMatch({
-      matchType,
-      mode: this.onlineMode || this.network.gameMode || 'score',
-      roomId: this.network.roomId || '',
-      currentUid: myUid,
-      writeMatch: shouldWriteMatch,
-      result: won === true ? 'win' : won === false ? 'loss' : 'draw',
-      player1: {
-        uid: myUid,
-        username: this.authManager.getUsername(),
-        score: this.score,
-      },
-      player2: {
-        uid: opponentUid,
-        username: this.opponentUsername || 'Rakip',
-        score: this.opponentScore || 0,
-      },
-      winnerUid: won === true ? myUid : won === false ? opponentUid : null,
-    });
-    await this.authManager.loadUserData();
+    void won;
+  }
+
+  async handleVerifiedOnlineResult(ticket) {
+    const result = await this.authManager.claimVerifiedOnlineMatch(ticket);
+    if (!result) {
+      this.showToast('Online maç sonucu doğrulanamadı.');
+      return;
+    }
+    this.updateCoinDisplays();
     this.updatePlayerHeader();
+    if (!result.duplicate && result.reward > 0) {
+      this.showToast(`Maç ödülü: +${result.reward} coin`);
+    }
   }
 
   buildQuests() {
@@ -2051,32 +2107,39 @@ class Game {
       const actualRank = i + 4;
       const meClass = entry.uid === uid ? ' me' : '';
       const crown = entry.isPremium ? ' <span class="premium-icon" title="Premium">VIP</span>' : '';
+      const safeName = this.escapeHtml(entry.username || 'Oyuncu');
+      const safeScore = Number.isFinite(Number(entry.highScore)) ? Math.max(0, Math.trunc(Number(entry.highScore))) : 0;
       return `
         <div class="leaderboard-item${meClass}">
           <span class="rank">#${actualRank}</span>
           <span class="leaderboard-avatar-mini">🎮</span>
           <div class="player-info">
-            <span class="player-name">${entry.username}${crown}</span>
-            <small>♕ ${entry.highScore} kupa</small>
+            <span class="player-name">${safeName}${crown}</span>
+            <small>♕ ${safeScore} kupa</small>
           </div>
           <div class="player-score"><span>↗</span></div>
         </div>`;
     }).join('');
 
+    const podiumSafe = podium.map(entry => ({
+      username: this.escapeHtml(entry?.username || 'Oyuncu'),
+      highScore: Number.isFinite(Number(entry?.highScore)) ? Math.max(0, Math.trunc(Number(entry.highScore))) : 0,
+    }));
+
     list.innerHTML = `
       <div class="leaderboard-podium" aria-label="Top three players">
         <div class="podium-player second">
           <div class="podium-avatar">👑</div>
-          <div class="podium-block"><strong>2</strong><b>${podium[0].username}</b><span>${podium[0].highScore}</span></div>
+          <div class="podium-block"><strong>2</strong><b>${podiumSafe[0].username}</b><span>${podiumSafe[0].highScore}</span></div>
         </div>
         <div class="podium-player first">
           <div class="podium-crown">♛</div>
           <div class="podium-avatar">🏆</div>
-          <div class="podium-block"><strong>1</strong><b>${podium[1].username}</b><span>${podium[1].highScore}</span></div>
+          <div class="podium-block"><strong>1</strong><b>${podiumSafe[1].username}</b><span>${podiumSafe[1].highScore}</span></div>
         </div>
         <div class="podium-player third">
           <div class="podium-avatar">🥷</div>
-          <div class="podium-block"><strong>3</strong><b>${podium[2].username}</b><span>${podium[2].highScore}</span></div>
+          <div class="podium-block"><strong>3</strong><b>${podiumSafe[2].username}</b><span>${podiumSafe[2].highScore}</span></div>
         </div>
       </div>
       <div class="leaderboard-list">${rows || '<p class="text-muted">İlk 3 dışı oyuncu henüz yok</p>'}</div>`;
@@ -2156,20 +2219,23 @@ class Game {
       const typeLabel = m.matchType === 'quick' ? 'Hızlı Maç' : 'Oda Maçı';
       const resultLabel = draw ? 'Berabere' : won ? 'Zafer' : 'Mağlubiyet';
       const icon = draw ? 'BER' : won ? 'GAL' : 'MAĞ';
+      const safeOpponent = this.escapeHtml(oppName);
+      const safeMyScore = Number.isFinite(Number(myScore)) ? Math.max(0, Math.trunc(Number(myScore))) : 0;
+      const safeOppScore = Number.isFinite(Number(oppScore)) ? Math.max(0, Math.trunc(Number(oppScore))) : 0;
       return `
         <div class="match-history-item ${draw ? 'draw' : won ? 'win' : 'lose'}">
           <div class="match-result-badge">${icon}</div>
           <div class="match-main">
             <div class="match-topline">
-              <span class="match-opponent">vs ${oppName}</span>
+              <span class="match-opponent">vs ${safeOpponent}</span>
               <span class="match-type">${typeLabel}</span>
             </div>
             <span class="match-result-text">${resultLabel}</span>
           </div>
           <div class="match-score-pill">
-            <span>${myScore}</span>
+            <span>${safeMyScore}</span>
             <small>-</small>
-            <span>${oppScore}</span>
+            <span>${safeOppScore}</span>
           </div>
         </div>`;
     }).join('');
@@ -2232,8 +2298,9 @@ class Game {
 
   getSavedUnlockedLevel() {
     const accountLevel = this.authManager && this.authManager.getUnlockedLevel ? this.authManager.getUnlockedLevel() : 1;
+    if (this.hasAccount()) return Math.max(1, Math.min(this.levels.length + 1, accountLevel));
     const deviceLevel = parseInt(localStorage.getItem(this.getLevelProgressKey()) || '1', 10);
-    return Math.max(1, Math.min(this.levels.length + 1, Math.max(accountLevel, deviceLevel)));
+    return Math.max(1, Math.min(this.levels.length + 1, deviceLevel));
   }
 
   async saveUnlockedLevel(level) {
@@ -2241,9 +2308,7 @@ class Game {
     const safeLevel = Math.max(1, Math.min(this.levels.length + 1, level));
     this.unlockedLevel = safeLevel;
     localStorage.setItem(this.getLevelProgressKey(), String(safeLevel));
-    if (this.authManager && this.authManager.setUnlockedLevel) {
-      await this.authManager.setUnlockedLevel(safeLevel);
-    }
+    return safeLevel;
   }
 
   renderLevelMap() {
@@ -2298,19 +2363,15 @@ class Game {
 
   async completeCurrentLevel() {
     if (!this.currentLevel) return;
-    await this._flushCoins(); // Performance: birikmiş coin'leri tek seferde yaz
+    if (this.isGuestSession()) await this._flushCoins();
     const nextLevel = Math.min(this.currentLevel.id + 1, this.levels.length + 1);
     if (this.currentLevel.id >= this.unlockedLevel) {
-      await this.saveUnlockedLevel(nextLevel);
+      this.unlockedLevel = nextLevel;
     }
     this.state = 'gameover';
     this.audio.win();
     this.vibrate([30, 35, 55]);
-    this.recordCompletedGame(true);
-    if (this.hasAccount()) {
-      const bonus = 75 + this.currentLevel.id * 25;
-      this.authManager.addCoins(bonus, 'level_complete', { levelId: this.currentLevel.id }).then(() => this.updateCoinDisplays());
-    }
+    await this.recordCompletedGame(true);
     this.updatePlayerHeader();
     this.showGameOverScreen(true, `${this.currentLevel.id}. bölüm tamamlandı!`);
   }
@@ -2345,6 +2406,7 @@ class Game {
     this.mode = 'solo'; this.state = 'playing'; this.score = 0; this.combo = 0; this.animatingClear = false;
     this.rewardContinueUsed = false; this.rewardBombs = 0;
     this.gameCompletionRecorded = false; this.gameOverHandled = false;
+    this.verifiedGamePromise = this.authManager.startVerifiedGame('level', this.currentLevel.id);
     this.seed = Date.now(); this.rng = new SeededRandom(this.seed); this.blockSetIndex = 0;
     this.resetGrid(); this.applyLevelSetup(this.currentLevel); this.generatePieces();
     this.resetPowerUps();
@@ -2369,6 +2431,9 @@ class Game {
     this.rewardBombs = 0;
     this.gameCompletionRecorded = false;
     this.gameOverHandled = false;
+    this.verifiedGamePromise = this.isGuestSession()
+      ? null
+      : this.authManager.startVerifiedGame('solo');
     this.seed = Date.now();
     this.rng = new SeededRandom(this.seed);
     this.blockSetIndex = 0;
@@ -2393,6 +2458,7 @@ class Game {
     this.onlineLocked = false;
     this.opponentUid = null; this.opponentUsername = 'Rakip'; this.onlineMatchRecorded = false;
     this.gameCompletionRecorded = false; this.gameOverHandled = false;
+    this.verifiedGamePromise = null;
     this.resetGrid(); this.generatePieces();
     const tray = document.getElementById('piece-tray');
     if (tray) tray.classList.remove('locked');
@@ -2707,10 +2773,13 @@ class Game {
       return false;
     }
     const piece = this.pieces[pieceIndex]; const shape = piece.shape; const colorVal = piece.colorIndex + 1;
+    const placedRow = this.ghost.row;
+    const placedCol = this.ghost.col;
     for (let r = 0; r < shape.length; r++) for (let c = 0; c < shape[r].length; c++) if (shape[r][c]) this.grid[this.ghost.row + r][this.ghost.col + c] = colorVal;
     this.markRenderDirty();
     this.score += getShapeCells(shape).length;
     piece.placed = true; this.audio.place(); this.vibrate(14);
+    if (this.mode === 'online') this.network.sendPlayerAction(pieceIndex, placedRow, placedCol);
     const slot = document.querySelector(`.piece-slot[data-index="${pieceIndex}"]`);
     if (slot) slot.classList.add('placed');
     const clearedLines = this.checkAndClearLines();
@@ -2721,7 +2790,6 @@ class Game {
       return true;
     }
     if (clearedLines) {
-      if (this.mode === 'online') this.network.sendBoardUpdate(this.grid, this.score);
       this.updateScoreDisplay();
       setTimeout(() => this.checkGameOverAfterClear(), 320);
       return true;
@@ -2729,14 +2797,12 @@ class Game {
     if (this.checkGameOver()) {
       if (this.mode === 'online') {
         this.onOnlineLocked();
-        this.network.sendBoardUpdate(this.grid, this.score);
         this.updateScoreDisplay();
         return true;
       }
       this.onGameOver();
       return true;
     }
-    if (this.mode === 'online') this.network.sendBoardUpdate(this.grid, this.score);
     this.updateScoreDisplay();
     return true;
   }
@@ -2752,7 +2818,7 @@ class Game {
     // Award coins: 10 per line, 20 bonus for each combo level
     const coinsEarned = (total * 10) + (this.combo > 1 ? (this.combo - 1) * 20 : 0);
     // Performance: Firebase'e tek tek yazmak yerine batch'le, oyun sonunda gönder
-    this.queueCoins(coinsEarned);
+    if (this.isGuestSession()) this.queueCoins(coinsEarned);
 
     this.combo++;
     const cells = new Set();
@@ -2790,7 +2856,6 @@ class Game {
     if (!this.checkGameOver()) return;
     if (this.mode === 'online') {
       this.onOnlineLocked();
-      this.network.sendBoardUpdate(this.grid, this.score);
       this.updateScoreDisplay();
       return;
     }
@@ -2841,7 +2906,7 @@ class Game {
 
   async onGameOver() {
     this.stopOnlineTimer();
-    await this._flushCoins(); // Performance: birikmiş coin'leri tek seferde yaz
+    if (this.isGuestSession()) await this._flushCoins();
     this.state = 'gameover'; this.audio.gameOver(); this.vibrate([45, 35, 70]);
     if (this.mode === 'online') this.network.sendGameOver();
     if (this.mode === 'online') this.recordOnlineMatchResult(false);
@@ -2853,7 +2918,7 @@ class Game {
     await this.recordCompletedGame(false);
     if (this.score > this.highScore) this.highScore = this.score;
     // Award coins for solo play (1 coin per 10 points)
-    if (this.mode === 'solo') {
+    if (this.mode === 'solo' && this.isGuestSession()) {
       const soloCoins = Math.floor(this.score / 10);
       if (soloCoins > 0) this.authManager.addCoins(soloCoins, 'solo_game').then(() => this.updateCoinDisplays());
     }
@@ -2868,7 +2933,6 @@ class Game {
       this.audio.gameOver();
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(false);
-      this.authManager.addCoins(25, 'online_loss').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Rakip ${this.targetScore} puana ulaştı. ${this.score} - ${this.opponentScore}`);
       return;
     }
@@ -2877,7 +2941,6 @@ class Game {
     this.vibrate([30, 35, 55]);
     this.recordCompletedGame(true);
     this.recordOnlineMatchResult(true);
-    this.authManager.addCoins(100, 'online_win').then(() => this.updateCoinDisplays());
     this.showGameOverScreen(true, 'Rakip kaybetti! Kazandın!');
   }
 
@@ -2888,7 +2951,6 @@ class Game {
       this.vibrate([30, 35, 55]);
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
-      this.authManager.addCoins(100, 'online_win').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(true, 'Rakip ayrıldı. Kazandın!');
     }
   }
@@ -2904,20 +2966,17 @@ class Game {
       this.vibrate([30, 35, 55]);
       this.recordCompletedGame(true);
       this.recordOnlineMatchResult(true);
-      this.authManager.addCoins(100, 'online_win').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(true, `Kazandın! ${this.score} - ${this.opponentScore}`);
     }
     else if (tied) {
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(null);
-      this.authManager.addCoins(50, 'online_draw').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Berabere! ${this.score} - ${this.opponentScore}`);
     }
     else {
       this.audio.gameOver();
       this.recordCompletedGame(false);
       this.recordOnlineMatchResult(false);
-      this.authManager.addCoins(25, 'online_loss').then(() => this.updateCoinDisplays());
       this.showGameOverScreen(false, `Kaybettin! ${this.score} - ${this.opponentScore}`);
     }
   }
@@ -3072,7 +3131,6 @@ class Game {
         this.state = 'gameover'; this.audio.win(); this.vibrate([30, 35, 55]); this.network.sendGameOver();
         this.recordCompletedGame(true);
         this.recordOnlineMatchResult(true);
-        this.authManager.addCoins(100, 'online_win').then(() => this.updateCoinDisplays());
         this.showGameOverScreen(true, `${this.targetScore} puana ilk sen ulaştın!`);
       }
     }
@@ -3087,6 +3145,12 @@ class Game {
 
   // â”€â”€ Power-ups Logic â”€â”€
   resetPowerUps() {
+    if (this.mode === 'online') {
+      this.powerUps = { bomb: 0, rotate: 0, skip: 0 };
+      this.bombMode = false;
+      this.updatePowerUpUI();
+      return;
+    }
     const inv = this.authManager.getInventory();
     this.powerUps = {
       bomb: inv.bomb || 0,

@@ -7,6 +7,8 @@ Bu dosya, projeyi production ortamına sorunsuz almak için son kontrol listesid
 - `PORT` tanımlı (opsiyonel, varsayilan `3001`)
 - `ALLOWED_ORIGINS` production domainleri ile tanımlı
   - Ornek: `https://your-domain.com,https://www.your-domain.com`
+- `FIREBASE_PROJECT_ID=blockbattle1-c0f6f`
+- `MATCH_TICKET_SECRET` en az 32 karakter ve Firebase Functions secret ile birebir aynı
 
 ## 2) Firestore Rules
 
@@ -14,7 +16,7 @@ Bu dosya, projeyi production ortamına sorunsuz almak için son kontrol listesid
 - Firebase CLI ile deploy edildi:
 
 ```bash
-firebase deploy --only firestore:rules
+firebase deploy --only functions,firestore:rules,firestore:indexes
 ```
 
 ## 3) Uygulama Sağlık Kontrolü
@@ -37,7 +39,18 @@ npm run check:syntax
 
 - Hata olmadan tamamlanmalı
 
-## 5) Online Oyun Smoke Test
+- Testler:
+
+```bash
+npm test
+```
+
+## 5) AdMob
+
+- `public/js/ad.js` içindeki `rewardedId` alanına banner ID'sinden farklı, gerçek bir rewarded ad-unit ID girildi
+- UMP consent mesajı AdMob panelinde yayınlandı
+
+## 6) Online Oyun Smoke Test
 
 - Oda oluştur
 - Odaya ikinci oyuncu ile katıl
@@ -45,12 +58,12 @@ npm run check:syntax
 - Rakip ayrılınca sonuç ekranı geliyor mu kontrol et
 - Zaman modunda süre bitişinde sonuç doğru mu kontrol et
 
-## 6) PWA/Cache Testi
+## 7) PWA/Cache Testi
 
 - Yeni deploydan sonra sert yenileme (`Ctrl+F5`) ile guncel dosyalar geliyor mu
 - Uygulama açılışında eski UI veya eski JS kalmıyor mu
 
-## 7) Son Kontrol
+## 8) Son Kontrol
 
 - CORS hatasi yok
 - Socket bağlantı hatası yok

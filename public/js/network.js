@@ -55,10 +55,10 @@ class NetworkManager {
     });
   }
 
-  connect() {
+  async connect() {
     if (this.connected || (this.socket && this.socket.connected)) {
       this.connected = true;
-      return Promise.resolve();
+      return;
     }
 
     if (this.socket) {
@@ -72,7 +72,13 @@ class NetworkManager {
     }
 
     try {
+      const currentUser = this.game.authManager && this.game.authManager.user;
+      if (!currentUser || typeof currentUser.getIdToken !== 'function') {
+        throw new Error('Online oyun için giriş gerekli.');
+      }
+      const idToken = await currentUser.getIdToken();
       this.socket = io(this.getServerUrl(), {
+        auth: { token: idToken },
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: 8,
@@ -100,6 +106,12 @@ class NetworkManager {
     this.socket.on('connect_error', (err) => {
       this.lastConnectError = err && err.message ? err.message : 'unknown';
       console.error('Socket connect_error:', err);
+      if (this.lastConnectError === 'AUTH_INVALID' && this.game.authManager?.user) {
+        this.game.authManager.user.getIdToken(true).then(token => {
+          if (!this.socket) return;
+          this.socket.auth = { token };
+        }).catch(() => {});
+      }
     });
 
     this.socket.on('room-created', (data) => {
@@ -142,6 +154,10 @@ class NetworkManager {
       if (el) el.textContent = data.score;
     });
 
+    this.socket.on('authoritative-state', (data) => {
+      if (this.game.applyAuthoritativeOnlineState) this.game.applyAuthoritativeOnlineState(data);
+    });
+
     this.socket.on('opponent-gameover', () => {
       this.game.onOpponentGameOver();
     });
@@ -160,6 +176,12 @@ class NetworkManager {
     });
     this.socket.on('game-finished', () => {
       // Timed mode ends via game-time-up from server (single authority).
+    });
+
+    this.socket.on('match-result-ticket', (data) => {
+      if (data && data.ticket && this.game.handleVerifiedOnlineResult) {
+        this.game.handleVerifiedOnlineResult(data.ticket);
+      }
     });
 
     this.socket.on('error', (data) => {
@@ -306,35 +328,14 @@ class NetworkManager {
     }
   }
 
-  sendBoardUpdate(board, score) {
+  sendPlayerAction(pieceIndex, row, col) {
     if (!this.socket || !this.roomId) return;
-    const safeBoard = this.toCompactBoard(board);
-    if (!safeBoard) return;
-    this.socket.emit('board-update', {
-      board: safeBoard,
-      score,
-      uid: this.game.authManager.user ? this.game.authManager.user.uid : null,
-      username: this.game.authManager.getUsername ? this.game.authManager.getUsername() : 'Oyuncu',
-    });
-  }
-
-  toCompactBoard(board) {
-    if (!Array.isArray(board) || board.length !== 9) return null;
-    return board.map(row => {
-      if (!Array.isArray(row) || row.length !== 9) return new Array(9).fill(0);
-      return row.map(v => {
-        const n = Number(v);
-        if (!Number.isFinite(n)) return 0;
-        const iv = Math.trunc(n);
-        return iv >= 0 && iv <= 9 ? iv : 0;
-      });
-    });
+    this.socket.emit('player-action', { pieceIndex, row, col });
   }
 
   sendPlayerInfo() {
     if (!this.socket || !this.roomId) return;
     this.socket.emit('player-info', {
-      uid: this.game.authManager.user ? this.game.authManager.user.uid : null,
       username: this.game.authManager.getUsername ? this.game.authManager.getUsername() : 'Oyuncu',
     });
   }

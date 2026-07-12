@@ -36,6 +36,8 @@ npm run dev
   - Example: `https://example.com,https://www.example.com`
   - If omitted, all origins are allowed (development fallback).
 - Copy `.env.example` and set your production values.
+- `FIREBASE_PROJECT_ID` (Firebase project used to verify Socket.IO ID tokens)
+- `MATCH_TICKET_SECRET` (minimum 32 characters; must match the Firebase Functions secret)
 
 ## Firebase Cloud Functions (economy & IAP)
 
@@ -43,7 +45,7 @@ Server-side coin grants, shop spends, premium verification, and leaderboard writ
 
 ```bash
 cd functions && npm install && cd ..
-firebase deploy --only functions,firestore:rules
+firebase deploy --only functions,firestore:rules,firestore:indexes
 ```
 
 ## Firebase
@@ -63,12 +65,14 @@ firebase deploy --only firestore:rules
 
 ```bash
 npm run check:syntax
+npm test
 npm run health:local
 ```
 
 ## Production Notes
 
 - Set strict `ALLOWED_ORIGINS` in production.
+- Set the same `MATCH_TICKET_SECRET` in Render and Firebase Functions.
 - Keep Firestore rules locked to signed-in users and ownership checks.
 - Re-deploy service worker updates when changing core assets.
 - Follow `DEPLOY_CHECKLIST.md` before going live.

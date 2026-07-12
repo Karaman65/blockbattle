@@ -9,143 +9,69 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    function hasOnlyAllowedKeys(data, allowedKeys) {
-      return data.keys().hasOnly(allowedKeys);
-    }
-
-    function keepsPremiumUnchanged() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-        'isPremium', 'premiumBonusGranted', 'premiumPurchasedAt', 'fulfilledPurchases'
-      ]);
-    }
-
-    function keepsIdentityUnchanged() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['email', 'createdAt']);
-    }
-
-    function keepsEconomyUnchanged() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-        'coins', 'inventory', 'highScore', 'unlockedLevel',
-        'totalGames', 'totalWins', 'totalOnlineGames',
-        'quickOnlineGames', 'quickWins', 'quickLosses', 'quickDraws',
-        'ownedThemes', 'ownedCosmetics',
-        'claimedQuests', 'dailyRewardLastClaim', 'dailyRewardStreak', 'dailyRewardLastIndex'
-      ]);
-    }
-
-    function onlyCosmeticPrefsChanged() {
+    function onlyVisualPreferencesChanged() {
       return request.resource.data.diff(resource.data).affectedKeys()
         .hasOnly(['avatar', 'boardBackground', 'uiTheme']);
-    }
-
-    function coinIncreaseAtMost(maxAmount) {
-      return request.resource.data.coins is number
-        && resource.data.coins is number
-        && request.resource.data.coins >= resource.data.coins
-        && request.resource.data.coins - resource.data.coins <= maxAmount;
-    }
-
-    function onlyClientRewardClaimChanged() {
-      let keys = request.resource.data.diff(resource.data).affectedKeys();
-      return (
-        keys.hasOnly(['coins', 'claimedQuests'])
-        && coinIncreaseAtMost(3000)
-      ) || (
-        keys.hasOnly(['coins', 'dailyRewardLastClaim', 'dailyRewardStreak', 'dailyRewardLastIndex'])
-        && coinIncreaseAtMost(700)
-      );
-    }
-
-    function inventoryValue(data, key) {
-      return data.inventory.get(key, 0);
-    }
-
-    function inventoryHasNumbers(data) {
-      return data.inventory is map
-        && data.inventory.keys().hasOnly(['bomb', 'rotate', 'skip'])
-        && inventoryValue(data, 'bomb') is number
-        && inventoryValue(data, 'rotate') is number
-        && inventoryValue(data, 'skip') is number;
-    }
-
-    function onePowerUpIncrement(type) {
-      return inventoryValue(request.resource.data, type) == inventoryValue(resource.data, type) + 1
-        && (type == 'bomb' || inventoryValue(request.resource.data, 'bomb') == inventoryValue(resource.data, 'bomb'))
-        && (type == 'rotate' || inventoryValue(request.resource.data, 'rotate') == inventoryValue(resource.data, 'rotate'))
-        && (type == 'skip' || inventoryValue(request.resource.data, 'skip') == inventoryValue(resource.data, 'skip'));
-    }
-
-    function onlyClientPowerUpSpendChanged() {
-      let keys = request.resource.data.diff(resource.data).affectedKeys();
-      let spent = resource.data.coins - request.resource.data.coins;
-      return keys.hasOnly(['coins', 'inventory'])
-        && resource.data.coins is number
-        && request.resource.data.coins is number
-        && request.resource.data.coins >= 0
-        && inventoryHasNumbers(resource.data)
-        && inventoryHasNumbers(request.resource.data)
-        && (
-          (spent == 280 && onePowerUpIncrement('bomb'))
-          || (spent == 150 && onePowerUpIncrement('rotate'))
-          || (spent == 220 && onePowerUpIncrement('skip'))
-        );
     }
 
     match /users/{uid} {
       allow get: if isOwner(uid);
       allow list: if false;
-      allow create: if isOwner(uid)
-        && hasOnlyAllowedKeys(request.resource.data, [
-          'username', 'email', 'highScore', 'coins', 'unlockedLevel',
-          'inventory', 'totalGames', 'totalWins', 'totalOnlineGames',
-          'createdAt', 'ownedThemes', 'ownedCosmetics',
-          'quickOnlineGames', 'quickWins', 'quickLosses', 'quickDraws'
-        ]);
-      allow update: if isOwner(uid)
-        && keepsPremiumUnchanged()
-        && keepsIdentityUnchanged()
-        && (
-          (keepsEconomyUnchanged() && onlyCosmeticPrefsChanged())
-          || onlyClientRewardClaimChanged()
-          || onlyClientPowerUpSpendChanged()
-        );
+      // Profiles and all economy/progression fields are created by Cloud Functions.
+      allow create: if false;
+      allow update: if isOwner(uid) && onlyVisualPreferencesChanged();
       allow delete: if false;
     }
 
     match /usernames/{usernameKey} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn()
-        && request.resource.data.uid == request.auth.uid
-        && hasOnlyAllowedKeys(request.resource.data, ['uid', 'username', 'email', 'createdAt']);
-      allow update, delete: if false;
+      // Never expose username-to-account mappings or email addresses to clients.
+      allow read, write: if false;
     }
 
     match /leaderboard/{uid} {
       allow read: if true;
       allow write: if false;
-      allow delete: if false;
     }
 
     match /matches/{matchId} {
       allow read: if isSignedIn()
-        && (resource.data.player1.uid == request.auth.uid || resource.data.player2.uid == request.auth.uid);
-      allow create: if isSignedIn()
-        && (
-          request.resource.data.player1.uid == request.auth.uid
-          || request.resource.data.player2.uid == request.auth.uid
-        );
-      allow update, delete: if false;
+        && (resource.data.player1.uid == request.auth.uid
+          || resource.data.player2.uid == request.auth.uid);
+      // Match records must be written by an authenticated game server.
+      allow write: if false;
     }
 
     match /feedback/{feedbackId} {
       allow read: if false;
       allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'uid', 'email', 'username', 'type', 'message', 'appVersion', 'createdAt'
+        ])
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 3
+        && request.resource.data.username.size() <= 16
+        && request.resource.data.email is string
+        && request.resource.data.type in ['bug', 'suggestion', 'account', 'other']
         && request.resource.data.message is string
         && request.resource.data.message.size() >= 5
-        && request.resource.data.message.size() <= 800;
+        && request.resource.data.message.size() <= 800
+        && request.resource.data.appVersion == '1.0'
+        && request.resource.data.createdAt == request.time;
       allow update, delete: if false;
+    }
+
+    match /gameSessions/{sessionId} {
+      allow read, write: if false;
+    }
+
+    match /verifiedPurchases/{purchaseId} {
+      allow read, write: if false;
+    }
+
+    match /onlineMatchClaims/{claimId} {
+      allow read, write: if false;
     }
   }
 }
