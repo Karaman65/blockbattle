@@ -252,3 +252,12 @@ function rotateShape(shape) {
   }
   return newShape;
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    BLOCK_SHAPES,
+    SeededRandom,
+    generatePieceSet,
+    getShapeCells,
+  };
+}

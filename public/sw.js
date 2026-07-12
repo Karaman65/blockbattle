@@ -1,4 +1,4 @@
-const CACHE_NAME = 'block-battle-v103';
+const CACHE_NAME = 'block-battle-v105';
 const ASSETS = [
   '/',
   '/index.html',
@@ -9,6 +9,8 @@ const ASSETS = [
   '/css/mobile-performance.css',
   '/css/figma-ui.css',
   '/js/firebase-config.js',
+  '/js/app-bootstrap.js',
+  '/js/reset-password.js',
   '/js/economy-api.js',
   '/js/ui-header.js',
   '/js/blocks.js',

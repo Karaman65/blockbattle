@@ -7,12 +7,17 @@
   "main": "index.js",
   "scripts": {
     "serve": "firebase emulators:start --only functions,firestore",
-    "deploy": "firebase deploy --only functions,firestore:rules"
+    "deploy": "firebase deploy --only functions,firestore:rules,firestore:indexes"
   },
   "dependencies": {
-    "firebase-admin": "^12.7.0",
-    "firebase-functions": "^5.1.1",
-    "googleapis": "^144.0.0"
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^7.2.5",
+    "googleapis": "^173.0.0"
+  },
+  "overrides": {
+    "form-data": "^2.5.6",
+    "protobufjs": "^7.6.3",
+    "uuid": "^11.1.1"
   },
   "private": true
 }

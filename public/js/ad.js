@@ -8,7 +8,8 @@ class AdManager {
     this.appId = 'ca-app-pub-2847518527759480~2761291675';
     this.bannerId = 'ca-app-pub-2847518527759480/5562804120';
     this.interstitialId = 'ca-app-pub-2847518527759480/4944601888';
-    this.rewardedId = 'ca-app-pub-2847518527759480/5562804120';
+    // Set this to a dedicated rewarded ad-unit id before production release.
+    this.rewardedId = '';
     this.testRewardedId = 'ca-app-pub-3940256099942544/5224354917';
     this.isTesting = this.detectTestingMode();
     this.initialized = false;
@@ -21,6 +22,7 @@ class AdManager {
     this.bannerListenersReady = false;
     this.bannerRefreshRaf = null;
     this.bannerRequested = false;
+    this.canRequestAds = false;
 
     this.adMob = null;
   }
@@ -59,6 +61,16 @@ class AdManager {
         initializeForTesting: this.isTesting,
       });
 
+      if (typeof this.adMob.requestConsentInfo === 'function') {
+        let consent = await this.adMob.requestConsentInfo();
+        if (!consent.canRequestAds && consent.isConsentFormAvailable && typeof this.adMob.showConsentForm === 'function') {
+          consent = await this.adMob.showConsentForm();
+        }
+        this.canRequestAds = consent.canRequestAds === true;
+      } else {
+        this.canRequestAds = true;
+      }
+
       this.initialized = true;
       console.log('AdMob Initialized');
       this.setupBannerLayoutTracking();
@@ -72,13 +84,13 @@ class AdManager {
   }
 
   getRewardedAdId() {
-    if (this.rewardedId) return this.rewardedId;
-    return this.isTesting ? this.testRewardedId : '';
+    if (this.isTesting) return this.testRewardedId;
+    return this.rewardedId;
   }
 
   async showBanner() {
     this.bannerRequested = true;
-    if (!this.initialized) return;
+    if (!this.initialized || !this.canRequestAds) return;
     if (this.bannerShowing) {
       this.refreshBannerLayout();
       return;
@@ -139,7 +151,7 @@ class AdManager {
   }
 
   async prepareInterstitial() {
-    if (!this.initialized) return;
+    if (!this.initialized || !this.canRequestAds) return;
     try {
       await this.adMob.prepareInterstitial({
         adId: this.interstitialId,
@@ -154,7 +166,7 @@ class AdManager {
 
   async showInterstitial() {
     if (this.isPremiumUser()) return;
-    if (!this.initialized) return;
+    if (!this.initialized || !this.canRequestAds) return;
 
     if (!this.interstitialReady) {
       this.prepareInterstitial();
@@ -172,7 +184,7 @@ class AdManager {
   }
 
   async prepareRewarded() {
-    if (!this.initialized) return false;
+    if (!this.initialized || !this.canRequestAds) return false;
     const adId = this.getRewardedAdId();
     if (!adId) {
       console.warn('Rewarded AdMob unit id is missing.');
@@ -200,7 +212,7 @@ class AdManager {
       console.log('Rewarded AdMob: web — reward denied (native only).');
       return false;
     }
-    if (!this.initialized) return false;
+    if (!this.initialized || !this.canRequestAds) return false;
 
     if (!this.rewardedReady) {
       const prepared = await this.prepareRewarded();
@@ -208,10 +220,10 @@ class AdManager {
     }
 
     try {
-      await this.adMob.showRewardVideoAd();
+      const reward = await this.adMob.showRewardVideoAd();
       this.rewardedReady = false;
       this.prepareRewarded();
-      return true;
+      return !!reward && Number(reward.amount) > 0;
     } catch (err) {
       console.error('Show Rewarded Error:', err);
       this.rewardedReady = false;
