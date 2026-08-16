@@ -825,23 +825,23 @@ body {
 }
 
 .daily-reward-card h2::before {
-  content: "â–£";
+  content: "[]";
   color: #f472b6;
   font-size: 1.25rem;
 }
 
 .level-progress-card h2::before {
-  content: "â†—";
+  content: "^";
   color: #34d399;
 }
 
 .quests-preview-card h2::before {
-  content: "â˜‘";
+  content: "OK";
   color: #c084fc;
 }
 
 .featured-power-card h2::before {
-  content: "âš¡";
+  content: "!";
   color: #fbbf24;
 }
 
@@ -877,7 +877,7 @@ body {
 }
 
 .reward-track span::before {
-  content: "â—‰";
+  content: "o";
   display: block;
   color: #facc15;
   font-size: 0.8rem;
@@ -960,7 +960,7 @@ body {
 }
 
 .featured-power-row b::before {
-  content: "â—‰ ";
+  content: "o ";
 }
 
 .featured-power-row button {

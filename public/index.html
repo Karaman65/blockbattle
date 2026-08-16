@@ -1499,15 +1499,15 @@
   <script src="js/economy-api.js?v=1.1"></script>
   <script src="js/blocks.js?v=5.0"></script>
   <script src="js/audio.js?v=5.0"></script>
-  <script src="js/renderer.js?v=6.0"></script>
-  <script src="js/input.js?v=5.0"></script>
+  <script src="js/renderer.js?v=6.1"></script>
+  <script src="js/input.js?v=5.1"></script>
   <script src="js/network.js?v=5.0"></script>
   <script src="js/ui-header.js?v=1.1"></script>
   <script src="js/auth.js?v=7.5"></script>
   <script src="js/db.js?v=6.0"></script>
   <script src="js/ad.js?v=6.1"></script>
   <script src="js/iap.js?v=2.1"></script>
-  <script src="js/game.js?v=8.7"></script>
+  <script type="module" src="src/js/main.js?v=1.1"></script>
   <script>
     if ('serviceWorker' in navigator) {
       const isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -1519,7 +1519,7 @@
           .then(keys => keys.forEach(key => caches.delete(key)))
           .catch(() => { });
       } else {
-        navigator.serviceWorker.register('/sw.js?v=104').catch(() => { });
+        navigator.serviceWorker.register('sw.js?v=106').catch(() => { });
       }
     }
   </script>

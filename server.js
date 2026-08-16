@@ -56,6 +56,14 @@ app.use(express.static(path.join(__dirname, 'public'), {
   },
 }));
 
+app.use('/src', express.static(path.join(__dirname, 'src'), {
+  setHeaders: (res, filePath) => {
+    if (/\.js$/.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
+  },
+}));
+
 app.get(['/privacy', '/privacy.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
 });

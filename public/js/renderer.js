@@ -14,7 +14,7 @@ class Renderer {
     this.gradientCache = new Map();
 
     // Performance: Particle limits
-    this.MAX_PARTICLES = this.game.isMobile ? 0 : 90;
+    this.MAX_PARTICLES = this.game.isMobile ? 36 : 90;
     this.MAX_FLASH_CELLS = this.game.isMobile ? 28 : 72;
     this.MAX_SHOCKWAVES = this.game.isMobile ? 6 : 24;
   }
@@ -289,7 +289,7 @@ class Renderer {
     const cx = offsetX + col * cellSize + cellSize / 2;
     const cy = offsetY + row * cellSize + cellSize / 2;
 
-    const particleCount = this.game.isMobile ? 2 : 8;
+    const particleCount = this.game.isMobile ? 3 : 8;
     for (let i = 0; i < particleCount; i++) {
       const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.55;
       const speed = (this.game.isMobile ? 58 : 95) + Math.random() * (this.game.isMobile ? 70 : 145);

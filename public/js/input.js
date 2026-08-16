@@ -24,6 +24,11 @@ class InputHandler {
     this._lastDragTy = null;
     this._lastBombTx = null;
     this._lastBombTy = null;
+    this._dragRafId = null;
+    this._pendingDragTx = null;
+    this._pendingDragTy = null;
+    this._dragPieceWidth = 0;
+    this._dragPieceHeight = 0;
   }
 
   init() {
@@ -35,12 +40,9 @@ class InputHandler {
     window.addEventListener('mousemove', (e) => this._onMove(e));
     window.addEventListener('mouseup', (e) => this._onEnd(e));
 
-    // Performance: Throttled touch move
-    const throttledMove = this.throttle((e) => this._onMove(e), 16); // ~60fps
-
     // Touch events
     tray.addEventListener('touchstart', (e) => this._onStart(e), { passive: false });
-    window.addEventListener('touchmove', throttledMove, { passive: false });
+    window.addEventListener('touchmove', (e) => this._onMove(e), { passive: false });
     window.addEventListener('touchend', (e) => this._onEnd(e));
     window.addEventListener('touchcancel', (e) => this._onEnd(e));
 
@@ -126,6 +128,9 @@ class InputHandler {
     this.dragPieceIndex = idx;
     this._lastGhostX = 0;
     this._lastGhostY = 0;
+    this._lastGhostRow = null;
+    this._lastGhostCol = null;
+    this._lastGhostPieceIndex = null;
     this.game.clearGhost();
 
     const pos = this._getPos(e);
@@ -162,13 +167,7 @@ class InputHandler {
 
     // Move drag element
     if (this.dragEl) {
-      const piece = this.game.pieces[this.dragPieceIndex];
-      const shape = piece.shape;
-      const dragCellSize = this.game.cellSize;
-      const w = shape[0].length * (dragCellSize + 2);
-      const h = shape.length * (dragCellSize + 2);
-
-      this._setDragTransform(centerX - w / 2, centerY - h / 2);
+      this._setDragTransform(centerX - this._dragPieceWidth / 2, centerY - this._dragPieceHeight / 2);
     }
 
     this.game.updateGhost(centerX, centerY, this.dragPieceIndex);
@@ -203,6 +202,13 @@ class InputHandler {
     this.dragPieceIndex = -1;
     this._lastGhostX = 0;
     this._lastGhostY = 0;
+    this._lastGhostRow = null;
+    this._lastGhostCol = null;
+    this._lastGhostPieceIndex = null;
+    if (this._dragRafId) {
+      cancelAnimationFrame(this._dragRafId);
+      this._dragRafId = null;
+    }
   }
 
   _createDragElement(pieceIndex, startPos) {
@@ -225,7 +231,9 @@ class InputHandler {
           cell.className = 'drag-cell';
           cell.style.width = cellSize + 'px';
           cell.style.height = cellSize + 'px';
-          cell.style.background = `linear-gradient(135deg, ${color.light}, ${color.base}, ${color.dark})`;
+          cell.style.background = this.game.isMobile
+            ? color.base
+            : `linear-gradient(135deg, ${color.light}, ${color.base}, ${color.dark})`;
         } else {
           cell.style.width = cellSize + 'px';
           cell.style.height = cellSize + 'px';
@@ -244,6 +252,8 @@ class InputHandler {
     el.style.top = '0';
     this._lastDragTx = centerX - w / 2;
     this._lastDragTy = centerY - h / 2;
+    this._dragPieceWidth = w;
+    this._dragPieceHeight = h;
     el.style.transform = `translate3d(${this._lastDragTx}px, ${this._lastDragTy}px, 0)`;
 
     document.body.appendChild(el);
@@ -253,6 +263,18 @@ class InputHandler {
   _setDragTransform(x, y) {
     if (!this.dragEl) return;
     if (this._lastDragTx !== null && Math.abs(x - this._lastDragTx) < 0.5 && Math.abs(y - this._lastDragTy) < 0.5) return;
+    this._pendingDragTx = x;
+    this._pendingDragTy = y;
+    if (this._dragRafId) return;
+    this._dragRafId = requestAnimationFrame(() => {
+      this._dragRafId = null;
+      if (this._pendingDragTx == null || this._pendingDragTy == null) return;
+      this._applyDragTransform(this._pendingDragTx, this._pendingDragTy);
+    });
+  }
+
+  _applyDragTransform(x, y) {
+    if (!this.dragEl) return;
     this._lastDragTx = x;
     this._lastDragTy = y;
     this.dragEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;

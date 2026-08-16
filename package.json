@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "check:syntax": "node --check server.js && node --check public/js/economy-api.js && node --check public/js/ui-header.js && node --check public/js/auth.js && node --check public/js/db.js && node --check public/js/ad.js && node --check public/js/iap.js && node --check public/js/network.js && node --check public/js/game.js && node --check public/sw.js",
+    "check:syntax": "node --check server.js && node --check public/js/economy-api.js && node --check public/js/ui-header.js && node --check public/js/auth.js && node --check public/js/db.js && node --check public/js/ad.js && node --check public/js/iap.js && node --check public/js/network.js && node --check public/js/input.js && node --check public/js/renderer.js && node --check public/js/game.js && node --check src/js/audio.js && node --check src/js/auth.js && node --check src/js/blocks.js && node --check src/js/board.js && node --check src/js/config.js && node --check src/js/database.js && node --check src/js/dom.js && node --check src/js/main.js && node --check src/js/online.js && node --check src/js/scoring.js && node --check src/js/shop.js && node --check src/js/state.js && node --check src/js/storage.js && node --check src/js/tasks.js && node --check src/js/ui.js && node --check public/sw.js",
     "health:local": "node -e \"fetch('http://localhost:3001/health').then(r=>r.text()).then(console.log).catch(e=>{console.error(e.message);process.exit(1);})\""
   },
   "dependencies": {
